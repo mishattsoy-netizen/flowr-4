@@ -1,0 +1,814 @@
+@import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Crimson+Pro:wght@600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-background: #141414;
+  --color-panel: #1F1F1E;
+  --bone-5: rgba(233, 233, 226, 0.05);
+  --bone-2: rgba(233, 233, 226, 0.02);
+  --bone-3: rgba(233, 233, 226, 0.03);
+  --bone-6: rgba(233, 233, 226, 0.06);
+  --bone-10: rgba(233, 233, 226, 0.10);
+  --bone-15: rgba(233, 233, 226, 0.15);
+  --bone-30: rgba(233, 233, 226, 0.30);
+  --bone-60: rgba(233, 233, 226, 0.60);
+  --bone-100: #E9E9E2;
+  --white-overlay: rgba(255, 255, 255, 0.03);
+  --black-overlay: rgba(0, 0, 0, 0.06);
+  --border-inner: var(--bone-10);
+  --border-outer: var(--bone-15);
+  --border-hover: var(--bone-30);
+  --icon-default: var(--bone-30);
+  --icon-active: var(--bone-60);
+  --dim-foreground: var(--bone-60);
+  --foreground: var(--bone-100);
+  --accent: var(--bone-100);
+  /* Semantic accent is Bone */
+  --on-accent: #242423;
+  /* Neutral color for items on bone-fill */
+  --radius-big: 20px;
+  --radius-medium: 10px;
+  --radius-8: 8px;
+  --radius-small: 6px;
+  --: 0;
+  color-scheme: dark;
+}
+
+.is-dragging-widget {
+  cursor: grabbing !important;
+}
+
+.is-dragging-widget .group\/widget,
+.is-dragging-widget .group\/widget-container,
+.is-dragging-widget .group\/item,
+.is-dragging-widget [role="button"] {
+  pointer-events: none !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  transition: none !important;
+}
+
+html[data-interface-size="small"] {
+  font-size: 14px;
+}
+
+html[data-interface-size="regular"] {
+  font-size: 16px;
+}
+
+html[data-interface-size="big"] {
+  font-size: 18px;
+}
+
+/* Legacy light mode removed to enforce provided palette strictly */
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-sidebar: var(--color-panel);
+  --color-panel: var(--color-panel);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--dim-foreground);
+  --color-border: var(--border-outer);
+  --color-hover: var(--bone-6);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --color-bone-6: var(--bone-6);
+  --color-bone-10: var(--bone-10);
+  --color-bone-30: var(--bone-30);
+  --color-bone-60: var(--bone-60);
+  --color-bone-100: var(--bone-100);
+
+  --radius-sm: var(--radius-small);
+  --radius-8: var(--radius-8);
+  --radius-md: var(--radius-medium);
+  --radius-lg: var(--radius-big);
+
+  --: none;
+  --: none;
+  --: none;
+  --: none;
+  --: none;
+  --: none;
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+@utility font-ui {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+@utility font-ui-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+@utility text-fade {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@utility font-widget-header {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+
+@utility font-mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+@utility btn-icon-toggle {
+  @apply flex items-center justify-center bg-[var(--bone-5)] text-[var(--bone-30)];
+
+  &:hover {
+    @apply bg-[var(--bone-5)] text-[var(--bone-100)];
+  }
+
+  &:active,
+  &[data-active="true"] {
+    @apply bg-[var(--bone-15)] text-[var(--bone-100)];
+  }
+}
+
+@utility btn-regular {
+  @apply flex items-center justify-center gap-2.5 bg-transparent text-[var(--bone-30)];
+
+  &:hover {
+    @apply bg-[var(--bone-6)] text-[var(--bone-100)];
+  }
+}
+
+@utility btn-message {
+  @apply flex items-center gap-2.5 bg-[var(--white-overlay)] text-[var(--bone-30)];
+
+  &:active,
+  &[data-active="true"] {
+    @apply text-[var(--bone-100)];
+  }
+}
+
+@utility btn-options {
+  @apply flex items-center gap-2.5 bg-transparent text-[var(--bone-30)];
+
+  &:hover {
+    @apply bg-[var(--bone-6)] text-[var(--bone-100)];
+  }
+}
+
+@utility btn-accent {
+  @apply flex items-center justify-center gap-2.5 bg-[var(--accent)] text-[var(--on-accent)] px-6 py-2.5 rounded-[var(--radius-medium)] font-bold text-sm tracking-wide;
+
+  &:hover {
+    @apply opacity-90;
+  }
+}
+
+@utility btn-task {
+  @apply flex items-center justify-center gap-2.5 bg-[#E09952] text-[var(--bone-100)] px-6 py-2.5 rounded-[var(--radius-medium)] font-bold text-sm tracking-wide;
+
+  &:hover {
+    @apply opacity-90;
+  }
+}
+
+@utility btn-bone-5 {
+  @apply flex items-center justify-center bg-[var(--bone-5)] text-[var(--bone-60)] px-3 py-1.5 rounded-[var(--radius-medium)];
+
+  &:hover {
+    @apply bg-[var(--bone-10)] text-[var(--bone-100)];
+  }
+}
+
+@utility btn-bento {
+  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-15)] text-[var(--bone-60)] bg-[var(--white-overlay)];
+
+  &:hover {
+    @apply border-[var(--bone-30)] text-[var(--bone-100)] bg-[var(--bone-6)];
+  }
+
+  svg {
+    @apply w-3.5 h-3.5;
+  }
+}
+
+@utility btn-bento-active {
+  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-100)] text-[var(--bone-100)] bg-transparent;
+
+  svg {
+    @apply w-3.5 h-3.5;
+  }
+}
+
+@utility btn-bento-danger {
+  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-15)] text-[var(--bone-30)] bg-transparent;
+
+  &:hover {
+    @apply border-red-500/30 text-red-500 bg-red-500/5;
+  }
+}
+
+@utility popup-glass-big {
+  background-color: var(--color-panel);
+  border-radius: var(--radius-medium);
+  border: 1px solid var(--border-outer);
+  @apply p-1.5 flex flex-col gap-0.5 shadow-2xl;
+}
+
+@utility popup-glass-small {
+  background-color: var(--color-panel);
+  border-radius: var(--radius-medium);
+  border: 1px solid var(--border-outer);
+  @apply p-1.5 flex flex-col gap-0.5 shadow-2xl;
+}
+
+@utility popup-item {
+  @apply flex items-center gap-2.5 w-full px-2.5 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-colors rounded-[var(--radius-8)];
+}
+
+@utility popup-divider {
+  @apply h-px bg-[var(--bone-10)] my-1 -mx-0.5;
+}
+
+@utility popup-item-danger {
+  @apply popup-item text-[#FF8787] hover:bg-[#FF8787]/10 hover:text-[#FF8787];
+}
+
+@utility widget-shadow {
+  box-shadow: none;
+}
+
+.group\/widget {
+  transition: all 0.2s ease-in-out;
+}
+
+.group\/widget h2 {
+  transition: all 0.2s ease-in-out;
+}
+
+.group\/widget:hover {
+  border-color: var(--bone-30) !important;
+}
+
+@utility image-pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+@utility panel-glass {
+  background-color: var(--color-panel);
+}
+
+
+/* === Sidebar Item Styles === */
+.sidebar-item-row {
+  position: relative;
+  transition: none;
+}
+
+
+/* Row interaction logic moved to TreeItem.tsx for more granular control (color-only) */
+.sidebar-item-row svg {
+  color: inherit;
+  transition: none;
+}
+
+.sidebar-list {
+  position: relative;
+}
+
+
+/* All buttons and interactive roles get pointer cursor */
+button,
+[role="button"],
+.cursor-pointer,
+select,
+input[type="checkbox"],
+input[type="radio"],
+a {
+  cursor: pointer;
+}
+
+.editor-block a {
+  color: var(--bone-100);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(233, 232, 226, 0.2);
+  transition: none;
+  padding: 4px 2px;
+  margin: -4px -2px;
+  border-radius: 4px;
+}
+
+.editor-block a:hover {
+  text-decoration-color: var(--bone-100);
+  background-color: rgba(233, 232, 226, 0.1);
+}
+
+html {
+  font-size: 100%;
+}
+
+/* Minimalist Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-outer);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Scrollbar hide utility */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-outer) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-outer);
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Animation definitions removed for instant UI */
+
+
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+
+/* ─── Editor Utilities ─────────────────────────────────── */
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-small);
+  /* Fully rounded */
+  color: var(--color-muted-foreground);
+  transition: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+
+.editor-block:focus-within {
+  background-color: transparent;
+}
+
+.editor-block [contenteditable] {
+  outline: none;
+  min-height: 1.5em;
+}
+
+.editor-block [contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Database block styles */
+.db-cell {
+  padding: 6px 10px;
+  border-right: 1px solid var(--border-outer);
+  border-bottom: 1px solid var(--border-outer);
+  font-size: 13px;
+  outline: none;
+  min-height: 34px;
+}
+
+.db-cell:last-child {
+  border-right: none;
+}
+
+.db-header-cell {
+  padding: 6px 10px;
+  border-right: 1px solid var(--border-outer);
+  border-bottom: 1px solid var(--border-outer);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  letter-spacing: 0.04em;
+  background-color: var(--black-overlay);
+}
+
+.db-header-cell:last-child {
+  border-right: none;
+}
+
+/* Highlight colors removed to enforce monochromatic palette */
+.highlight {
+  background-color: var(--bone-15);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* ─── Sidebar Layout Transitions ──────────────────────── */
+.shell-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  /* Mobile default: 1 column */
+}
+
+@media (min-width: 768px) {
+  .shell-container {
+    grid-template-columns: var(--sidebar-w, 64px) 1fr;
+    transition: grid-template-columns 100ms ease-out;
+  }
+}
+
+/* --- Drag & Drop ----------------------------------------- */
+
+.dragging-active *,
+.dragging-active .editor-block,
+.dragging-active .controls,
+.dragging-active button,
+.dragging-active [data-tooltip],
+.dragging-active .slash-trigger,
+.dragging-active [contenteditable] {
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: none !important;
+}
+
+.dragging-active .controls {
+  opacity: 0 !important;
+}
+
+.drop-gap {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.drop-gap.active {
+  height: 48px;
+  opacity: 1;
+}
+
+.drop-gap.active.horizontal {
+  height: 100%;
+  width: 24px;
+  opacity: 1;
+}
+
+.drop-gap-line {
+  position: absolute;
+  left: 56px;
+  right: 12px;
+  top: 50%;
+  height: 2px;
+  background-color: var(--bone-30);
+  transform: translateY(-50%);
+  border-radius: 9999px;
+}
+
+/* Fix bullet alignment to first row in prose */
+.prose ul>li {
+  position: relative;
+}
+
+.prose ul>li::before,
+.prose ul>li svg,
+.prose ul>li span[aria-hidden="true"] {
+  margin-top: 0.45em !important;
+  /* Aligned with first row cap-height */
+}
+
+.drop-gap.horizontal .drop-gap-line {
+  left: 50%;
+  right: auto;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.editor-content-container {
+  transition: none;
+}
+
+/* --- Column Redesign ------------------------------------ */
+
+.column-container {
+  border: 1px solid transparent;
+  transition: none;
+}
+
+.column-container:hover {
+  border-color: var(--border-outer);
+}
+
+.column-container.empty:not(:hover) {
+  opacity: 0.3;
+}
+
+@keyframes thinking-dots {
+  0% {
+    opacity: 0.2;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.animate-thinking-dot {
+  animation: thinking-dots 1.4s infinite both;
+}
+
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 11ch;
+  }
+}
+
+@keyframes blinkTextCursor {
+  from {
+    border-right-color: var(--bone-100);
+  }
+
+  to {
+    border-right-color: transparent;
+  }
+}
+
+@keyframes ai-cursor-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* AI Streaming Cursor Styling */
+.ai-cursor-inline {
+  display: inline-block;
+  animation: ai-cursor-blink 1.2s ease-in-out infinite;
+  color: var(--accent);
+  margin-left: 2px;
+  font-size: 0.9em;
+  vertical-align: middle;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+
+
+.anim-typewriter {
+  font-family: 'Anonymous Pro', Consolas, Monaco, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  animation:
+    typewriter 2s steps(11) infinite,
+    blinkTextCursor 500ms steps(11) infinite normal;
+}
+
+@keyframes thinking-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-thinking-pulse {
+  animation: thinking-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Toggle Switch (Uiverse.io by ClawHack1) adapted for Flowr ─── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch .toggle-input {
+  display: none !important;
+}
+
+.toggle-switch .toggle-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bone-10);
+  border: 1px solid var(--bone-15);
+  border-radius: 34px;
+  cursor: pointer;
+  transition: none;
+}
+
+.toggle-switch .toggle-label::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background-color: var(--bone-60);
+  transition: none;
+}
+
+.toggle-switch .toggle-input:checked+.toggle-label {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-switch .toggle-input:checked+.toggle-label::before {
+  transform: translateX(16px);
+  background-color: var(--on-accent);
+}
+
+.toggle-switch:hover .toggle-label {
+  border-color: var(--bone-60);
+}
+
+.toggle-switch .toggle-input:disabled+.toggle-label {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Disable hover effects while dragging in the sidebar */
+.is-dragging .sidebar-item-row:hover,
+.is-dragging button:hover {
+  background-color: transparent !important;
+  color: var(--bone-60) !important;
+}
+
+/* Ensure active/selected items keep their state but don't react to hover */
+.is-dragging .sidebar-item-row[data-selected="true"]:hover,
+.is-dragging button[data-selected="true"]:hover {
+  background-color: var(--bone-6) !important;
+  color: var(--bone-100) !important;
+}
+
+/* Hide buttons and icons that appear on hover (like chevrons and plus buttons) */
+.is-dragging .group:hover .group-hover\:opacity-100 {
+  opacity: 0 !important;
+}
+
+/* Keep icons visible if they were supposed to be hidden on hover */
+.is-dragging .group:hover .group-hover\:opacity-0 {
+  opacity: 1 !important;
+}
+
+/* Lock cursor during drag */
+.is-dragging * {
+  cursor: grabbing !important;
+}
+
+/* ─── Widget Dragging Lock ─── */
+body.is-dragging-widget {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.is-dragging-widget * {
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+/* Allow interaction with the grid and the floating clone */
+body.is-dragging-widget .grid,
+body.is-dragging-widget .fixed.z-50 {
+  pointer-events: auto !important;
+}
+
+/* But suppress interactions inside widgets while dragging */
+body.is-dragging-widget [data-widget-id] * {
+  pointer-events: none !important;
+}
+
+/* Bento edit mode — dashed widget outlines */
+.bento-edit-mode .react-grid-item {
+  outline: 1px dashed hsl(var(--border));
+  outline-offset: -1px;
+}
+
+/* Disable bento transitions by default to prevent load-time "flying" widgets */
+.react-grid-item {
+  transition: none !important;
+}
+
+/* Enable transitions ONLY when in edit mode for smooth dragging/resizing */
+.bento-edit-mode .react-grid-item {
+  transition: transform 200ms ease, width 200ms ease, height 200ms ease, opacity 200ms ease !important;
+}
+
+/* Disable transitions during drag/resize to make it snappy */
+.react-grid-item.react-draggable-dragging,
+.react-grid-item.resizing {
+  transition: none !important;
+  z-index: 100 !important;
+}
+
+.bento-no-transitions,
+.bento-no-transitions *,
+.bento-no-transitions .react-grid-item,
+.bento-no-transitions .react-grid-item *,
+.bento-no-transitions [class*="react-grid-item"],
+.bento-no-transitions [class*="react-grid-item"] * {
+  transition: none !important;
+  transition-property: none !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  animation: none !important;
+}
+
+/* Override react-grid-layout placeholder color */
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--accent) / 0.15) !important;
+  border: 1px dashed hsl(var(--accent)) !important;
+  border-radius: 0.75rem !important;
+  opacity: 1 !important;
+}

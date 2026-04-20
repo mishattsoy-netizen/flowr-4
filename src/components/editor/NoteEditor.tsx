@@ -1,0 +1,1028 @@
+"use client";
+
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { X, Plus, Pencil } from 'lucide-react';
+import clsx from 'clsx';
+import { Entity, EditorBlock, BlockType, BlockStyle, generateId, useStore } from '@/data/store';
+import { EditorToolbar } from './EditorToolbar';
+import { SlashCommandMenu } from './SlashCommandMenu';
+import { BlockRenderer } from './BlockRenderer';
+import { BlockOptionsMenu } from './BlockOptionsMenu';
+import { Portal } from '../layout/Portal';
+import { GripVertical } from 'lucide-react';
+
+interface NoteEditorProps {
+  entity: Entity;
+  isMixed?: boolean;
+}
+
+function createBlock(type: BlockType = 'text', extra?: Record<string, unknown>): EditorBlock {
+  return {
+    id: generateId(),
+    type,
+    content: '',
+    style: (extra?.style as BlockStyle) ?? (type === 'text' ? 'body' : undefined),
+    checked: type === 'checklist' ? false : undefined,
+    columnCount: type === 'columns' ? Math.min((extra?.columnCount as number) ?? 2, 4) : undefined,
+    children: type === 'columns' 
+      ? Array.from({ length: Math.min((extra?.columnCount as number) ?? 2, 4) }, () => ({
+          id: generateId(),
+          type: 'column' as const,
+          content: '',
+          children: []
+        }))
+      : (type === 'column' ? [] : undefined),
+    dbViewType: type === 'database' ? ((extra?.dbViewType as string) ?? 'table') as EditorBlock['dbViewType'] : undefined,
+    dbColumns: type === 'database' ? [
+      { id: 'col-name', name: 'Name', type: 'text' as const },
+      { id: 'col-status', name: 'Status', type: 'select' as const, options: ['To Do', 'In Progress', 'Done'] },
+      { id: 'col-date', name: 'Date', type: 'date' as const },
+    ] : undefined,
+    dbRows: type === 'database' ? [
+      { id: generateId(), cells: { 'col-name': 'Item 1', 'col-status': 'To Do', 'col-date': '' } },
+      { id: generateId(), cells: { 'col-name': 'Item 2', 'col-status': 'In Progress', 'col-date': '' } },
+    ] : undefined,
+    tableData: type === 'table' ? [['Header 1', 'Header 2', 'Header 3'], ['', '', ''], ['', '', '']] : undefined,
+    mediaUrl: (extra?.mediaUrl as string) || (type === 'image' ? 'https://images.unsplash.com/photo-1544391496-1ca7c97651a2?q=80&w=2000&auto=format&fit=crop' : type === 'video' ? 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' : undefined),
+    mediaWidth: (extra?.mediaWidth as any) || 4,
+    mediaCaption: (extra?.mediaCaption as string) || '',
+    align: 'left',
+    ...extra,
+  };
+}
+
+const findBlockById = (list: EditorBlock[], id: string): EditorBlock | undefined => {
+  for (const b of list) {
+    if (b.id === id) return b;
+    if (b.children) {
+      const found = findBlockById(b.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+};
+
+const updateBlockRecursive = (list: EditorBlock[], id: string, updates: Partial<EditorBlock>): EditorBlock[] => {
+  return list.map(b => {
+    if (b.id === id) return { ...b, ...updates };
+    if (b.children) {
+      return {
+        ...b,
+        children: updateBlockRecursive(b.children, id, updates)
+      };
+    }
+    return b;
+  });
+};
+
+const findAndRemoveBlock = (list: EditorBlock[], id: string): { list: EditorBlock[], removed: EditorBlock | null } => {
+  let removed: EditorBlock | null = null;
+
+  const newList = list.flatMap(b => {
+    if (b.id === id) {
+      removed = b;
+      return [];
+    }
+    
+    if (b.children) {
+      const res = findAndRemoveBlock(b.children, id);
+      if (res.removed) removed = res.removed;
+
+      if (b.type === 'columns') {
+        const nonEmptyCols = res.list.filter(col => col.type === 'column' && (col.children?.length ?? 0) > 0);
+        if (nonEmptyCols.length === 0) return [];
+        if (nonEmptyCols.length === 1) return nonEmptyCols[0].children || [];
+        return [{ ...b, children: res.list }];
+      }
+
+      if (b.type === 'column' && res.list.length === 0) {
+          return [{ ...b, children: res.list }];
+      }
+
+      return [{ ...b, children: res.list }];
+    }
+    return [b];
+  });
+
+  return { list: newList, removed };
+};
+
+
+
+const getTagColors = (tag: string) => {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return {
+    bg: `hsla(${hue}, 40%, 45%, 0.12)`,
+    text: `hsl(${hue}, 70%, 85%)`,
+    border: `hsla(${hue}, 40%, 50%, 0.25)`
+  };
+};
+
+function TagItem({
+  tag,
+  index,
+  isEditing,
+  onEdit,
+  onDelete,
+  onUpdate,
+  allTags
+}: {
+  tag: string;
+  index: number;
+  isEditing: boolean;
+  onEdit: (idx: number) => void;
+  onDelete: (tag: string) => void;
+  onUpdate: (oldTag: string, newTag: string) => void;
+  allTags: string[];
+}) {
+  const [editValue, setEditValue] = useState(tag);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const suggestions = useMemo(() => {
+    if (!editValue) return [];
+    return allTags
+      .filter(t => t.toLowerCase().includes(editValue.toLowerCase()) && t !== editValue)
+      .slice(0, 5);
+  }, [editValue, allTags]);
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditValue(tag);
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(0, inputRef.current.value.length);
+        }
+      });
+    }
+  }, [isEditing, tag]);
+
+  const handleSave = useCallback(() => {
+    const value = editValue.trim();
+    if (value === "") {
+      onDelete(tag);
+    } else if (value !== tag) {
+      onUpdate(tag, value.toLowerCase());
+    }
+    onEdit(-1);
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
+  }, [editValue, tag, onDelete, onUpdate, onEdit]);
+
+  const handleBlur = () => {
+    // Short delay to allow suggestion selection
+    setTimeout(() => {
+      if (isEditing) handleSave();
+    }, 150);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+        onUpdate(tag, suggestions[selectedIndex]);
+        onEdit(-1);
+      } else {
+        handleSave();
+      }
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    } else if (e.key === 'Escape') {
+      onEdit(-1);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : (prev === -1 ? 0 : 0)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : (prev === -1 ? suggestions.length - 1 : suggestions.length - 1)));
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(tag);
+  };
+
+  const colors = getTagColors(tag);
+
+  return (
+    <div className="relative flex items-center group">
+      <div
+        onClick={() => onEdit(index)}
+        className={clsx(
+          "px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer flex items-center gap-1 transition-all border",
+          isEditing
+            ? "ring-1 ring-accent bg-background text-foreground border-accent"
+            : "hover:brightness-110"
+        )}
+        style={!isEditing ? { 
+          backgroundColor: colors.bg, 
+          color: colors.text,
+          borderColor: colors.border
+        } : {}}
+      >
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={e => {
+              setEditValue(e.target.value);
+              setShowSuggestions(true);
+              setSelectedIndex(-1);
+            }}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="bg-transparent outline-none w-full text-foreground"
+          />
+        ) : (
+          <>
+            <span className="truncate max-w-[120px]">{tag || "new tag"}</span>
+            <button
+              onClick={handleDelete}
+              aria-label={`Delete tag ${tag}`}
+              className="hover:text-danger rounded-full p-0.5 transition-colors opacity-60 hover:opacity-100"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {isEditing && showSuggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 z-[300] popup-glass-small min-w-[160px] py-1">
+          {suggestions.map((s, idx) => (
+            <button
+              key={s}
+              onMouseDown={() => {
+                onUpdate(tag, s);
+                onEdit(-1);
+              }}
+              className={clsx(
+                "popup-item border-none w-full text-left px-3 py-1.5 text-xs ",
+                selectedIndex === idx ? "bg-accent text-accent-foreground" : "hover:bg-hover"
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
+  const updateEntityContent = useStore(s => s.updateEntityContent);
+  const removeTagFromEntity = useStore(s => s.removeTagFromEntity);
+  const updateTagInEntity = useStore(s => s.updateTagInEntity);
+  const renameEntity = useStore(s => s.renameEntity);
+  const setEditingEntityId = useStore(s => s.setEditingEntityId);
+  const editingEntity = useStore(s => s.editingEntity);
+  const entities = useStore(s => s.entities);
+  const setActiveEntityId = useStore(s => s.setActiveEntityId);
+  const addEmptyTag = useStore(s => s.addEmptyTag);
+  const aiCursor = useStore(s => s.aiCursor);
+
+  const allUniqueTags = useMemo(() => {
+    return Array.from(new Set(entities.flatMap(e => e.tags || [])));
+  }, [entities]);
+
+  const [blocks, setBlocks] = useState<EditorBlock[]>(() => {
+    if (entity.content && entity.content.length > 0) return entity.content;
+    return [createBlock('text', { style: 'body' })];
+  });
+
+  const lastSyncedVersion = useRef<string>(JSON.stringify(entity.content || []));
+  const lastEntityId = useRef<string>(entity.id);
+  const isFirstMount = useRef<boolean>(true);
+  const isUserModified = useRef<boolean>(false);
+
+  useEffect(() => {
+    // 1. Entity Switch Protection
+    if (entity.id !== lastEntityId.current) {
+       const newContent = entity.content && entity.content.length > 0 
+        ? entity.content 
+        : [createBlock('text', { style: 'body' })];
+       setBlocks(newContent);
+       lastSyncedVersion.current = JSON.stringify(entity.content || []);
+       lastEntityId.current = entity.id;
+       isFirstMount.current = true;
+       isUserModified.current = false; // Reset modification flag on switch
+       return;
+    }
+
+    const storeJson = JSON.stringify(entity.content || []);
+    const localJson = JSON.stringify(blocks);
+
+    const isAiWritingThis = aiCursor?.id === entity.id;
+    const shouldPrioritizeStore = isAiWritingThis || isFirstMount.current;
+
+    if (storeJson !== lastSyncedVersion.current) {
+      if (storeJson !== localJson) {
+        setBlocks(entity.content || []);
+      }
+      lastSyncedVersion.current = storeJson;
+      isFirstMount.current = false;
+    } 
+    else if (localJson !== storeJson && isUserModified.current && !isAiWritingThis) {
+      // ONLY push to store if the user has explicitly modified the content
+      updateEntityContent(entity.id, blocks);
+      lastSyncedVersion.current = localJson;
+    } else if (localJson === storeJson) {
+      isFirstMount.current = false;
+    }
+  }, [entity.id, entity.content, blocks, updateEntityContent, aiCursor]);
+
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+
+  const [slashMenu, setSlashMenu] = useState<{ blockId: string; position: { x: number; y: number } } | null>(null);
+  const [activeOptionsMenu, setActiveOptionsMenu] = useState<{ blockId: string; position: { x: number; y: number } } | null>(null);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
+
+
+  const [dragState, setDragState] = useState<{
+    draggingId: string | null;
+    overId: string | null;
+    overPosition: 'above' | 'below' | null;
+  }>({ draggingId: null, overId: null, overPosition: null });
+  const [tempTitle, setTempTitle] = useState(entity.title);
+  const isFullWidth = useStore(s => s.isFullWidth);
+
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
+
+  const isEditingTitle = editingEntity?.id === entity.id && editingEntity.source === 'view';
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      setTempTitle(entity.title);
+    }
+  }, [isEditingTitle, entity.title]);
+
+  useEffect(() => {
+    if (isEditingTitle && titleRef.current) {
+      titleRef.current.style.height = 'auto';
+      titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
+      titleRef.current.setSelectionRange(tempTitle.length, tempTitle.length);
+    }
+  }, [isEditingTitle]);
+
+  const [history, setHistory] = useState<EditorBlock[][]>(() => [blocks]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  const persistBlocks = useCallback((newBlocks: EditorBlock[], skipHistory = false) => {
+    // 1. Structural Sanity check: Ensure columns sections only contain column blocks
+    const sanitizeRecursive = (list: EditorBlock[]): EditorBlock[] => {
+      return list.map(b => {
+        const updatedB = { ...b };
+        if (b.type === 'columns' && b.children) {
+          updatedB.children = b.children.slice(0, 4).map(child => {
+            if (child.type !== 'column') {
+              return { id: generateId(), type: 'column' as const, content: '', children: [child] };
+            }
+            return child;
+          });
+          updatedB.columnCount = updatedB.children.length;
+        }
+        if (updatedB.children) {
+          updatedB.children = sanitizeRecursive(updatedB.children);
+        }
+        return updatedB;
+      });
+    };
+
+    const sanitized = sanitizeRecursive(newBlocks);
+    setBlocks(sanitized);
+    isUserModified.current = true; // User interaction recorded
+    updateEntityContent(entity.id, sanitized);
+
+    if (!skipHistory) {
+      setHistory(prev => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        newHistory.push(sanitized);
+        if (newHistory.length > 50) newHistory.shift();
+        setHistoryIndex(newHistory.length - 1);
+        return newHistory;
+      });
+    }
+  }, [entity.id, updateEntityContent, historyIndex]);
+
+  const handleDragStart = useCallback((id: string) => {
+    setDragState(prev => ({ ...prev, draggingId: id }));
+    document.body.classList.add('dragging-active');
+  }, []);
+
+  const handleDragOver = useCallback((id: string, e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragState.draggingId === id) return;
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? 'above' : 'below';
+
+    if (dragState.overId !== id || dragState.overPosition !== position) {
+      setDragState(prev => ({ ...prev, overId: id, overPosition: position }));
+    }
+  }, [dragState.draggingId, dragState.overId, dragState.overPosition]);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragState.draggingId && dragState.overId && dragState.overId !== dragState.draggingId) {
+      setBlocks(prev => {
+        const { list: activeRemoved, removed: activeBlock } = findAndRemoveBlock([...prev], dragState.draggingId!);
+        if (!activeBlock) return prev;
+
+        const insertAt = (list: EditorBlock[]): EditorBlock[] => {
+          const idx = list.findIndex(b => b.id === dragState.overId);
+          if (idx !== -1) {
+            const newList = [...list];
+            const insertIdx = dragState.overPosition === 'above' ? idx : idx + 1;
+            newList.splice(insertIdx, 0, activeBlock);
+            return newList;
+          }
+
+          return list.map(b => (b.children ? { ...b, children: insertAt(b.children) } : b));
+        };
+
+        const finalBlocks = insertAt(activeRemoved);
+        setTimeout(() => persistBlocks(finalBlocks, true), 0);
+        return finalBlocks;
+      });
+    }
+
+    setDragState({ draggingId: null, overId: null, overPosition: null });
+    document.body.classList.remove('dragging-active');
+  }, [dragState, persistBlocks]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevBlocks = history[historyIndex - 1];
+      setHistoryIndex(historyIndex - 1);
+      setBlocks(prevBlocks);
+      updateEntityContent(entity.id, prevBlocks);
+    }
+  }, [history, historyIndex, entity.id, updateEntityContent]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextBlocks = history[historyIndex + 1];
+      setHistoryIndex(historyIndex + 1);
+      setBlocks(nextBlocks);
+      updateEntityContent(entity.id, nextBlocks);
+    }
+  }, [history, historyIndex, entity.id, updateEntityContent]);
+
+  const updateBlock = useCallback((id: string, updates: Partial<EditorBlock>) => {
+    isUserModified.current = true;
+    setBlocks(prev => updateBlockRecursive(prev, id, updates));
+  }, []);
+
+
+
+  const deleteBlock = useCallback((id: string) => {
+    isUserModified.current = true;
+    setDeletingIds(prev => [...prev, id]);
+    setTimeout(() => {
+      setBlocks(prev => {
+        if (prev.length <= 1 && prev.some(b => b.id === id)) return prev;
+
+        const { list: newList, removed } = findAndRemoveBlock([...prev], id);
+        if (removed) {
+          setTimeout(() => updateEntityContent(entity.id, newList), 0);
+          return newList;
+        }
+        return prev;
+      });
+      setDeletingIds(prev => prev.filter(x => x !== id));
+    }, 280);
+  }, [entity.id, updateEntityContent]);
+
+  const insertAfter = useCallback((afterId: string, forceType?: BlockType, openSlash: boolean = false, inside: boolean = false) => {
+    const newBlock = createBlock(forceType || 'text');
+
+    const insertRecursive = (list: EditorBlock[]): { newList: EditorBlock[], found: boolean } => {
+      const idx = list.findIndex(b => b.id === afterId);
+      if (idx !== -1) {
+        const newList = [...list];
+        const target = newList[idx];
+
+        if (inside && target.children) {
+          return {
+            newList: list.map(b => b.id === afterId ? { ...b, children: [newBlock, ...(b.children || [])] } : b),
+            found: true
+          };
+        }
+
+        newList.splice(idx + 1, 0, newBlock);
+        return { newList, found: true };
+      }
+
+      let foundInChild = false;
+      const newList = list.map(b => {
+        if (b.children) {
+          const res = insertRecursive(b.children);
+          if (res.found) foundInChild = true;
+          return { ...b, children: res.newList };
+        }
+        return b;
+      });
+
+      return { newList, found: foundInChild };
+    };
+
+    setBlocks(prev => {
+      const { newList, found } = insertRecursive([...prev]);
+      if (found) {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-block-id="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+          if (el) {
+            el.focus();
+            if (openSlash) {
+              const rect = el.getBoundingClientRect();
+              setSlashMenu({ blockId: newBlock.id, position: { x: rect.left, y: rect.bottom + 4 } });
+            }
+          }
+        }, 50);
+        return newList;
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleSlash = useCallback((blockId: string, rect: DOMRect) => {
+    setSlashMenu({
+      blockId,
+      position: { x: rect.left, y: rect.bottom + 4 },
+    });
+  }, []);
+
+  const handleOpenMenu = useCallback((blockId: string, position: { x: number; y: number }) => {
+    setActiveOptionsMenu({ blockId, position });
+  }, []);
+
+  const insertBlock = useCallback((type: BlockType, extra?: Record<string, unknown>) => {
+    if (!slashMenu) return;
+
+    // Helper to replace block in nested structure
+    const replaceRecursive = (list: EditorBlock[]): EditorBlock[] => {
+      return list.map(b => {
+        if (b.id === slashMenu.blockId) {
+          return createBlock(type, extra);
+        }
+        if (b.children) {
+          return { ...b, children: replaceRecursive(b.children) };
+        }
+        return b;
+      });
+    };
+
+    const newBlocks = replaceRecursive(blocks);
+    persistBlocks(newBlocks);
+    setSlashMenu(null);
+
+    // Find the new block ID (it changed in replaceRecursive)
+    // Actually createBlock generates a NEW ID.
+    // We should probably focus the block that was just created.
+  }, [blocks, slashMenu, persistBlocks]);
+
+  const duplicateBlock = useCallback((id: string) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx === -1) return;
+    const clone = { ...blocks[idx], id: generateId() };
+    const newBlocks = [...blocks];
+    newBlocks.splice(idx + 1, 0, clone);
+    persistBlocks(newBlocks);
+  }, [blocks, persistBlocks]);
+
+  const moveToTop = useCallback((id: string) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx <= 0) return;
+    const block = blocks[idx];
+    const newBlocks = blocks.filter(b => b.id !== id);
+    newBlocks.unshift({ ...block, pinned: true });
+    persistBlocks(newBlocks);
+  }, [blocks, persistBlocks]);
+
+  const addColumn = useCallback((columnId: string) => {
+    let parentId: string | null = null;
+    const findParent = (list: EditorBlock[]) => {
+      for (const b of list) {
+        if (b.type === 'columns' && b.children?.some(c => c.id === columnId)) {
+          parentId = b.id;
+          return;
+        }
+        if (b.children) findParent(b.children);
+      }
+    };
+    findParent(blocks);
+
+    if (!parentId) return;
+
+    const newList = blocks.map(b => {
+      if (b.id === parentId && (b.children?.length ?? 0) < 4) {
+        return {
+          ...b,
+          children: [
+            ...(b.children || []),
+            { id: generateId(), type: 'column' as const, content: '', children: [] }
+          ]
+        };
+      }
+      return b;
+    });
+    persistBlocks(newList);
+  }, [blocks, persistBlocks]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const focusedEl = document.activeElement as HTMLElement;
+          const blockEl = focusedEl.closest('[data-block-id]');
+          const afterId = blockEl?.getAttribute('data-block-id');
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            const newBlock = createBlock('image', { mediaUrl: dataUrl });
+            if (afterId) {
+              persistBlocks(blocks.flatMap(b => b.id === afterId ? [b, newBlock] : [b]));
+            } else {
+              persistBlocks([...blocks, newBlock]);
+            }
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    const text = e.clipboardData.getData('text');
+    const isImageLink = text.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+    const isVideoLink = text.match(/(youtube\.com|youtu\.be|vimeo\.com|mp4|webm|ogg)/i);
+    
+    if (isImageLink || isVideoLink) {
+      const type = isImageLink ? 'image' : 'video';
+      const focusedEl = document.activeElement as HTMLElement;
+      const blockEl = focusedEl.closest('[data-block-id]');
+      const afterId = blockEl?.getAttribute('data-block-id');
+      
+      if (afterId) {
+        const block = blocks.find(b => b.id === afterId);
+        if (block && block.type === 'text' && !block.content.trim()) {
+          e.preventDefault();
+          updateBlock(afterId, { type: type as any, mediaUrl: text, content: '' });
+          return;
+        }
+      }
+    }
+  }, [blocks, insertAfter, persistBlocks, updateBlock]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        const newBlock = createBlock('image', { mediaUrl: dataUrl });
+        persistBlocks([...blocks, newBlock]);
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  }, [blocks, persistBlocks]);
+
+  const turnIntoBlock = useCallback((id: string, type: BlockType, extra?: Record<string, unknown>) => {
+    const isList = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(type);
+
+    const updateRecursive = (list: EditorBlock[]): EditorBlock[] => {
+      return list.map(b => {
+        if (b.id === id) {
+          return {
+            ...b,
+            type,
+            style: isList ? 'body' : ((extra?.style as BlockStyle) ?? (type === 'text' ? 'body' : b.style)),
+            content: (extra?.content as string) ?? b.content,
+            columnCount: type === 'columns' ? ((extra?.columnCount as number) ?? 2) : undefined,
+            children: type === 'columns' 
+              ? Array.from({ length: (extra?.columnCount as number) ?? 2 }, () => ({
+                  id: generateId(),
+                  type: 'column' as const,
+                  content: '',
+                  children: []
+                })) 
+              : undefined,
+            checked: type === 'checklist' ? false : undefined,
+          };
+        }
+        if (b.children) return { ...b, children: updateRecursive(b.children) };
+        return b;
+      });
+    };
+
+    const newBlocks = updateRecursive(blocks);
+    persistBlocks(newBlocks);
+  }, [blocks, persistBlocks]);
+
+
+  const activeBlock = useMemo(() => {
+    if (!activeBlockId) return undefined;
+    return findBlockById(blocks, activeBlockId);
+  }, [blocks, activeBlockId, findBlockById]);
+
+  const slashQuery = useMemo(() => {
+    if (!slashMenu) return '';
+    const block = findBlockById(blocks, slashMenu.blockId);
+    if (!block) return '';
+    const text = block.content.replace(/<[^>]*>/g, '');
+    const lastSlash = text.lastIndexOf('/');
+    if (lastSlash === -1) return '';
+    return text.substring(lastSlash + 1);
+  }, [slashMenu, blocks]);
+
+  useEffect(() => {
+    if (slashMenu) {
+      const block = findBlockById(blocks, slashMenu.blockId);
+      if (!block || !block.content.includes('/')) {
+        setSlashMenu(null);
+      }
+    }
+  }, [blocks, slashMenu]);
+
+  const changeBlockStyle = useCallback((style: BlockStyle) => {
+    if (activeBlock) {
+      const isList = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(activeBlock.type);
+      if (isList) return;
+      updateBlock(activeBlock.id, { style });
+    }
+  }, [activeBlock, updateBlock]);
+
+  const changeAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+    if (activeBlock) {
+      updateBlock(activeBlock.id, { align });
+    }
+  }, [activeBlock, updateBlock]);
+
+  const convertToList = useCallback((type: 'bulletList' | 'dashedList' | 'numberedList') => {
+    if (activeBlock) {
+      updateBlock(activeBlock.id, { type, style: 'body' });
+    }
+  }, [activeBlock, updateBlock]);
+
+
+
+  const handleTitleBlur = () => {
+    const value = tempTitle.trim();
+    if (value !== entity.title) {
+       renameEntity(entity.id, value || "Untitled");
+    }
+    setEditingEntityId(null);
+  };
+
+  const handleAddTag = () => {
+    addEmptyTag(entity.id);
+    setEditingTagIndex((entity.tags ?? []).length);
+  };
+
+  const formatDate = (date: string | number) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleBlockFocus = useCallback((id: string) => {
+    setActiveBlockId(id);
+  }, []);
+
+  const getListNumber = useCallback((blockId: string) => {
+    let count = 0;
+    for (const b of blocks) {
+      if (b.type === 'numberedList') count++;
+      if (b.id === blockId) return count;
+      if (b.type !== 'numberedList') count = 0;
+    }
+    return 1;
+  }, [blocks]);
+
+  return (
+    <div 
+      className="flex-1 flex flex-col relative overflow-hidden"
+      onPaste={handlePaste}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
+      <div 
+        className="flex-1 overflow-y-auto custom-scrollbar"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setActiveBlockId(null);
+        }}
+      >
+        <div 
+          className={clsx(
+            "mx-auto py-8 editor-content-container ",
+            isFullWidth ? "max-w-[1240px] px-8" : "max-w-[850px] px-4"
+          )}
+          data-dragging={!!dragState.draggingId}
+        >
+          <div className="flex flex-col items-center gap-4 mb-4">
+              <div className="flex flex-col w-full bg-sidebar border border-border rounded-3xl widget-shadow overflow-hidden transition-none">
+                {/* Top Section: Title */}
+                <div 
+                  className="pr-9 py-6 group relative"
+                  style={{ paddingLeft: '44px' }}
+                >
+                {isEditingTitle ? (
+                  <textarea
+                    ref={titleRef}
+                    autoFocus
+                    value={tempTitle}
+                    onChange={e => {
+                      setTempTitle(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleTitleBlur();
+                      }
+                      if (e.key === 'Escape') { 
+                        setTempTitle(entity.title); 
+                        setEditingEntityId(null); 
+                      }
+                    }}
+                    className="text-5xl font-display bg-transparent border-none outline-none w-full text-foreground px-0 py-0 resize-none overflow-hidden leading-tight block"
+                    style={{ height: 'auto', minHeight: '1.2em' }}
+                  />
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <h1
+                      onDoubleClick={() => { setTempTitle(entity.title); setEditingEntityId(entity.id, 'view'); }}
+                      className="text-5xl font-display outline-none cursor-text select-text text-foreground flex-1 break-words leading-tight block"
+                    >
+                      {entity.title}
+                    </h1>
+                    <button
+                      onClick={() => { setTempTitle(entity.title); setEditingEntityId(entity.id, 'view'); }}
+                      className="opacity-0 group-hover:opacity-100 p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors mt-4"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                </div>
+
+                {/* Bottom Section: Metadata */}
+                <div 
+                  className="pr-9 py-5 bg-sidebar flex items-start justify-between"
+                  style={{ paddingLeft: '44px' }}
+                >
+                <div className="flex items-start gap-x-12 gap-y-4 flex-wrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase opacity-50 leading-none">Last Modified</span>
+                    <span className="text-xs font-semibold text-foreground/80 whitespace-nowrap pt-1 leading-none">
+                      {formatDate(entity.lastModified)}
+                    </span>
+                  </div>
+
+                  <div className="w-px h-8 bg-border/50 shrink-0" />
+
+                  <div className="flex flex-col gap-2 flex-1 min-w-0">
+                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase opacity-50 leading-none">Tags</span>
+                    <div className="flex items-center gap-2 flex-wrap min-h-0 pt-0.5">
+                      {(entity.tags ?? []).map((tag, idx) => (
+                        <TagItem
+                          key={`tag-${idx}-${tag}`}
+                          tag={tag}
+                          index={idx}
+                          isEditing={editingTagIndex === idx}
+                          onEdit={setEditingTagIndex}
+                          onDelete={(t: string) => removeTagFromEntity(entity.id, t)}
+                          onUpdate={(oldTag: string, newTag: string) => updateTagInEntity(entity.id, oldTag, newTag)}
+                          allTags={allUniqueTags}
+                        />
+                      ))}
+
+                      <button
+                        onClick={handleAddTag}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-all"
+                      >
+                        <Plus strokeWidth={2.5} className="w-3 h-3" />
+                        <span>New</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <EditorToolbar
+            isFloating={isMixed}
+            activeBlockStyle={activeBlock?.style}
+            activeBlockType={activeBlock?.type}
+            activeAlign={activeBlock?.align}
+            onChangeBlockStyle={changeBlockStyle}
+            onConvertToList={convertToList}
+            onChangeAlign={changeAlign}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+          />
+
+          <div
+            className="space-y-2 min-h-[50vh]"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveBlockId(null);
+                setSlashMenu(null);
+              }
+            }}
+          >
+            <div className="flex flex-col">
+              {blocks.length === 0 ? (
+                <div 
+                  className="py-20 text-center cursor-text  group opacity-0 "
+                  onClick={() => persistBlocks([createBlock('text')])}
+                >
+                  <p className="text-[#a1a1aa] text-lg font-light tracking-wide group-hover:text-[#f26f21]/50 ">
+                    This note is empty. Click anywhere to start writing...
+                  </p>
+                  <div className="mt-4 w-12 h-[1px] bg-gradient-to-r from-transparent via-[#f26f21]/20 to-transparent mx-auto" />
+                </div>
+              ) : (
+                blocks.map((block, idx) => {
+                  return (
+                    <BlockRenderer
+                      key={block.id}
+                      block={block}
+                      index={idx}
+                      onUpdate={updateBlock}
+                      onDelete={deleteBlock}
+                      onInsertAfter={insertAfter}
+                      onSlash={handleSlash}
+                      listNumber={block.type === 'numberedList' ? getListNumber(block.id) : undefined}
+                      slashMenuOpen={slashMenu?.blockId === block.id}
+                      menuOpen={activeOptionsMenu?.blockId === block.id}
+                      onOpenMenu={handleOpenMenu}
+                      onFocus={handleBlockFocus}
+                      isSelected={activeBlockId === block.id}
+                      dragState={dragState}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="h-32" />
+        </div>
+      </div>
+
+      {slashMenu && (
+        <Portal>
+          <SlashCommandMenu
+            position={slashMenu.position}
+            search={slashQuery}
+            onClose={() => setSlashMenu(null)}
+            onInsertBlock={insertBlock}
+            activeBlockStyle={blocks.find(b => b.id === slashMenu.blockId)?.style}
+          />
+        </Portal>
+      )}
+      {activeOptionsMenu && (
+        <Portal>
+          <BlockOptionsMenu
+            block={findBlockById(blocks, activeOptionsMenu.blockId)!}
+            position={activeOptionsMenu.position}
+            onClose={() => setActiveOptionsMenu(null)}
+            onUpdate={updateBlock}
+            onDelete={deleteBlock}
+            onDuplicate={duplicateBlock}
+            onMoveToTop={moveToTop}
+            onTurnInto={turnIntoBlock}
+            onAddColumn={addColumn}
+          />
+        </Portal>
+      )}
+    </div>
+  );
+}
+
