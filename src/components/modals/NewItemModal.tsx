@@ -64,7 +64,7 @@ export function NewItemModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={closeModal}>
       <div
-        className="bg-panel border border-border/30 rounded-[var(--radius-medium)] p-6 w-[420px] "
+        className="bg-panel/90 backdrop-blur-xl border border-border/30 rounded-[var(--radius-medium)] p-6 w-[420px] "
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">

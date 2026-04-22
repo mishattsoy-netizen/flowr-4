@@ -143,14 +143,14 @@ export function ContextMenu() {
         <div
           ref={ref}
           className={clsx(
-            "fixed z-[300] popup-glass-small min-w-[180px]",
+            "fixed z-[300] popup-glass-small min-w-[200px] p-1.5",
             adjustedPos.x === 0 && "opacity-0"
           )}
           style={{ left: adjustedPos.x, top: adjustedPos.y }}
         >
           {items.map((item, i) => (
             <div key={i} className="flex flex-col">
-              {item.danger && <div className="popup-divider" />}
+              {item.danger && <div className="h-px bg-border/50 mx-3 my-1" />}
               <button
                 onClick={item.onClick}
                 className={item.danger ? "popup-item-danger" : "popup-item"}

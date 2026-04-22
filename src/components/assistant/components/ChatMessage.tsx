@@ -361,13 +361,14 @@ export const ChatMessage = memo(({
             </div>
           )}
         </div>
-        {msg.model && (
-          <div className={clsx(
-            "opacity-40 mt-1",
-            msg.role === 'assistant' && "ml-0",
-            msg.role === 'user' && "text-right mr-2"
-          )}>
-            <span className="text-[9px] font-sans font-medium uppercase tracking-[0.05em]">{msg.model.split('/').pop()?.replace(/-/g, ' ')}</span>
+        {msg.role === 'assistant' && msg.model && (
+          <div className="mt-2 ml-10 flex items-center gap-2 group/model">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bone-6)] border border-[var(--bone-10)] opacity-40 group-hover/model:opacity-100 transition-all duration-300">
+              <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent)] animate-pulse" />
+              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--bone-40)] group-hover/model:text-[var(--bone-80)] transition-colors">
+                {msg.model.split('/').pop()?.replace(/-/g, ' ')}
+              </span>
+            </div>
           </div>
         )}
       </div>

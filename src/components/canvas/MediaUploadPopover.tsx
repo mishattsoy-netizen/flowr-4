@@ -140,7 +140,7 @@ export function MediaUploadPopover({ position, onConfirm, onClose }: MediaUpload
             className={clsx(
               "w-full py-1.5 rounded-[var(--radius-small)] text-xs font-bold",
               urlValue.trim()
-                ? "bg-accent text-white hover:brightness-110"
+                ? "bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20"
                 : "bg-[var(--bone-5)] text-muted-foreground cursor-not-allowed"
             )}
           >

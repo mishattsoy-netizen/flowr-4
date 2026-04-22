@@ -1,7 +1,8 @@
 import type { FlowRouterConfig, PriorityModel, CloudModel } from './store.types';
 
 // Bump when model IDs change to bust stale localStorage
-export const FLOW_ROUTER_VERSION = 13;
+export const FLOW_ROUTER_VERSION = 14;
+export const DEFAULT_CLASSIFICATION_MODEL_ID = 'gemini-1.5-flash-lite';
 
 export const DEFAULT_FLOW_ROUTER_CONFIG: FlowRouterConfig = {
   enabled: true,
@@ -86,6 +87,16 @@ export const DEFAULT_FLOW_ROUTER_CONFIG: FlowRouterConfig = {
         { id: 'gemini-2.5-flash-native-audio-dialog', label: 'Gemini 2.5 Audio Dialog', provider: 'google', enabled: true, dailyLimit: 0 },
         { id: 'whisper-large-v3', label: 'Whisper Large V3', provider: 'groq', enabled: true, dailyLimit: 2000 },
         { id: 'gemini-3.1-flash-tts', label: 'Gemini 3.1 TTS', provider: 'google', enabled: true, dailyLimit: 0 },
+      ],
+    },
+    {
+      key: 'CLASSIFIER',
+      label: 'Intent Classifier',
+      description: 'Dynamic model selection for intent routing.',
+      hidden: true,
+      models: [
+        { id: 'gemini-1.5-flash-lite', label: 'Gemini 1.5 Flash Lite', provider: 'google', enabled: true, dailyLimit: 500 },
+        { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', provider: 'groq', enabled: true, dailyLimit: 14400 },
       ],
     },
   ],

@@ -184,6 +184,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
           const formData = new FormData();
           formData.append('file', blob, 'recording.webm');
           formData.append('model', 'whisper-large-v3-turbo');
+          if (aiApiKey) formData.append('aiApiKey', aiApiKey);
 
           const headers: Record<string, string> = {};
           if (isSupabaseEnabled) {
@@ -279,9 +280,9 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
             onClick={toggleAIAssistant}
             onMouseEnter={() => setIsHoveringToggle(true)}
             onMouseLeave={() => setIsHoveringToggle(false)}
-            className="w-18 h-18 rounded-[var(--radius-medium)] bg-accent text-white flex items-center justify-center group"
+            className="flex items-center justify-center group transition-all hover:scale-110 active:scale-95"
           >
-            <AIAvatar className="w-7 h-7" />
+            <AIAvatar className="w-12 h-12" />
           </button>
         </div>
       )}

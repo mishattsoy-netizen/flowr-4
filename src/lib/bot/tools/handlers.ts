@@ -36,9 +36,9 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
   /**
    * Tavily Search
    */
-  async tavily_search({ query }: { query: string }) {
+  async tavily_search({ query }: { query: string }, context?: any) {
     const { searchWeb } = await import('../providers/tavily')
-    const results = await searchWeb(query)
+    const results = await searchWeb(query, context?.aiApiKey)
     return { results }
   },
 
@@ -152,6 +152,144 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
     } catch (e) {
       logger.error('Failed to set reminder (task):', e)
       return { error: 'Reminder table missing. Please contact admin to run the SQL migration.' }
+    }
+  },
+
+  /**
+   * Create Note
+   */
+  async create_note({ title, content, parentId }: { title: string, content?: string, parentId?: string }, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      let workspaceId = context.activeWorkspaceId
+      
+      if (context.userId && context.userId !== 'anonymous') {
+        const { data: user } = await supabaseAdmin.from('profiles').select('active_workspace_id').eq('id', context.userId).single()
+        if (user?.active_workspace_id) workspaceId = user.active_workspace_id
+      }
+
+      if (!workspaceId) return { error: 'No active workspace identified. Please select a workspace first.' }
+
+      const id = 'note-' + Date.now().toString()
+      const { error } = await supabaseAdmin.from('entities').insert({
+        id,
+        title,
+        type: 'note',
+        content: content ? [{ id: 'b1', type: 'text', content }] : [],
+        parent_id: parentId || null,
+        workspace_id: workspaceId,
+        last_modified: Date.now()
+      })
+
+      if (error) throw error
+      return { success: true, id, title }
+    } catch (e: any) {
+      logger.error('Failed to create note:', e.message)
+      return { error: e.message }
+    }
+  },
+
+  /**
+   * Update Note
+   */
+  async update_note({ id, title, content }: { id: string, title?: string, content?: string }, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      const updates: any = { last_modified: Date.now() }
+      if (title) updates.title = title
+      if (content) updates.content = [{ id: 'b1', type: 'text', content }]
+
+      const { error } = await supabaseAdmin.from('entities').update(updates).eq('id', id)
+      if (error) throw error
+      return { success: true, id }
+    } catch (e: any) {
+      logger.error('Failed to update note:', e.message)
+      return { error: e.message }
+    }
+  },
+
+  /**
+   * Delete Note/Entity
+   */
+  async delete_note({ id }: { id: string }, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      const { error } = await supabaseAdmin.from('entities').delete().eq('id', id)
+      if (error) throw error
+      return { success: true, id }
+    } catch (e: any) {
+      logger.error('Failed to delete entity:', e.message)
+      return { error: e.message }
+    }
+  },
+
+  /**
+   * Create Folder
+   */
+  async create_folder({ title, parentId }: { title: string, parentId?: string }, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      let workspaceId = context.activeWorkspaceId
+      
+      if (context.userId && context.userId !== 'anonymous') {
+        const { data: user } = await supabaseAdmin.from('profiles').select('active_workspace_id').eq('id', context.userId).single()
+        if (user?.active_workspace_id) workspaceId = user.active_workspace_id
+      }
+
+      if (!workspaceId) return { error: 'No active workspace identified. Please select a workspace first.' }
+
+      const id = 'folder-' + Date.now().toString()
+      const { error } = await supabaseAdmin.from('entities').insert({
+        id,
+        title,
+        type: 'folder',
+        parent_id: parentId || null,
+        workspace_id: workspaceId,
+        last_modified: Date.now()
+      })
+
+      if (error) throw error
+      return { success: true, id, title }
+    } catch (e: any) {
+      logger.error('Failed to create folder:', e.message)
+      return { error: e.message }
+    }
+  },
+
+  /**
+   * List Notes
+   */
+  async list_notes(_: any, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      let workspaceId = context.activeWorkspaceId
+      if (context.userId && context.userId !== 'anonymous') {
+        const { data: user } = await supabaseAdmin.from('profiles').select('active_workspace_id').eq('id', context.userId).single()
+        if (user?.active_workspace_id) workspaceId = user.active_workspace_id
+      }
+
+      if (!workspaceId) return { error: 'No active workspace found' }
+
+      const { data, error } = await supabaseAdmin
+        .from('entities')
+        .select('id, title, type, parent_id')
+        .eq('workspace_id', workspaceId)
+
+      if (error) throw error
+      return { entities: data }
+    } catch (e: any) {
+      logger.error('Failed to list notes:', e.message)
+      return { error: e.message }
     }
   }
 }

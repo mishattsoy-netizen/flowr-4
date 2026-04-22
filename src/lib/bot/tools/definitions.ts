@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Native Tool Definitions for Flowr AI (Function Calling)
  * The "Utility Pack" Expansion.
  */
@@ -81,6 +81,63 @@ export const FLOWR_TOOLS = [
         time_duration: { type: "string", description: "When to remind (e.g., '2 hours', ' tomorrow at 10am', '15 minutes')." }
       },
       required: ["text", "time_duration"]
+    }
+  },
+  {
+    name: "create_note",
+    description: "Creates a new note in the workspace.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Title of the note." },
+        content: { type: "string", description: "Content of the note (optional)." },
+        parentId: { type: "string", description: "ID of the parent folder (optional)." }
+      },
+      required: ["title"]
+    }
+  },
+  {
+    name: "update_note",
+    description: "Updates the content or title of an existing note.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The ID of the note to update." },
+        title: { type: "string", description: "New title for the note (optional)." },
+        content: { type: "string", description: "New text content for the note (optional)." }
+      },
+      required: ["id"]
+    }
+  },
+  {
+    name: "delete_note",
+    description: "Deletes a note from the workspace by its ID.",
+    parameters: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The ID of the note to delete." }
+      },
+      required: ["id"]
+    }
+  },
+  {
+    name: "create_folder",
+    description: "Creates a new folder in the workspace.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Title of the folder." },
+        parentId: { type: "string", description: "ID of the parent collection or folder (optional)." }
+      },
+      required: ["title"]
+    }
+  },
+  {
+    name: "list_notes",
+    description: "Lists all notes and folders in the workspace to find IDs and titles.",
+    parameters: {
+      type: "object",
+      properties: {}
     }
   }
 ]

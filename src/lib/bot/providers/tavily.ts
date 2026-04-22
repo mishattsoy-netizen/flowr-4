@@ -1,4 +1,4 @@
-﻿import { tavily } from '@tavily/core'
+import { tavily } from '@tavily/core'
 import { getVaultKey } from '../../vault'
 import { logger } from '../../logger'
 import { runGoogle } from './google'
@@ -6,8 +6,8 @@ import { runGoogle } from './google'
 /**
  * Stage 1: Raw Web Search
  */
-export async function searchWeb(query: string): Promise<string> {
-  const apiKey = await getVaultKey('TAVILY_API_KEY')
+export async function searchWeb(query: string, aiApiKey?: string): Promise<string> {
+  const apiKey = aiApiKey || await getVaultKey('TAVILY_API_KEY') || process.env.TAVILY_API_KEY
   if (!apiKey) {
     logger.error('TAVILY_API_KEY missing in vault')
     return 'Search feature is currently unavailable.'
@@ -34,14 +34,14 @@ export async function searchWeb(query: string): Promise<string> {
 /**
  * Stage 2: Synthesis (Tavily Context -> AI Answer)
  */
-export async function runWebSearchChain(prompt: string): Promise<string> {
+export async function runWebSearchChain(prompt: string, context?: any): Promise<string> {
   logger.info(`Starting web search for: ${prompt}`)
   
   // 1. Get real-time data
-  const context = await searchWeb(prompt)
+  const contextData = await searchWeb(prompt, context?.aiApiKey)
   
-  if (context.includes('unavailable') || context.includes('failed')) {
-    return context
+  if (contextData.includes('unavailable') || contextData.includes('failed')) {
+    return contextData
   }
 
   // 2. Synthesize answer using Gemini Flash
@@ -51,13 +51,13 @@ Use the following search results to answer the user's question.
 Be concise, accurate, and cite URLs if possible.
 
 SEARCH RESULTS:
-${context}
+${contextData}
 
 USER QUESTION:
 ${prompt}
 `
   // We use gemini-1.5-flash for synthesis as it's fast and has a large context window
-  const answer = await runGoogle('gemini-1.5-flash', synthesisPrompt)
+  const answer = await runGoogle('gemini-1.5-flash', synthesisPrompt, undefined, undefined, context)
   
   return answer || "I found information but couldn't process a response. Please try again."
 }

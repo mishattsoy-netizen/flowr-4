@@ -27,7 +27,7 @@ interface BlockRendererProps {
     overId: string | null;
     overPosition: 'above' | 'below' | null;
   };
-  onDragStart?: (id: string) => void;
+  onDragStart?: (id: string, e: React.DragEvent) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
   onDragEnd?: () => void;
 }
@@ -118,7 +118,7 @@ interface ControlsProps {
 }
 
 interface BlockControlsProps extends ControlsProps {
-  onDragStart?: (id: string) => void;
+  onDragStart?: (id: string, e: React.DragEvent) => void;
   onDragEnd?: () => void;
 }
 
@@ -175,7 +175,7 @@ function BlockControls({
               e.dataTransfer.setDragImage(blockElement, 10, 10);
               e.dataTransfer.effectAllowed = 'move';
             }
-            setTimeout(() => onDragStart?.(blockId), 10);
+            setTimeout(() => onDragStart?.(blockId, e), 10);
           }}
           onDragEnd={() => onDragEnd?.()}
           onClick={handleGripClick}
@@ -209,7 +209,7 @@ function MediaControls({ blockId, currentWidth, onWidthChange }: { blockId: stri
           className={clsx(
             "px-2.5 py-1.5 text-[9px] font-bold rounded-lg  ",
             currentWidth === size.value 
-              ? "bg-accent text-white" 
+              ? "bg-accent/10 border border-accent/30 text-accent" 
               : "text-muted-foreground/60 hover:bg-white/10 hover:text-foreground"
           )}
         >
@@ -330,6 +330,7 @@ export function BlockRenderer({
   if (block.type === 'divider') {
     return (
       <div 
+        data-block-id={block.id}
         style={style}
         className={clsx("editor-block group flex flex-col items-start relative px-1", isDragging && "z-50")}
         onDragOver={(e) => onDragOver?.(block.id, e)}
@@ -352,6 +353,7 @@ export function BlockRenderer({
   if (block.type === 'database') {
     return (
       <div 
+        data-block-id={block.id}
         style={colorStyle}
         className={clsx("editor-block group py-2 relative flex flex-col items-stretch", isDragging && "z-50")}
       >
@@ -372,6 +374,7 @@ export function BlockRenderer({
     const tableData = block.tableData ?? [['', '', ''], ['', '', ''], ['', '', '']];
     return (
       <div 
+        data-block-id={block.id}
         style={{ ...style, ...colorStyle }}
         className={clsx("editor-block group py-2 relative flex flex-col items-stretch", isDragging && "z-50")}
       >
@@ -442,7 +445,9 @@ export function BlockRenderer({
     const alignVariant = block.align || 'left';
 
     return (
-      <div className={clsx(
+      <div 
+        data-block-id={block.id}
+        className={clsx(
         "editor-block group py-2 relative flex flex-col items-stretch",
         alignVariant === 'center' && "items-center",
         alignVariant === 'right' && "items-end",
@@ -478,6 +483,7 @@ export function BlockRenderer({
     const linked = entities.find((e: Entity) => e.id === block.embedEntityId);
     return (
       <div 
+        data-block-id={block.id}
         style={{ ...style, ...colorStyle }}
         className={clsx("editor-block group py-2 relative", isDragging && "z-50")}
       >
@@ -504,6 +510,7 @@ export function BlockRenderer({
   if (block.type === 'column') {
     return (
       <div 
+        data-block-id={block.id}
         style={style}
         className={clsx(
           "flex-1 basis-0 min-w-0 break-words rounded-xl pl-14 pr-4 column-container relative group/column hover:bg-hover/10 transition-colors",
@@ -528,6 +535,7 @@ export function BlockRenderer({
   if (block.type === 'columns') {
     return (
       <div 
+        data-block-id={block.id}
         style={{ ...style, ...colorStyle }}
         className={clsx("editor-block py-2 relative flex flex-col transition-colors", isDragging && "z-50")}
         onDragOver={(e) => onDragOver?.(block.id, e)}
@@ -554,8 +562,8 @@ export function BlockRenderer({
     if (block.type === 'dashedList') return <div className="w-[8px] h-[1px] bg-muted-foreground flex-shrink-0" />;
     if (block.type === 'numberedList') return <span className="text-muted-foreground/60 text-[0.95rem] font-mono tabular-nums leading-none">{(listNumber ?? 1)}.</span>;
     if (block.type === 'checklist') return (
-       <div onClick={() => onUpdate(block.id, { checked: !block.checked })} className={clsx("w-[18px] h-[18px] rounded-full border flex items-center justify-center", block.checked ? "bg-accent border-accent" : "border-border hover:border-accent/50")}>
-         {block.checked && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+       <div onClick={() => onUpdate(block.id, { checked: !block.checked })} className={clsx("w-[18px] h-[18px] rounded-full border flex items-center justify-center transition-all", block.checked ? "bg-accent/20 border-accent/40" : "border-border hover:border-accent/50")}>
+         {block.checked && <Check className="w-3 h-3 text-accent stroke-[3px]" />}
        </div>
     );
     return null;
@@ -563,10 +571,12 @@ export function BlockRenderer({
 
   return (
     <div
+      data-block-id={block.id}
       className={clsx(
-        "editor-block group flex flex-col relative overflow-visible py-0.5",
+        "editor-block group flex flex-col relative overflow-visible py-0.5 transition-all duration-200",
         isFocused && "focused",
-        isDragging && "z-50",
+        isDragging && "z-50 dragging-ghost",
+        isSelected && "selected-block",
         isInsideColumn && "rounded-2xl break-words min-h-[100px] column-container hover:bg-hover/10",
         isInsideColumn && !block.content && "empty"
       )}
@@ -578,10 +588,10 @@ export function BlockRenderer({
       <BlockControls {...controlsProps} />
       <div 
         className={clsx(
-          "flex-1 flex items-start w-full relative min-h-[1.5em] transition-colors rounded-xl px-4 py-1",
-          isSelected && "bg-white/[0.01]",
+          "flex-1 flex items-start w-full relative min-h-[1.5em] transition-all duration-200 rounded-xl px-4 py-1",
+          !isSelected && "hover:bg-white/[0.01]",
           block.bgColor && "border px-[16px] py-[8px]",
-          isDragging && "opacity-0 invisible"
+          isDragging && "opacity-0 invisible scale-95"
         )}
         style={{ ... (block.bgColor ? colorStyle : {}) }}
       >

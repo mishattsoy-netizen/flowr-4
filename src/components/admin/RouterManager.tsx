@@ -14,7 +14,8 @@ import {
   Zap,
   Wand2,
   Image,
-  Mic
+  Mic,
+  Brain
 } from 'lucide-react'
 import { updateRouterChain } from '@/app/admin/router/actions'
 import { cn } from '@/lib/utils'
@@ -178,7 +179,8 @@ const CATEGORY_ICONS: Record<string, any> = {
   MEDIUM_THINKING: Wand2,
   COMPLEX_THINKING: Cpu,
   IMAGE_GEN: Image,
-  AUDIO_VOICE: Mic
+  AUDIO_VOICE: Mic,
+  CLASSIFIER: Brain
 }
 
 export default function RouterManager({ 

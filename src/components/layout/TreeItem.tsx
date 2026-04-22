@@ -235,11 +235,11 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             onBlur={handleRename}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="ml-[10px] flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 inline-block text-sm"
+            className="ml-[8px] flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 inline-block text-sm"
           />
         ) : (
           <span className={clsx(
-            "ml-[10px] text-fade flex-1 text-left",
+            "ml-[8px] text-fade flex-1 text-left",
             isWorkspace && "font-medium",
             isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]"
           )}>

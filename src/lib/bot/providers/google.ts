@@ -1,4 +1,4 @@
-﻿import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getProviderKeys } from '../../vault'
 import { logger } from '../../logger'
 import { FLOWR_TOOLS } from '../tools/definitions'
@@ -9,13 +9,17 @@ export async function runGoogle(
   prompt: string, 
   systemPrompt?: string,
   imageBuffer?: Buffer,
-  context?: { chatId: number },
-  history: any[] = [] // History support added
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string },
+  history: any[] = []
 ): Promise<string | null> {
-  const keys = await getProviderKeys('GEMINI')
+  let keys = context?.aiApiKey ? [context.aiApiKey] : []
   
   if (keys.length === 0) {
-    logger.error('No Gemini keys found in vault')
+    keys = await getProviderKeys('GEMINI')
+  }
+  
+  if (keys.length === 0) {
+    logger.error('No Gemini keys found (vault or provided)')
     return null
   }
 

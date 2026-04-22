@@ -1,11 +1,11 @@
-﻿import { getVaultKey } from '../../vault'
+import { getVaultKey } from '../../vault'
 import { logger } from '../../logger'
 
-export async function runHuggingFace(modelId: string, prompt: string): Promise<Buffer | null> {
-  const token = await getVaultKey('HUGGING_FACE_TOKEN')
+export async function runHuggingFace(modelId: string, prompt: string, aiApiKey?: string): Promise<Buffer | null> {
+  const token = aiApiKey || await getVaultKey('HUGGING_FACE_TOKEN')
   
   if (!token) {
-    logger.error('HUGGING_FACE_TOKEN missing in vault')
+    logger.error('HUGGING_FACE_TOKEN missing (vault or provided)')
     return null
   }
 

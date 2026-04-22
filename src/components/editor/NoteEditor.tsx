@@ -257,7 +257,7 @@ function TagItem({
       </div>
 
       {isEditing && showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 mt-1 z-[300] popup-glass-small min-w-[160px] py-1">
+        <div className="absolute top-full left-0 mt-1 z-[300] popup-glass-small min-w-[160px] p-1.5">
           {suggestions.map((s, idx) => (
             <button
               key={s}
@@ -353,6 +353,16 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     overId: string | null;
     overPosition: 'above' | 'below' | null;
   }>({ draggingId: null, overId: null, overPosition: null });
+
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    active: boolean;
+  } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [tempTitle, setTempTitle] = useState(entity.title);
   const isFullWidth = useStore(s => s.isFullWidth);
 
@@ -415,14 +425,91 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     }
   }, [entity.id, updateEntityContent, historyIndex]);
 
-  const handleDragStart = useCallback((id: string) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only start selection if clicking on the container background or an empty space
+    const target = e.target as HTMLElement;
+    const isEditorBg = target === editorRef.current || target.classList.contains('note-editor-bg');
+    
+    if (isEditorBg) {
+      const rect = editorRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      setSelectionBox({
+        startX: e.clientX,
+        startY: e.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
+        active: true
+      });
+      
+      // Clear selection unless Shift is held
+      if (!e.shiftKey) {
+        setSelectedBlockIds(new Set());
+      }
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (selectionBox?.active) {
+      setSelectionBox(prev => prev ? { ...prev, currentX: e.clientX, currentY: e.clientY } : null);
+      
+      // Calculate selection rectangle
+      const x1 = Math.min(selectionBox.startX, e.clientX);
+      const y1 = Math.min(selectionBox.startY, e.clientY);
+      const x2 = Math.max(selectionBox.startX, e.clientX);
+      const y2 = Math.max(selectionBox.startY, e.clientY);
+      
+      // Find blocks intersecting this rect
+      const blockElements = editorRef.current?.querySelectorAll('[data-block-id]');
+      
+
+      
+      // Standard behavior: selection is exactly what's inside the current rectangle
+      const currentSelected = new Set<string>();
+      blockElements?.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const id = el.getAttribute('data-block-id');
+        if (!id) return;
+        const isInside = (rect.left < x2 && rect.right > x1 && rect.top < y2 && rect.bottom > y1);
+        if (isInside) currentSelected.add(id);
+      });
+      
+      setSelectedBlockIds(currentSelected);
+    }
+  }, [selectionBox]);
+
+  const handleMouseUp = useCallback(() => {
+    setSelectionBox(null);
+  }, []);
+
+  useEffect(() => {
+    if (selectionBox?.active) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [selectionBox?.active, handleMouseMove, handleMouseUp]);
+
+  const handleDragStart = useCallback((id: string, e: React.DragEvent) => {
+    // If dragging a block that isn't selected, select only it
+    if (!selectedBlockIds.has(id)) {
+      setSelectedBlockIds(new Set([id]));
+      setActiveBlockId(id);
+    }
+    
     setDragState(prev => ({ ...prev, draggingId: id }));
     document.body.classList.add('dragging-active');
-  }, []);
+  }, [selectedBlockIds]);
 
   const handleDragOver = useCallback((id: string, e: React.DragEvent) => {
     e.preventDefault();
-    if (dragState.draggingId === id) return;
+    if (selectedBlockIds.has(id)) return; // Can't drop on itself or other selected blocks
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const midpoint = rect.top + rect.height / 2;
@@ -431,27 +518,49 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     if (dragState.overId !== id || dragState.overPosition !== position) {
       setDragState(prev => ({ ...prev, overId: id, overPosition: position }));
     }
-  }, [dragState.draggingId, dragState.overId, dragState.overPosition]);
+  }, [dragState.overId, dragState.overPosition, selectedBlockIds]);
+
+const findAndRemoveMultipleBlocks = (list: EditorBlock[], ids: Set<string>): { list: EditorBlock[], removed: EditorBlock[] } => {
+  let removed: EditorBlock[] = [];
+
+  const newList = list.flatMap(b => {
+    if (ids.has(b.id)) {
+      removed.push(b);
+      return [];
+    }
+    
+    if (b.children) {
+      const res = findAndRemoveMultipleBlocks(b.children, ids);
+      removed.push(...res.removed);
+      return [{ ...b, children: res.list }];
+    }
+    return [b];
+  });
+
+  return { list: newList, removed };
+};
 
   const handleDragEnd = useCallback(() => {
-    if (dragState.draggingId && dragState.overId && dragState.overId !== dragState.draggingId) {
+    if (dragState.draggingId && dragState.overId && !selectedBlockIds.has(dragState.overId)) {
       setBlocks(prev => {
-        const { list: activeRemoved, removed: activeBlock } = findAndRemoveBlock([...prev], dragState.draggingId!);
-        if (!activeBlock) return prev;
+        // Remove all selected blocks
+        const { list: afterRemoval, removed: removedBlocks } = findAndRemoveMultipleBlocks([...prev], selectedBlockIds);
+        
+        if (removedBlocks.length === 0) return prev;
 
         const insertAt = (list: EditorBlock[]): EditorBlock[] => {
           const idx = list.findIndex(b => b.id === dragState.overId);
           if (idx !== -1) {
             const newList = [...list];
             const insertIdx = dragState.overPosition === 'above' ? idx : idx + 1;
-            newList.splice(insertIdx, 0, activeBlock);
+            newList.splice(insertIdx, 0, ...removedBlocks);
             return newList;
           }
 
           return list.map(b => (b.children ? { ...b, children: insertAt(b.children) } : b));
         };
 
-        const finalBlocks = insertAt(activeRemoved);
+        const finalBlocks = insertAt(afterRemoval);
         setTimeout(() => persistBlocks(finalBlocks, true), 0);
         return finalBlocks;
       });
@@ -459,7 +568,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
 
     setDragState({ draggingId: null, overId: null, overPosition: null });
     document.body.classList.remove('dragging-active');
-  }, [dragState, persistBlocks]);
+  }, [dragState, persistBlocks, selectedBlockIds]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -819,24 +928,25 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
 
   return (
     <div 
-      className="flex-1 flex flex-col relative overflow-hidden"
+      ref={editorRef}
+      className="flex-1 flex flex-col relative overflow-hidden note-editor-bg"
+      onMouseDown={handleMouseDown}
       onPaste={handlePaste}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
       <div 
-        className="flex-1 overflow-y-auto custom-scrollbar"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setActiveBlockId(null);
-        }}
+        className="flex-1 overflow-y-auto custom-scrollbar note-editor-bg"
       >
         <div 
           className={clsx(
-            "mx-auto py-8 editor-content-container ",
-            isFullWidth ? "max-w-[1240px] px-8" : "max-w-[850px] px-4"
+            "mx-auto py-8 editor-content-container transition-all duration-300 note-editor-bg",
+            isFullWidth ? "max-w-[1240px] px-8" : "max-w-[850px] px-4",
+            dragState.draggingId && "dragging-active-content"
           )}
           data-dragging={!!dragState.draggingId}
         >
+          {/* ... (Header and Metadata sections - keeping unchanged) */}
           <div className="flex flex-col items-center gap-4 mb-4">
               <div className="flex flex-col w-full bg-sidebar border border-border rounded-3xl widget-shadow overflow-hidden transition-none">
                 {/* Top Section: Title */}
@@ -947,12 +1057,6 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
 
           <div
             className="space-y-2 min-h-[50vh]"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setActiveBlockId(null);
-                setSlashMenu(null);
-              }
-            }}
           >
             <div className="flex flex-col">
               {blocks.length === 0 ? (
@@ -981,7 +1085,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
                       menuOpen={activeOptionsMenu?.blockId === block.id}
                       onOpenMenu={handleOpenMenu}
                       onFocus={handleBlockFocus}
-                      isSelected={activeBlockId === block.id}
+                      isSelected={selectedBlockIds.has(block.id) || activeBlockId === block.id}
                       dragState={dragState}
                       onDragStart={handleDragStart}
                       onDragOver={handleDragOver}
@@ -995,6 +1099,18 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
           <div className="h-32" />
         </div>
       </div>
+
+      {selectionBox?.active && (
+        <div 
+          className="selection-box fixed"
+          style={{
+            left: Math.min(selectionBox.startX, selectionBox.currentX),
+            top: Math.min(selectionBox.startY, selectionBox.currentY),
+            width: Math.abs(selectionBox.currentX - selectionBox.startX),
+            height: Math.abs(selectionBox.currentY - selectionBox.startY)
+          }}
+        />
+      )}
 
       {slashMenu && (
         <Portal>
@@ -1010,6 +1126,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
       {activeOptionsMenu && (
         <Portal>
           <BlockOptionsMenu
+            entityId={entity.id}
             block={findBlockById(blocks, activeOptionsMenu.blockId)!}
             position={activeOptionsMenu.position}
             onClose={() => setActiveOptionsMenu(null)}

@@ -1,48 +1,47 @@
 import { getVaultKeys } from './actions'
-import VaultItem from '@/components/admin/VaultItem'
-import { Plus, ShieldCheck } from 'lucide-react'
-import VaultRegisterForm from './VaultRegisterForm'
+import VaultProviderWidget from '@/components/admin/VaultProviderWidget'
+
+const KNOWN_PROVIDERS = ['gemini', 'groq', 'openrouter']
+
+function detectProvider(keyId: string): string {
+  const id = keyId.toLowerCase()
+  if (id.includes('openrouter')) return 'openrouter'
+  if (id.includes('gemini'))     return 'gemini'
+  if (id.includes('groq'))       return 'groq'
+  return 'general'
+}
 
 export default async function VaultPage() {
   const keys = await getVaultKeys()
 
+  const grouped: Record<string, { key_id: string }[]> = {}
+  for (const provider of KNOWN_PROVIDERS) {
+    grouped[provider] = []
+  }
+  for (const key of keys) {
+    const provider = detectProvider(key.key_id)
+    if (!grouped[provider]) grouped[provider] = []
+    grouped[provider].push(key)
+  }
+
+  const providers = Object.entries(grouped)
+
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1.5 mb-2">
-        <h1 className="text-3xl font-bold tracking-tight text-bone-100 font-instrument">Security Vault</h1>
-        <p className="text-bone-60 text-[11px] font-bold tracking-tight opacity-60">Encrypted storage for infrastructure orchestration keys.</p>
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">Security Vault</h1>
+        <p className="text-muted-foreground text-sm font-medium">Encrypted storage for infrastructure orchestration keys.</p>
       </div>
 
-      <div className="widget p-8">
-        <div className="flex items-center gap-3 mb-8">
-            <Plus className="w-4 h-4 text-accent" strokeWidth={1.5} />
-          <h2 className="text-[10px] font-black text-bone-60 tracking-[0.1em] uppercase opacity-50">Register new credential</h2>
-        </div>
-        <VaultRegisterForm />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {providers.map(([provider, providerKeys]) => (
+          <VaultProviderWidget
+            key={provider}
+            provider={provider}
+            initialKeys={providerKeys}
+          />
+        ))}
       </div>
-
-      <div className="widget overflow-hidden">
-        <div className="px-6 py-4 border-b border-[var(--bone-15)]/50 flex items-center justify-between bg-sidebar/20">
-          <h2 className="text-[10px] font-black text-bone-60 tracking-[0.1em] uppercase opacity-50 flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-accent/50 animate-pulse" />
-            Active Credentials
-          </h2>
-          <span className="text-[10px] font-bold text-bone-60/40 uppercase tracking-tight">{keys.length} Nodes</span>
-        </div>
-        <div className="divide-y divide-[var(--bone-15)]/30">
-          {keys.map((item: any) => (
-            <VaultItem key={item.key_id} item={item} />
-          ))}
-        </div>
-      </div>
-
-      {keys.length === 0 && (
-        <div className="widget p-20 flex flex-col items-center justify-center text-center">
-          <ShieldCheck className="w-12 h-12 text-bone-60 opacity-10 mb-6" strokeWidth={1} />
-          <p className="text-bone-60 text-sm font-bold tracking-tight mb-2">Internal vault is secured and empty.</p>
-          <p className="text-[10px] text-bone-60 opacity-30 font-bold tracking-[0.05em] uppercase">Initialize infrastructure to proceed</p>
-        </div>
-      )}
     </div>
   )
 }

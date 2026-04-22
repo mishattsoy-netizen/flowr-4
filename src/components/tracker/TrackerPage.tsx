@@ -156,11 +156,11 @@ export function TrackerPage() {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-background)] h-full overflow-hidden relative">
       <div className="flex items-center justify-between p-8 pb-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-[var(--bone-100)] flex items-center gap-3">
+        <div className="mb-2">
+          <h1 className="text-4xl font-display text-foreground mb-1 flex items-center gap-3">
             Tracker
           </h1>
-          <p className="text-sm text-[var(--bone-60)] mt-1 font-ui">
+          <p className="text-muted-foreground text-sm font-medium">
             Manage your progress across all workspaces.
           </p>
         </div>

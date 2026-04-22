@@ -29,9 +29,9 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-0.5">
-        <h1 className="text-2xl font-black tracking-tight text-bone-100 font-instrument">User Identification</h1>
-        <p className="text-bone-60 text-[10px] font-bold tracking-tight opacity-40 uppercase">Database of registered engine operators.</p>
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">User Identification</h1>
+        <p className="text-muted-foreground text-sm font-medium">Database of registered engine operators.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

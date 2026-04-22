@@ -119,7 +119,7 @@ export function FolderView({ entity }: FolderViewProps) {
                 tempTitleRef.current = entity.title;
                 setEditingEntityId(entity.id, 'view');
               }}
-              className="group text-3xl font-display text-foreground flex items-center gap-3"
+              className="group text-4xl font-display text-foreground mb-1 flex items-center gap-3"
             >
               {(entity.type === 'collection' || entity.type === 'workspace') ? (
                 <button
@@ -176,7 +176,7 @@ export function FolderView({ entity }: FolderViewProps) {
                 </>
               )}
             </h1>
-            <p className="text-muted-foreground text-sm font-medium mt-1">
+            <p className="text-muted-foreground text-sm font-medium">
               {children.length} total items
             </p>
           </div>

@@ -197,13 +197,13 @@ export function SettingsModal() {
                           className={clsx(
                             "relative flex-1 py-3 px-4 rounded-xl text-[13px] font-medium capitalize z-10",
                             interfaceSize === size
-                              ? "text-white"
+                              ? "text-accent"
                               : "text-muted-foreground/70 hover:text-foreground"
                           )}
                         >
                           {interfaceSize === size && (
                             <div
-                              className="absolute inset-0 bg-accent rounded-xl -z-10"
+                              className="absolute inset-0 bg-accent/10 border border-accent/30 rounded-xl -z-10"
                             />
                           )}
                           {size}

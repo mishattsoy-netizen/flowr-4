@@ -14,6 +14,7 @@ export type IntentCategory =
   | 'TOOL_CALLING'
   | 'IMAGE_GEN'
   | 'WEB_SEARCH'
+  | 'CLASSIFIER'
 
 export type Platform = 'app' | 'telegram'
 

@@ -78,8 +78,8 @@ export function MediaViewerModal() {
           />
         ) : (
           <div className="bg-white/5 border border-white/10 p-12 rounded-[2.5rem] flex flex-col items-center gap-6 shadow-2xl">
-            <div className="w-24 h-24 rounded-3xl bg-accent flex items-center justify-center shadow-2xl shadow-accent/20">
-              <FileText className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 rounded-3xl bg-accent/10 border border-accent/30 flex items-center justify-center shadow-2xl shadow-accent/10">
+              <FileText className="w-12 h-12 text-accent" />
             </div>
             <div className="text-center space-y-2">
                 <p className="text-white font-bold text-lg">Document Attachment</p>
@@ -87,7 +87,7 @@ export function MediaViewerModal() {
             </div>
             <button 
                 onClick={handleOpenOriginal}
-                className="mt-4 px-8 py-3 bg-white text-black font-bold text-sm rounded-full hover:bg-white/90 transition-all active:scale-95"
+                className="mt-4 px-8 py-3 bg-accent/20 border border-accent/40 text-white font-bold text-sm rounded-full hover:bg-accent/30 transition-all active:scale-95"
             >
                 Open in Browser
             </button>

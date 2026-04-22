@@ -2,13 +2,14 @@
 @import "tailwindcss";
 
 /* Prevent accidental transitions and flying elements during page load/hydration */
-.preload, .preload * {
+.preload,
+.preload * {
   transition: none !important;
   animation: none !important;
 }
 
 :root {
-  --color-background: #141414;
+  --color-background: #1A1A19;
   --color-panel: #1F1F1E;
   --bone-5: rgba(233, 233, 226, 0.05);
   --bone-2: rgba(233, 233, 226, 0.02);
@@ -115,6 +116,7 @@ html[data-interface-size="big"] {
 @utility instrument-hover {
   transition: background-color 200ms, border-color 200ms, box-shadow 200ms, transform 200ms ease-out;
   @apply duration-200;
+
   &:hover {
     @apply bg-white/[0.02] -translate-y-0.5 border-white/10;
     box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.4);
@@ -195,6 +197,14 @@ html[data-interface-size="big"] {
   }
 }
 
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility btn-message {
   @apply flex items-center gap-2.5 bg-[var(--white-overlay)] text-[var(--bone-30)];
 
@@ -265,29 +275,23 @@ html[data-interface-size="big"] {
 }
 
 @utility popup-glass-big {
-  background-color: var(--color-panel);
-  border-radius: var(--radius-medium);
-  border: 1px solid var(--border-outer);
-  @apply p-1.5 flex flex-col gap-0.5 shadow-2xl;
+  @apply bg-panel/95 backdrop-blur-2xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] rounded-[var(--radius-big)];
 }
 
 @utility popup-glass-small {
-  background-color: var(--color-panel);
-  border-radius: var(--radius-medium);
-  border: 1px solid var(--border-outer);
-  @apply p-1.5 flex flex-col gap-0.5 shadow-2xl;
+  @apply bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.3)] rounded-[var(--radius-regular)];
 }
 
 @utility popup-item {
-  @apply flex items-center gap-2.5 w-full px-2.5 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-colors rounded-[var(--radius-8)];
+  @apply flex items-center gap-3 w-full px-3 py-2 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-white/10 transition-all rounded-[var(--radius-medium)];
 }
 
 @utility popup-divider {
-  @apply h-px bg-[var(--bone-10)] my-1 -mx-0.5;
+  @apply h-px bg-white/5 my-1.5 -mx-1.5;
 }
 
 @utility popup-item-danger {
-  @apply popup-item text-[#FF8787] hover:bg-[#FF8787]/10 hover:text-[#FF8787];
+  @apply popup-item text-[#FF8787] hover:bg-[#FF8787]/15 hover:text-[#FF8787];
 }
 
 @utility widget-shadow {
@@ -854,4 +858,80 @@ body.is-dragging-widget [data-widget-id] * {
   border: 1px dashed hsl(var(--accent)) !important;
   border-radius: 0.75rem !important;
   opacity: 1 !important;
+}
+
+/* --- Calendar Fixes --- */
+.rdp-months {
+  display: flex !important;
+  flex-direction: row !important;
+}
+
+.rdp-month {
+  margin: 0 !important;
+}
+
+.rdp-table {
+  width: 100% !important;
+  max-width: none !important;
+  border-collapse: collapse !important;
+}
+
+.rdp-head_row,
+.rdp-row {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 100% !important;
+  justify-content: space-between !important;
+}
+
+.rdp-cell,
+.rdp-head_cell {
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+/* ─── Multi-Block Selection & Dragging ─── */
+
+.note-editor-bg {
+  cursor: text;
+}
+
+.note-editor-bg:active {
+  cursor: crosshair;
+}
+
+.selected-block .flex-1.flex.items-start {
+  background-color: var(--bone-5);
+  box-shadow: 0 0 0 1px var(--bone-15);
+}
+
+.dragging-active-content .editor-block:not(.selected-block) {
+  opacity: 0.5;
+  filter: blur(0.5px);
+  transition: all 0.3s ease;
+}
+
+.editor-block.dragging-ghost {
+  opacity: 0.4;
+  scale: 0.98;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+  z-index: 1000;
+}
+
+/* Premium Drag Animation */
+.dragging-active-content .editor-block {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
+}
+
+/* Selection Box Styles */
+.selection-box {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  pointer-events: none;
+  z-index: 10000;
+  border-radius: 4px;
 }

@@ -16,9 +16,9 @@ export default async function AdminOverview() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-0.5 mb-2">
-        <h1 className="text-3xl font-black tracking-tight text-bone-100 font-instrument text-chromatic">System Overview</h1>
-        <p className="text-bone-60 text-[10px] font-black tracking-[0.05em] opacity-40 uppercase">Real-time status of the Flowr AI engine.</p>
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">System Overview</h1>
+        <p className="text-muted-foreground text-sm font-medium">Real-time status of the Flowr AI engine.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[10px]">

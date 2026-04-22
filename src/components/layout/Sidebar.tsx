@@ -340,7 +340,7 @@ const handleDragEnd = useCallback((event: DragEndEvent) => {
                 placeholder="Search pages..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="bg-transparent outline-none text-foreground placeholder:text-[var(--icon-default)] w-full text-sm ml-[10px] px-0 m-0 truncate"
+                className="bg-transparent outline-none text-foreground placeholder:text-[var(--icon-default)] w-full text-sm ml-[8px] px-0 m-0 truncate"
               />
               {searchTerm && (
                 <Tooltip content="Clear Search">
@@ -453,7 +453,7 @@ const handleDragEnd = useCallback((event: DragEndEvent) => {
                               <div className="ml-2 flex items-center justify-center w-4 shrink-0">
                                 {getSmallIcon(entity.type, entity, true)}
                               </div>
-                              <span className="truncate ml-[10px] flex-1 text-left">{entity.title}</span>
+                              <span className="truncate ml-[8px] flex-1 text-left">{entity.title}</span>
                             </button>
                           </div>
                         );
@@ -482,7 +482,7 @@ const handleDragEnd = useCallback((event: DragEndEvent) => {
                         <div className="w-5 shrink-0 flex items-center justify-center">
                           <LayoutDashboard strokeWidth={2} className={clsx("w-4.5 h-4.5 shrink-0", activeEntityId === 'dashboard' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")} />
                         </div>
-                        <span className={clsx("ml-[10px] flex-1 truncate text-left text-[14px] font-medium", activeEntityId === 'dashboard' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")}>Dashboard</span>
+                        <span className={clsx("ml-[8px] flex-1 truncate text-left text-[14px] font-medium", activeEntityId === 'dashboard' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")}>Dashboard</span>
                       </button>
                       {/* Tracker */}
                       <button
@@ -499,7 +499,7 @@ const handleDragEnd = useCallback((event: DragEndEvent) => {
                         <div className="w-5 shrink-0 flex items-center justify-center">
                           <Columns strokeWidth={2} className={clsx("w-4.5 h-4.5 shrink-0", activeEntityId === 'tracker' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")} />
                         </div>
-                        <span className={clsx("ml-[10px] flex-1 truncate text-left text-[14px] font-medium", activeEntityId === 'tracker' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")}>Tracker</span>
+                        <span className={clsx("ml-[8px] flex-1 truncate text-left text-[14px] font-medium", activeEntityId === 'tracker' ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")}>Tracker</span>
                       </button>
 
 

@@ -389,7 +389,7 @@ export function EditorToolbar({
           </button>
         </Tooltip>
         {showStyleDropdown && (
-          <div className="absolute top-full left-0 mt-2 z-[100] popup-glass-small py-1 min-w-[160px] overflow-hidden">
+          <div className="absolute top-full left-0 mt-2 z-[100] popup-glass-small p-1.5 min-w-[160px] overflow-hidden">
             {BLOCK_STYLES.map(s => (
               <button
                 key={s.value}

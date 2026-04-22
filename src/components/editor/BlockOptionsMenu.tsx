@@ -7,9 +7,10 @@ import {
   List, Minus, ListOrdered, CheckSquare, Quote,
   Columns2, Columns3, Columns4, SeparatorHorizontal,
   FileInput, Table, Kanban, GalleryHorizontalEnd, ListFilter,
-  ChevronRight, ChevronLeft, Search, Plus, ImageIcon, Video
+  ChevronRight, ChevronLeft, Search, Plus, ImageIcon, Video, ClipboardPaste
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useStore } from '@/data/store';
 import type { EditorBlock, BlockType, DatabaseViewType } from '@/data/store';
 
 /* ────────────────────────────────────────────────── */
@@ -90,6 +91,7 @@ interface BlockOptionsMenuProps {
   onTurnInto: (id: string, type: BlockType, extra?: Record<string, unknown>) => void;
   onMoveTo?: (id: string) => void;
   onAddColumn?: (id: string) => void;
+  entityId: string;
 }
 
 type SubMenu = 'turnInto' | 'color' | null;
@@ -109,12 +111,17 @@ export function BlockOptionsMenu({
   onTurnInto,
   onMoveTo,
   onAddColumn,
+  entityId,
 }: BlockOptionsMenuProps) {
   const [subMenu, setSubMenu] = useState<SubMenu>(null);
   const [turnIntoSearch, setTurnIntoSearch] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   const turnIntoInputRef = useRef<HTMLInputElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
+
+  const copiedBlock = useStore(s => s.copiedBlock);
+  const copyBlock = useStore(s => s.copyBlock);
+  const pasteBlock = useStore(s => s.pasteBlock);
 
 
   // Focus search input when subMenu 'turnInto' opens
@@ -196,7 +203,7 @@ export function BlockOptionsMenu({
     return (
       <div
         ref={menuRef}
-        className="fixed z-[200] flex flex-col popup-glass-small rounded-[var(--radius-medium)] overflow-hidden min-w-[200px] "
+        className="fixed z-[200] flex flex-col popup-glass-small overflow-hidden min-w-[200px] p-1.5"
         style={{ left: adjustedPos.x, top: adjustedPos.y }}
       >
         <button className={clsx(btnCls, "justify-between")} onClick={() => setSubMenu('turnInto')}>
@@ -210,6 +217,14 @@ export function BlockOptionsMenu({
         <button className={btnCls} onClick={() => { onMoveToTop(block.id); onClose(); }}>
           <Pin strokeWidth={2} className="w-4 h-4" /> Pin to top
         </button>
+        <button className={btnCls} onClick={() => { copyBlock(block); onClose(); }}>
+          <Copy strokeWidth={2} className="w-4 h-4" /> Copy
+        </button>
+        {copiedBlock && (
+          <button className={btnCls} onClick={() => { pasteBlock(entityId, block.id); onClose(); }}>
+            <ClipboardPaste strokeWidth={2} className="w-4 h-4" /> Paste after
+          </button>
+        )}
         <button className={btnCls} onClick={() => { onDuplicate(block.id); onClose(); }}>
           <Copy strokeWidth={2} className="w-4 h-4" /> Duplicate
         </button>
@@ -235,7 +250,7 @@ export function BlockOptionsMenu({
     return (
       <div
         ref={menuRef}
-        className="fixed z-[200] flex flex-col popup-glass-small rounded-[var(--radius-medium)] overflow-hidden min-w-[220px] max-h-[400px] "
+        className="fixed z-[200] flex flex-col popup-glass-small overflow-hidden min-w-[220px] max-h-[400px] p-1.5"
         style={{ left: adjustedPos.x, top: adjustedPos.y }}
       >
         <button
@@ -244,7 +259,7 @@ export function BlockOptionsMenu({
         >
           <ChevronLeft strokeWidth={2} className="w-3.5 h-3.5" /> Turn into
         </button>
-        <div className="px-2 py-1.5 border-b border-border/30 bg-hover/20">
+        <div className="px-2 py-1.5 bg-hover/20">
           <div className="relative">
             <Search strokeWidth={2} className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
             <input
@@ -257,6 +272,7 @@ export function BlockOptionsMenu({
             />
           </div>
         </div>
+        <div className="h-px bg-border/30 mx-3" />
         <div className="overflow-y-auto scrollbar-thin flex-1 min-h-[160px]">
           {groupedTurnInto.length > 0 ? (
             groupedTurnInto.map(group => (
@@ -294,7 +310,7 @@ export function BlockOptionsMenu({
     return (
       <div
         ref={menuRef}
-        className="fixed z-[200] flex flex-col popup-glass-small rounded-[var(--radius-medium)] overflow-hidden min-w-[220px] "
+        className="fixed z-[200] flex flex-col popup-glass-small overflow-hidden min-w-[220px] p-1.5"
         style={{ left: adjustedPos.x, top: adjustedPos.y }}
       >
         <button className={btnCls} onClick={() => setSubMenu(null)}>
@@ -330,7 +346,7 @@ export function BlockOptionsMenu({
             );
           })}
         </div>
-        <div className="h-px bg-border/50" />
+        <div className="h-px bg-border/50 mx-3 my-1" />
         <div className="px-3.5 pt-2.5 pb-1.5 text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider">
           Background color
         </div>

@@ -106,3 +106,31 @@ export async function revealVaultKey(keyId: string) {
 
   return decrypt(encryptedData, iv)
 }
+
+/**
+ * Renames all keys for a provider atomically to PROVIDER_0, PROVIDER_1, ...
+ * matching the given ordered array of current key_ids.
+ */
+export async function reorderProviderKeys(provider: string, orderedKeyIds: string[]) {
+  const prefix = provider.toUpperCase()
+
+  // Use temp names first to avoid unique constraint conflicts during rename
+  for (let i = 0; i < orderedKeyIds.length; i++) {
+    const { error } = await supabase
+      .from('vault')
+      .update({ key_id: `${prefix}_TEMP_${i}` })
+      .eq('key_id', orderedKeyIds[i])
+    if (error) throw error
+  }
+
+  for (let i = 0; i < orderedKeyIds.length; i++) {
+    const { error } = await supabase
+      .from('vault')
+      .update({ key_id: `${prefix}_${i}` })
+      .eq('key_id', `${prefix}_TEMP_${i}`)
+    if (error) throw error
+  }
+
+  revalidatePath('/admin/vault')
+  return { success: true }
+}

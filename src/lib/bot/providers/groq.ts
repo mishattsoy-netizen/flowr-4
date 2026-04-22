@@ -1,46 +1,104 @@
-﻿import { getProviderKeys } from '../../vault'
+import { getProviderKeys } from '../../vault'
 import { logger } from '../../logger'
+import { FLOWR_TOOLS } from '../tools/definitions'
+import { toolHandlers } from '../tools/handlers'
 
-export async function runGroq(modelId: string, prompt: string, systemPrompt?: string): Promise<string | null> {
-  const keys = await getProviderKeys('GROQ')
+export async function runGroq(
+  modelId: string, 
+  prompt: string, 
+  systemPrompt?: string, 
+  aiApiKey?: string,
+  context?: any
+): Promise<string | null> {
+  let keys = aiApiKey ? [aiApiKey] : []
   
   if (keys.length === 0) {
-    logger.error('No Groq keys found in vault')
+    keys = await getProviderKeys('GROQ')
+  }
+  
+  if (keys.length === 0) {
+    logger.error('No Groq keys found (vault or provided)')
     return null
   }
 
+  // Format tools for OpenAI/Groq
+  const tools = FLOWR_TOOLS.map(t => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters
+    }
+  }))
+
   for (const key of keys) {
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: modelId,
-          messages: [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7
+      let messages: any[] = [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: prompt }
+      ]
+
+      const MAX_TOOL_HOPS = 4
+      let hops = 0
+
+      while (hops < MAX_TOOL_HOPS) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages,
+            tools: modelId.includes('vision') ? undefined : tools, // Groq vision doesn't support tools yet
+            tool_choice: 'auto',
+            temperature: 0.7
+          })
         })
-      })
 
-      if (response.status === 429) {
-        logger.warn(`Groq key rate limited (429). Trying next key...`)
-        continue
+        if (response.status === 429) {
+          logger.warn(`Groq key rate limited (429). Trying next key...`)
+          break // Break inner while, continue outer key loop
+        }
+
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error?.message || `Groq API Error: ${response.status}`)
+        }
+
+        const message = data.choices[0]?.message
+        messages.push(message)
+
+        if (message.tool_calls && message.tool_calls.length > 0) {
+          hops++
+          for (const call of message.tool_calls) {
+            const handler = toolHandlers[call.function.name]
+            let output = { error: 'Tool not found' }
+            
+            if (handler) {
+              try {
+                const args = JSON.parse(call.function.arguments)
+                output = await handler(args, context)
+              } catch (e: any) {
+                output = { error: e.message }
+              }
+            }
+
+            messages.push({
+              role: 'tool',
+              tool_call_id: call.id,
+              content: JSON.stringify(output)
+            })
+          }
+          // Continue loop to get final answer or more tool calls
+        } else {
+          // No more tool calls, return final content
+          return message.content || null
+        }
       }
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error?.message || `Groq API Error: ${response.status}`)
-      }
-
-      return data.choices[0]?.message?.content || null
     } catch (error: any) {
       logger.error(`Groq model ${modelId} execution failed:`, error.message)
-      // If it's a network error or generic error, try next key just in case
       continue 
     }
   }

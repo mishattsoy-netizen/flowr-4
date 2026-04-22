@@ -28,3 +28,18 @@ export async function updateRouterChain(id: string, modelList: any[]) {
   revalidatePath('/admin/telegram/router')
   return { success: true }
 }
+export async function createRouterChain(platform: 'app' | 'telegram', category: string) {
+  const { error } = await supabase
+    .from('router_chains')
+    .insert({
+      platform,
+      category,
+      model_list: [],
+      system_prompt: ''
+    })
+
+  if (error) throw error
+  revalidatePath('/admin/app/router')
+  revalidatePath('/admin/telegram/router')
+  return { success: true }
+}

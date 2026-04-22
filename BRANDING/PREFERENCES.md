@@ -1,0 +1,46 @@
+# Design Preferences
+
+> AI-managed living document tracking the user's design philosophy and patterns.
+
+---
+
+## Stylistic Philosophy
+
+- **Overall feel:** Dark, premium, minimalist — glassmorphism-inspired "Bone" aesthetic
+- **Color system:** Semantic bone tokens (`--bone-5` through `--bone-100`) with semi-transparent overlays
+- **Accent color:** `--accent` maps to `--bone-100` (#E9E9E2) — NOT a vibrant color
+- **Interactive states:** `bg-accent/10` + `border-accent/30` pattern for selections/active states
+- **Backgrounds:** Prefer `bg-panel/90 backdrop-blur-xl` over solid `bg-panel` for modals/popovers
+
+## Typography
+
+- **Display headings:** Crimson Pro (`font-display`) — used for page titles, greeting headers
+- **UI text:** DM Sans (`font-sans`, `font-ui`) — used for labels, body, controls
+- **UI labels:** DM Sans with `letter-spacing: 0.06em` (`font-ui-label`) — used for small uppercase labels
+- **Monospace:** DM Mono (`font-mono`) — used for code, vault values
+- **Calendar/pickers:** User explicitly rejects Crimson Pro — use `font-ui` (DM Sans) only
+
+## User Likes
+
+- Semi-transparent glass fills over solid backgrounds
+- Square/rounded-rect shapes (`rounded-[4px]`) for calendar date cells
+- Borderless selected states (no `border` on selected items)
+- Subtle hover backgrounds (`hover:bg-white/5`) over bordered buttons
+- Compact, tight spacing
+- `font-ui-label` for small uppercase labels (Today, Clear, etc.)
+
+## User Dislikes
+
+- Full solid white/accent fills (`bg-accent`, `bg-bone-100`)
+- Crimson Pro font in utility components (calendar, pickers, forms)
+- Heavy borders on selected elements
+- Scale transforms on selected items
+- Oversized UI elements
+
+## Technical Trends
+
+- Uses Tailwind CSS v4 with `@utility` custom utilities in `globals.css`
+- Prefers `clsx` or `cn()` for conditional class merging
+- Uses `var(--bone-*)` CSS custom properties for all bone tokens
+- Popover components preferred over native `<select>` elements
+- `popup-glass-big` / `popup-glass-small` utilities for modal containers

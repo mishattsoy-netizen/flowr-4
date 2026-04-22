@@ -8,9 +8,9 @@ export default async function PresetsPage() {
 
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1.5 mb-2">
-        <h1 className="text-3xl font-bold tracking-tight text-bone-100 font-instrument">Tier Presets</h1>
-        <p className="text-bone-60 text-[11px] font-bold tracking-tight opacity-60">Configure usage limits and access levels for your user base.</p>
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">Tier Presets</h1>
+        <p className="text-muted-foreground text-sm font-medium">Configure usage limits and access levels for your user base.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[10px] items-start">

@@ -20,7 +20,7 @@ export type {
 } from './store.types';
 
 // Re-export constants and helpers needed by external consumers
-export { DEFAULT_FLOW_ROUTER_CONFIG } from './store.constants';
+export { DEFAULT_FLOW_ROUTER_CONFIG, DEFAULT_CLASSIFICATION_MODEL_ID } from './store.constants';
 export { generateId, robustParseJSON, blocksToMarkdown } from './store.helpers';
 
 // Internal type imports (used within this file's store implementation)
@@ -32,8 +32,10 @@ import type {
 
 import {
   generateId, getDescendantIds, validateNoteContent,
-  robustParseJSON, markdownToBlocks, blocksToMarkdown
+  robustParseJSON,  markdownToBlocks, blocksToMarkdown
 } from './store.helpers';
+
+import { DEFAULT_CLASSIFICATION_MODEL_ID } from './store.constants';
 
 // ─── Store ─────── (types/constants/helpers moved to store.types.ts / store.constants.ts / store.helpers.ts) ───
 
@@ -129,6 +131,7 @@ export const useStore = create<AppState>()(
       isAILoading: false,
       aiCursor: null,
       aiBehaviorMode: (typeof window !== 'undefined' && localStorage.getItem('flowr_ai_behavior') as 'fast' | 'thinking' | 'auto') || 'auto',
+      aiClassificationModelId: (typeof window !== 'undefined' && localStorage.getItem('flowr_ai_classification_model')) || DEFAULT_CLASSIFICATION_MODEL_ID,
       aiAbortController: null,
 
       // ─── Actions ─────────────────────────────────────────
@@ -229,6 +232,10 @@ export const useStore = create<AppState>()(
         localStorage.setItem('flowr_ai_behavior', aiBehaviorMode);
         set({ aiBehaviorMode });
       },
+      setAIClassificationModelId: (id) => {
+        localStorage.setItem('flowr_ai_classification_model', id);
+        set({ aiClassificationModelId: id });
+      },
 
       sendAIMessage: async (content, agentEnabled = false, attachments = []) => {
         const { aiMessages } = get();
@@ -255,10 +262,24 @@ export const useStore = create<AppState>()(
             }
           }
 
+          // Handle vision: extract first image attachment if present
+          let imageBuffer: string | undefined = undefined;
+          const firstImage = attachments.find(a => a.type === 'image');
+          if (firstImage?.url?.startsWith('data:')) {
+            imageBuffer = firstImage.url.split(',')[1];
+          }
+
           const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ prompt: content }),
+            body: JSON.stringify({ 
+              prompt: content,
+              buffer: imageBuffer,
+              activeEntityId: get().activeEntityId,
+              aiApiKey: get().aiApiKey,
+              activeWorkspaceId: get().activeWorkspaceId,
+              classificationModelId: get().aiClassificationModelId
+            }),
           });
 
           if (!res.ok) {
@@ -267,6 +288,7 @@ export const useStore = create<AppState>()(
               id: generateId(),
               role: 'assistant',
               content: err.error || 'Something went wrong.',
+              model: err.model || 'system',
               timestamp: Date.now(),
             };
             set(s => ({ aiMessages: [...s.aiMessages, errorMessage], isAILoading: false }));
@@ -278,6 +300,7 @@ export const useStore = create<AppState>()(
             id: generateId(),
             role: 'assistant',
             content: data.content,
+            model: data.model,
             timestamp: Date.now(),
           };
           set(s => ({ aiMessages: [...s.aiMessages, assistantMessage], isAILoading: false }));
@@ -656,6 +679,28 @@ export const useStore = create<AppState>()(
 
       openContextMenu: (entityId, x, y, source) => set({ contextMenu: { entityId, x, y, source } }),
       closeContextMenu: () => set({ contextMenu: null }),
+
+      copiedBlock: null,
+      copyBlock: (block) => set({ copiedBlock: block }),
+      pasteBlock: (entityId, afterBlockId) => {
+        const { entities, updateEntityContent, copiedBlock } = get();
+        if (!copiedBlock) return;
+
+        const entity = entities.find(e => e.id === entityId);
+        if (!entity || !entity.content) return;
+
+        const newBlock = { ...copiedBlock, id: generateId() };
+        const currentIndex = entity.content.findIndex(b => b.id === afterBlockId);
+        
+        const newContent = [...entity.content];
+        if (currentIndex === -1) {
+          newContent.push(newBlock);
+        } else {
+          newContent.splice(currentIndex + 1, 0, newBlock);
+        }
+
+        updateEntityContent(entityId, newContent);
+      },
     }),
     {
       name: 'flowr-storage',
@@ -797,6 +842,7 @@ export const useStore = create<AppState>()(
         aiMessages: state.aiMessages.slice(-20), // Only persist the last 20 messages to keep disk footprint low
         aiBehaviorMode: state.aiBehaviorMode,
         aiApiKey: state.aiApiKey,
+        copiedBlock: state.copiedBlock,
       }),
     }
   )

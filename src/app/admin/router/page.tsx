@@ -1,6 +1,7 @@
 import { getRouterChains } from './actions'
 import RouterManager from '@/components/admin/RouterManager'
-import { Cpu, Command, Share2, Zap, Wand2, Image, Mic } from 'lucide-react'
+import AddCategoryButton from '@/components/admin/AddCategoryButton'
+import { Cpu, Command, Share2, Zap, Wand2, Image, Mic, Brain } from 'lucide-react'
 
 const CATEGORY_ICONS: Record<string, any> = {
   TOOL_CALLING: Command,
@@ -9,7 +10,8 @@ const CATEGORY_ICONS: Record<string, any> = {
   MEDIUM_THINKING: Wand2,
   COMPLEX_THINKING: Cpu,
   IMAGE_GEN: Image,
-  AUDIO_VOICE: Mic
+  AUDIO_VOICE: Mic,
+  CLASSIFIER: Brain
 }
 
 export async function RouterPageContent({ platform }: { platform: 'app' | 'telegram' }) {
@@ -17,9 +19,9 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
 
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
-      <div className="flex flex-col gap-0.5 mb-2">
-        <h1 className="text-3xl font-black tracking-tight text-bone-100 font-instrument text-chromatic">Router Orchestration</h1>
-        <p className="text-bone-60 text-[10px] font-black tracking-[0.05em] opacity-40 uppercase">
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">Router Orchestration</h1>
+        <p className="text-muted-foreground text-sm font-medium">
           {platform === 'app' ? 'Web app' : 'Telegram bot'} — multi-agent switching matrix.
         </p>
       </div>
@@ -36,6 +38,9 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
             />
           )
         })}
+        {!routers.some((r: any) => r.category === 'CLASSIFIER') && (
+          <AddCategoryButton platform={platform} category="CLASSIFIER" />
+        )}
       </div>
     </div>
   )

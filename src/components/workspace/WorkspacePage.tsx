@@ -41,7 +41,7 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
           setTempTitle(entity.title);
           setEditingEntityId(entity.id, 'view');
         }}
-        className="group text-3xl font-display text-foreground flex items-center gap-3"
+        className="group text-4xl font-display text-foreground mb-1 flex items-center gap-3"
       >
         <div className="shrink-0 p-1">
           {(() => { const Icon = getEntityIcon(entity.icon); return <Icon className="w-8 h-8 !text-accent" />; })()}

@@ -219,12 +219,12 @@ export interface ProjectQuota {
   timestamp: string;
 }
 
-export type FlowIntentCategory = 'tool_call' | 'web_search' | 'complex' | 'medium' | 'fast' | 'image_generation' | 'audio_voice';
+export type FlowIntentCategory = 'tool_call' | 'web_search' | 'complex' | 'medium' | 'fast' | 'image_generation' | 'audio_voice' | 'CLASSIFIER';
 
 export interface FlowRouterModel {
   id: string;
   label: string;
-  provider: 'openrouter' | 'gemini' | 'google' | 'groq' | 'local' | 'vault' | 'cloudflare' | 'huggingface';
+  provider: 'openrouter' | 'gemini' | 'google' | 'groq' | 'local' | 'vault' | 'cloudflare' | 'huggingface' | 'pollinations';
   enabled: boolean;
   dailyLimit: number | null;
 }
@@ -323,9 +323,11 @@ export interface AppState {
   isAILoading: boolean;
   aiCursor: AICursor | null;
   aiBehaviorMode: 'fast' | 'thinking' | 'auto';
+  aiClassificationModelId: string;
   imageProvider: 'pollinations' | 'puter';
 
   aiAbortController: AbortController | null;
+  copiedBlock: EditorBlock | null;
 
   toggleTheme: () => void;
   setInterfaceSize: (size: 'small' | 'regular' | 'big') => void;
@@ -352,6 +354,7 @@ export interface AppState {
   setAIHistory: (messages: AIMessage[]) => void;
   setIsAIAssistantExtended: (extended: boolean) => void;
   setAICursor: (cursor: AICursor | null) => void;
+  setAIClassificationModelId: (id: string) => void;
 
   setWorkspaces: (workspaces: Workspace[]) => void;
   setActiveWorkspaceId: (id: string) => void;
@@ -445,4 +448,7 @@ export interface AppState {
   updateGuide: (id: string, updates: Partial<Guide>) => void;
   deleteGuide: (id: string) => void;
   setKnowledgeData: (data: Partial<Pick<AppState, 'knowledgeResources' | 'knowledgeSnippets' | 'knowledgeGuides'>>) => void;
+
+  copyBlock: (block: EditorBlock) => void;
+  pasteBlock: (entityId: string, afterBlockId: string) => void;
 }

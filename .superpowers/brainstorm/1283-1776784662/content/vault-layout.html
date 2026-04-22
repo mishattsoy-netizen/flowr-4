@@ -1,0 +1,164 @@
+<h2>Vault Page Layout</h2>
+<p class="subtitle">How should keys be grouped and displayed? Pick the layout that feels right.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d0d0d;border-radius:8px;font-family:monospace">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="width:60px;height:18px;background:#1a1a2e;border-radius:4px;border:1px solid #223"></div>
+        <div style="width:60px;height:18px;background:#1a1a2e;border-radius:4px;border:1px solid #223"></div>
+        <div style="width:60px;height:18px;background:#1e3a1e;border-radius:4px;border:1px solid #234"></div>
+      </div>
+      <div style="background:#111;border-radius:6px;border:1px solid #222;padding:10px">
+        <div style="font-size:9px;color:#6b7";color:#555;margin-bottom:8px;letter-spacing:.08em">GEMINI</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <span style="font-size:9px;color:#ccc">GEMINI_0</span>
+            <div style="display:flex;gap:3px">
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <span style="font-size:9px;color:#ccc">GEMINI_1</span>
+            <div style="display:flex;gap:3px">
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <span style="font-size:9px;color:#ccc">GEMINI_2</span>
+            <div style="display:flex;gap:3px">
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+              <div style="width:14px;height:14px;background:#1e1e1e;border-radius:3px;border:1px solid #333"></div>
+            </div>
+          </div>
+          <div style="padding:4px 6px;border:1px dashed #333;border-radius:4px;text-align:center">
+            <span style="font-size:8px;color:#555">+ Add key</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Per-Provider Widgets (Grid)</h3>
+      <p>One widget per provider (Gemini, Groq, OpenRouter…). Each widget is a self-contained list with inline add, reorder, show/hide, edit, and delete. Tabs or provider pills at the top to filter/switch. Mirrors the RouterManager pattern exactly.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d0d0d;border-radius:8px;font-family:monospace">
+      <div style="background:#111;border-radius:6px;border:1px solid #222;padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:9px;color:#555;letter-spacing:.08em">ALL CREDENTIALS</span>
+          <span style="font-size:9px;color:#555">8 keys</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <div style="width:6px;height:6px;border-radius:50%;background:#4a80f5;flex-shrink:0"></div>
+            <span style="font-size:8px;color:#888;width:60px">GEMINI_0</span>
+            <span style="font-size:7px;color:#4a80f5;background:#0d1a3e;padding:1px 4px;border-radius:3px">GEMINI</span>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:2px">
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <div style="width:6px;height:6px;border-radius:50%;background:#4a80f5;flex-shrink:0"></div>
+            <span style="font-size:8px;color:#888;width:60px">GEMINI_1</span>
+            <span style="font-size:7px;color:#4a80f5;background:#0d1a3e;padding:1px 4px;border-radius:3px">GEMINI</span>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:2px">
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#1a1a1a;border-radius:4px">
+            <div style="width:6px;height:6px;border-radius:50%;background:#f97316;flex-shrink:0"></div>
+            <span style="font-size:8px;color:#888;width:60px">GROQ_0</span>
+            <span style="font-size:7px;color:#f97316;background:#2a1500;padding:1px 4px;border-radius:3px">GROQ</span>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:2px">
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+              <div style="width:12px;height:12px;background:#1e1e1e;border-radius:2px;border:1px solid #333"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Single Unified List (Grouped)</h3>
+      <p>One flat list of all keys, visually grouped by provider with color-coded badges. Provider sections are collapsible. Row actions: show/hide, edit (inline), reorder (up/down arrows), delete. Add form at the top.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0d0d0d;border-radius:8px;font-family:monospace">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#111;border-radius:6px;border:1px solid #223;padding:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#4a80f5"></div>
+              <span style="font-size:8px;color:#4a80f5;font-weight:bold">GEMINI</span>
+            </div>
+            <span style="font-size:7px;color:#444">5 keys</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="padding:3px 5px;background:#1a1a1a;border-radius:3px;display:flex;justify-content:space-between">
+              <span style="font-size:7px;color:#999">GEMINI_0</span>
+              <div style="display:flex;gap:2px">
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+              </div>
+            </div>
+            <div style="padding:3px 5px;background:#1a1a1a;border-radius:3px;display:flex;justify-content:space-between">
+              <span style="font-size:7px;color:#999">GEMINI_1</span>
+              <div style="display:flex;gap:2px">
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+              </div>
+            </div>
+            <div style="padding:3px 5px;border:1px dashed #333;border-radius:3px;text-align:center">
+              <span style="font-size:7px;color:#444">+ Add</span>
+            </div>
+          </div>
+        </div>
+        <div style="background:#111;border-radius:6px;border:1px solid #2a1500;padding:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#f97316"></div>
+              <span style="font-size:8px;color:#f97316;font-weight:bold">GROQ</span>
+            </div>
+            <span style="font-size:7px;color:#444">2 keys</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="padding:3px 5px;background:#1a1a1a;border-radius:3px;display:flex;justify-content:space-between">
+              <span style="font-size:7px;color:#999">GROQ_0</span>
+              <div style="display:flex;gap:2px">
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+                <div style="width:10px;height:10px;background:#222;border-radius:2px;border:1px solid #333"></div>
+              </div>
+            </div>
+            <div style="padding:3px 5px;border:1px dashed #333;border-radius:3px;text-align:center">
+              <span style="font-size:7px;color:#444">+ Add</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Grid of Provider Widgets</h3>
+      <p>2-column grid (like RouterManager). Each cell is one provider. Dedicated "Add key" button per provider. Up/down reorder arrows, eye/edit/delete per row. No separate register form — adding lives inside each widget.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">Click to select, then reply in terminal. All options include: show/hide toggle, inline edit, delete, reorder arrows.</p>

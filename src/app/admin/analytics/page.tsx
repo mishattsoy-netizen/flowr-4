@@ -15,9 +15,9 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-0.5">
-        <h1 className="text-2xl font-black tracking-tight text-bone-100 font-instrument">Analytics & Insights</h1>
-        <p className="text-bone-60 text-[10px] font-bold tracking-tight opacity-40 uppercase">Monitor topic trends and message volume.</p>
+      <div className="mb-2">
+        <h1 className="text-4xl font-display text-foreground mb-1">Analytics & Insights</h1>
+        <p className="text-muted-foreground text-sm font-medium">Monitor topic trends and message volume.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
