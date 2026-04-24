@@ -47,10 +47,11 @@ export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, on
         isStackTarget && 'ring-2 ring-accent bg-accent/5 scale-105 z-20'
       )}
     >
-      <WidgetComponent 
-        contextId={contextId} 
-        data={item.data} 
+      <WidgetComponent
+        contextId={contextId}
+        data={item.data}
         onUpdateData={onUpdateData}
+        isEditing={editMode}
       />
       {editMode && (
         <button
