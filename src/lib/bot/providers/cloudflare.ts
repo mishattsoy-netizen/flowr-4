@@ -34,7 +34,17 @@ export async function runCloudflare(modelId: string, prompt: string, aiApiKey?: 
       throw new Error(`Cloudflare AI Error: ${response.status} - ${error}`)
     }
 
+    // Cloudflare returns JSON error body (success:false) even with 200 for some models
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const json = await response.json() as any
+      throw new Error(`Cloudflare AI returned JSON (not image): ${JSON.stringify(json)}`)
+    }
+
     const arrayBuffer = await response.arrayBuffer()
+    if (arrayBuffer.byteLength < 100) {
+      throw new Error(`Cloudflare AI returned empty/tiny response (${arrayBuffer.byteLength} bytes)`)
+    }
     return Buffer.from(arrayBuffer)
   } catch (error: any) {
     logger.error(`Cloudflare model ${modelId} execution failed:`, error.message)

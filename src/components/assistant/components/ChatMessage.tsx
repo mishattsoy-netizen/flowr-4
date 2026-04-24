@@ -50,7 +50,7 @@ export const sanitizeContent = (content: string, isAILoading: boolean, isLastMes
 
   text = text.replace(/```json[\s\S]*?\{[\s\S]*?"(tool_code|action|method)"[\s\S]*?\}[\s\S]*?```/g, '');
   text = text.replace(/\{[\s\n\r]*"(tool_code|action|method)"[\s\S]*?\}/g, '');
-  text = text.replace(/(add_note|add_folder|add_canvas|add_task|update_note_content|append_note_content|generate_image)\s*\([\s\S]*?\);?/g, '');
+  text = text.replace(/(?<!!)(add_note|add_folder|add_canvas|add_task|update_note_content|append_note_content|generate_image)\s*\([\s\S]*?\);?/g, '');
 
   text = text.trim();
 

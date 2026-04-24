@@ -1,4 +1,4 @@
-import { classifyIntent } from './classifier'
+import { classifyIntentWithModel } from './classifier'
 import { getRouterChain, Platform } from '../router-config'
 import { logger } from '../logger'
 import { runGoogle } from './providers/google'
@@ -7,22 +7,29 @@ import { runHuggingFace } from './providers/huggingface'
 import { runWebSearchChain } from './providers/tavily'
 import { runCloudflare } from './providers/cloudflare'
 import { runPollinations } from './providers/pollinations'
-import { getConversationMemory } from './memory'
+import { getConversationMemory, getWebConversationMemory } from './memory'
 
 export interface ChainResponse {
   type: 'text' | 'photo'
   content: string | Buffer
   usage_type?: 'chat' | 'tool' | 'search' | 'vision'
   model?: string
+  model_chain?: string
+  status?: 'success' | 'error'
 }
 
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; platform?: Platform; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string }
+  context?: { chatId?: number; userId?: string; platform?: Platform; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; agentEnabled?: boolean }
 ): Promise<ChainResponse> {
   const platform: Platform = context?.platform ?? 'telegram'
-  const history = context?.chatId ? await getConversationMemory(context.chatId) : []
+  let history: any[] = []
+  if (context?.chatId) {
+    history = await getConversationMemory(context.chatId)
+  } else if (context?.userId && context.userId !== 'anonymous') {
+    history = await getWebConversationMemory(context.userId)
+  }
 
   // 1. Specialized Vision Flow (Buffer or URL)
   let activeBuffer = inputBuffer
@@ -48,11 +55,18 @@ export async function runChain(
     const modelId = 'gemini-1.5-flash-latest'
     logger.info(`Routing to Vision Flow using ${modelId}`)
     const visionRes = await runGoogle(modelId, prompt || "Analyze this image.", undefined, activeBuffer, context as any, history)
-    return { type: 'text', content: visionRes || "Analyzer failed.", usage_type: 'vision', model: modelId }
+    return { type: 'text', content: visionRes || "Analyzer failed.", usage_type: 'vision', model: modelId, model_chain: `vision → ${modelId}`, status: 'success' }
   }
 
   // 2. Standard Routing Flow
-  const category = await classifyIntent(prompt, context?.aiApiKey, context?.classificationModelId, platform)
+  const { category: rawCategory, classifierModel } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, platform)
+  let category = rawCategory
+
+  // Agent mode: override non-specific categories to TOOL_CALLING so the full tool loop engages
+  if (context?.agentEnabled && (category === 'FAST_SIMPLE' || category === 'MEDIUM_THINKING')) {
+    logger.info(`Agent mode active: overriding ${category} → TOOL_CALLING`)
+    category = 'TOOL_CALLING'
+  }
   let { chain, system_prompt } = await getRouterChain(category, platform)
 
   // Fallback to local default if Supabase routing is empty/failed
@@ -91,10 +105,10 @@ export async function runChain(
 
       switch (modelConfig.provider as string) {
         case 'google':
-          response = await runGoogle(modelConfig.id, prompt, system_prompt, undefined, context as any, history)
+          response = await runGoogle(modelConfig.id, prompt, system_prompt, undefined, { ...context as any, useTools: category === 'TOOL_CALLING' }, history)
           break
         case 'groq':
-          response = await runGroq(modelConfig.id, prompt, system_prompt, context?.aiApiKey, context)
+          response = await runGroq(modelConfig.id, prompt, system_prompt, context?.aiApiKey, { ...context, useTools: category === 'TOOL_CALLING' }, history)
           break
         case 'huggingface':
           response = await runHuggingFace(modelConfig.id, prompt, context?.aiApiKey)
@@ -122,7 +136,9 @@ export async function runChain(
           type: category === 'IMAGE_GEN' ? 'photo' : 'text',
           content: response as any,
           usage_type: finalUsageType,
-          model: modelConfig.id
+          model: modelConfig.id,
+          model_chain: `${classifierModel} → ${modelConfig.id}`,
+          status: 'success'
         }
       }
     } catch (error: any) {
@@ -134,8 +150,8 @@ export async function runChain(
   if (category === 'IMAGE_GEN') {
     logger.info("Triggering final Pollinations fallback for IMAGE_GEN")
     const fallbackRes = await runPollinations(prompt)
-    if (fallbackRes) return { type: 'photo', content: fallbackRes, usage_type: 'chat', model: 'pollinations-fallback' }
+    if (fallbackRes) return { type: 'photo', content: fallbackRes, usage_type: 'chat', model: 'pollinations-fallback', model_chain: `${classifierModel} → pollinations-fallback`, status: 'success' }
   }
 
-  return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat' }
+  return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat', model_chain: classifierModel, status: 'error' }
 }

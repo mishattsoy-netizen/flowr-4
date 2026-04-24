@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runChain } from '@/lib/bot/chainRouter'
 import { supabaseAdmin, isSupabaseEnabled } from '@/lib/supabase'
+import { logWebInteraction } from '@/lib/bot/analytics'
 
 const DEFAULT_DAILY_LIMIT = 50
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     user = data.user
   }
 
-  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId } = await req.json()
+  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, agentEnabled } = await req.json()
 
   if (!prompt || typeof prompt !== 'string') {
     return NextResponse.json({ error: 'prompt is required', model: 'system' }, { status: 400 })
@@ -68,25 +69,39 @@ export async function POST(req: NextRequest) {
     const result = await runChain(
       prompt,
       buffer ? Buffer.from(buffer, 'base64') : undefined,
-      { userId, platform: 'app', aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId }
+      { userId, platform: 'app', aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, agentEnabled: agentEnabled === true }
     )
 
     let content = result.content
     if (Buffer.isBuffer(content)) {
-      content = `data:image/png;base64,${content.toString('base64')}`
+      const b64 = content.toString('base64')
+      content = `![Generated Image](data:image/png;base64,${b64})`
+    } else if (result.type === 'photo' && typeof content === 'string' && content.startsWith('data:')) {
+      content = `![Generated Image](${content})`
     }
 
-    return NextResponse.json({ 
-      content, 
-      type: result.type, 
+    // Log to message_logs — never store raw base64 image data
+    const logId = user?.id || 'anonymous'
+    const loggedContent = (result.type === 'photo' || (typeof content === 'string' && content.startsWith('![')))
+      ? '[image]'
+      : (typeof content === 'string' ? content : '[image]')
+    const modelChain = result.model_chain
+    logWebInteraction(logId, prompt, 'user', result.usage_type || 'chat', 'success', modelChain).catch(() => {})
+    logWebInteraction(logId, loggedContent, 'model', result.usage_type || 'chat', result.status || 'success', modelChain).catch(() => {})
+
+    return NextResponse.json({
+      content,
+      type: result.type,
       usage_type: result.usage_type,
       model: result.model
     })
   } catch (error: any) {
     console.error('[AI API Error]', error);
-    return NextResponse.json({ 
-      error: error.message || 'AI request failed.', 
-      model: 'system' 
+    const logId = user?.id || 'anonymous'
+    logWebInteraction(logId, error.message || 'AI request failed.', 'model', 'chat', 'error').catch(() => {})
+    return NextResponse.json({
+      error: error.message || 'AI request failed.',
+      model: 'system'
     }, { status: 500 })
   }
 }

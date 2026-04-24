@@ -5,11 +5,11 @@ import { FLOWR_TOOLS } from '../tools/definitions'
 import { toolHandlers } from '../tools/handlers'
 
 export async function runGoogle(
-  modelId: string, 
-  prompt: string, 
+  modelId: string,
+  prompt: string,
   systemPrompt?: string,
   imageBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string },
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean },
   history: any[] = []
 ): Promise<string | null> {
   let keys = context?.aiApiKey ? [context.aiApiKey] : []
@@ -27,10 +27,10 @@ export async function runGoogle(
     try {
       const genAI = new GoogleGenerativeAI(key)
       
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI.getGenerativeModel({
         model: modelId,
         systemInstruction: systemPrompt,
-        tools: [{ functionDeclarations: FLOWR_TOOLS as any }]
+        ...(context?.useTools ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {})
       })
       
       const parts: any[] = [{ text: prompt || "Analyze this." }]

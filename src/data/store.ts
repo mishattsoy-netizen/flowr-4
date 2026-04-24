@@ -256,11 +256,9 @@ export const useStore = create<AppState>()(
 
         set({ aiMessages: [...aiMessages, userMessage], isAILoading: true });
 
-        void agentEnabled;
-
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          
+
           if (isSupabaseEnabled) {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.access_token) {
@@ -278,9 +276,10 @@ export const useStore = create<AppState>()(
           const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               prompt: content,
               buffer: imageBuffer,
+              agentEnabled,
               activeEntityId: get().activeEntityId,
               aiApiKey: get().aiApiKey,
               activeWorkspaceId: get().activeWorkspaceId,

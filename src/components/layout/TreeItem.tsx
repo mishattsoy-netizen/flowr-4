@@ -31,6 +31,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
   const setEditingEntityId = useStore(state => state.setEditingEntityId);
   const renameEntity = useStore(state => state.renameEntity);
   const aiCursor = useStore(state => state.aiCursor);
+  const contextMenu = useStore(state => state.contextMenu);
 
   const sortable = useSortable({ 
     id: idOverride || entity.id,
@@ -135,7 +136,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
   }, []);
 
   const getIcon = (type: EntityType) => {
-    const size = "w-4 h-4";
+    const size = "w-3.5 h-3.5";
     const cls = `${size} shrink-0 `;
     
     const iconColorClass = clsx(
@@ -165,7 +166,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             <div 
               onClick={handleChevronClick}
               onPointerDown={(e) => e.stopPropagation()}
-              className="absolute inset-0 -m-1.25 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-small)] hover:bg-[var(--bone-10)] cursor-pointer"
+              className="absolute -inset-[4px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-small)] hover:bg-[var(--bone-10)] cursor-pointer"
             >
               {isCollapsed 
                 ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-60)] group-hover:text-[var(--bone-100)]" /> 
@@ -211,17 +212,17 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         data-selected={isActive || undefined}
         className={clsx(
           "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0",
-          "px-3 rounded-[var(--radius-small)]",
-          "py-[3px]",
+          "px-3 rounded-[var(--radius-8)]",
+          "h-7",
           isActive 
-            ? "bg-[var(--bone-15)] text-[var(--bone-100)]" 
+            ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-medium" 
             : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
-          isWorkspace ? "text-[14px] font-medium" : "text-[13.5px]",
+          "text-[14px]",
         )}
         style={{ paddingLeft: `${depth * 18 + 12}px`, paddingRight: '12px' }}
       >
-        <div className="w-5 shrink-0 flex items-center justify-center">
+        <div className="w-7 shrink-0 flex items-center justify-center">
           {(!disableNesting && isCollapsible) ? getIcon(entity.type) : getIcon(entity.type)}
         </div>
 
@@ -234,30 +235,32 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             onBlur={handleRename}
             onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
-            className="ml-[8px] flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 inline-block text-sm"
+            className="ml-0 flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 inline-block text-sm"
           />
         ) : (
           <span className={clsx(
-            "ml-[8px] text-fade flex-1 text-left",
-            isWorkspace && "font-medium",
+            "ml-0 flex-1 text-left truncate",
             isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]"
           )}>
             {entity.title}
           </span>
         )}
 
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 ml-1">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 shrink-0">
           {(entity.type === 'workspace' || entity.type === 'collection' || entity.type === 'folder') && (
             <button
                onClick={handlePlusClick}
-               className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)]"
+               className="btn-sidebar-utility"
             >
               <Plus strokeWidth={2} className="w-3.5 h-3.5" />
             </button>
           )}
           <button
              onClick={handleOptionsClick}
-             className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)]"
+             className={clsx(
+               "btn-sidebar-utility",
+               contextMenu?.entityId === entity.id && "bg-[var(--bone-10)] text-[var(--bone-100)] opacity-100"
+             )}
           >
             <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
           </button>

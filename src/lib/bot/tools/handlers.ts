@@ -103,13 +103,14 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
    * Set Reminder (Persistent)
    */
   async set_reminder({ text, time_duration }: { text: string, time_duration: string }, context: any) {
-    if (!context?.chatId) return { error: 'Unable to identify user session.' }
-    
+    if (!context?.chatId && !context?.userId && !context?.activeWorkspaceId) {
+      return { error: 'Unable to identify user session.' }
+    }
+
     try {
-      // Fast parsing logic for LLM-provided durations
       const now = new Date()
       let remindAt = new Date(now.getTime() + 60 * 60 * 1000) // Default 1h
-      
+
       if (time_duration.includes('minute')) {
         const mins = parseInt(time_duration) || 15
         remindAt = new Date(now.getTime() + mins * 60 * 1000)
@@ -121,27 +122,41 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
         remindAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
       }
 
-      // 1. Get workspace_id for the user
-      const { data: user, error: userError } = await supabaseAdmin
-        .from('telegram_users')
-        .select('workspace_id')
-        .eq('telegram_id', context.chatId)
-        .single()
-        
-      if (userError || !user?.workspace_id) {
-        return { error: 'No workspace linked to this Telegram account. Unable to create task.' }
+      // Resolve workspace_id: web app passes it directly, Telegram looks it up
+      let workspaceId = context.activeWorkspaceId
+
+      if (!workspaceId && context.chatId) {
+        const { data: tgUser, error: userError } = await supabaseAdmin
+          .from('telegram_users')
+          .select('workspace_id')
+          .eq('telegram_id', context.chatId)
+          .single()
+        if (userError || !tgUser?.workspace_id) {
+          return { error: 'No workspace linked to this Telegram account.' }
+        }
+        workspaceId = tgUser.workspace_id
       }
+
+      if (!workspaceId && context.userId && context.userId !== 'anonymous') {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('active_workspace_id')
+          .eq('id', context.userId)
+          .single()
+        workspaceId = profile?.active_workspace_id
+      }
+
+      if (!workspaceId) return { error: 'No active workspace found. Please select a workspace first.' }
 
       const taskId = 'task-' + Date.now().toString()
 
-      // 2. Insert into tasks table
-      const { data, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('tasks')
         .insert({
           id: taskId,
-          workspace_id: user.workspace_id,
+          workspace_id: workspaceId,
           title: text,
-          due_date: remindAt.toISOString().split('T')[0], // 'YYYY-MM-DD'
+          due_date: remindAt.toISOString().split('T')[0],
           completed: false,
           created_at: Date.now()
         })
@@ -151,7 +166,7 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
       return { success: true, text, due_date: remindAt.toISOString().split('T')[0] }
     } catch (e) {
       logger.error('Failed to set reminder (task):', e)
-      return { error: 'Reminder table missing. Please contact admin to run the SQL migration.' }
+      return { error: 'Failed to create reminder. Please try again.' }
     }
   },
 

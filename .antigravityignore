@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.archive(dont use)
+.claude/worktrees
+tsconfig.tsbuildinfo
+package-lock.json

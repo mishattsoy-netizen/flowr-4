@@ -37,7 +37,7 @@
   --radius-regular: 12px;
   --radius-medium: 8px;
   --radius-8: 8px;
-  --radius-small: 6px;
+  --radius-small: 5px;
   --: 0;
   color-scheme: dark;
 }
@@ -227,7 +227,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-accent {
-  @apply flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--on-accent)] px-4 py-1.5 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
+  @apply flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--on-accent)] px-3 h-7 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
 
   &:hover {
     @apply opacity-90;
@@ -235,13 +235,44 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-task {
-  @apply flex items-center justify-center gap-2 bg-[#E09952] text-[var(--bone-100)] px-4 py-1.5 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
+  @apply flex items-center justify-center gap-2 bg-[#E09952] text-[var(--bone-100)] px-3 h-7 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
 
   &:hover {
     @apply opacity-90;
   }
 }
 
+@utility btn-bento {
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-15)] text-[var(--bone-60)] bg-[var(--white-overlay)];
+
+  &:hover {
+    @apply border-[var(--bone-30)] text-[var(--bone-100)] bg-[var(--bone-6)];
+  }
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
+
+@utility btn-bento-active {
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-100)] text-[var(--bone-100)] bg-transparent;
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
+
+@utility btn-bento-danger {
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-15)] text-[var(--bone-30)] bg-transparent;
+
+  &:hover {
+    @apply border-red-500/30 text-red-500 bg-red-500/5;
+  }
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
 @utility btn-bone-5 {
   @apply flex items-center justify-center bg-[var(--bone-5)] text-[var(--bone-60)] px-3 py-1.5 rounded-[var(--radius-medium)];
 
@@ -250,32 +281,12 @@ html[data-interface-size="big"] {
   }
 }
 
-@utility btn-bento {
-  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-15)] text-[var(--bone-60)] bg-[var(--white-overlay)];
-
-  &:hover {
-    @apply border-[var(--bone-30)] text-[var(--bone-100)] bg-[var(--bone-6)];
-  }
-
-  svg {
-    @apply w-3.5 h-3.5;
-  }
+.sidebar-item-row {
+  @apply active:scale-[0.99] transition-all duration-75;
 }
 
-@utility btn-bento-active {
-  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-100)] text-[var(--bone-100)] bg-transparent;
-
-  svg {
-    @apply w-3.5 h-3.5;
-  }
-}
-
-@utility btn-bento-danger {
-  @apply flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-[var(--bone-15)] text-[var(--bone-30)] bg-transparent;
-
-  &:hover {
-    @apply border-red-500/30 text-red-500 bg-red-500/5;
-  }
+@utility btn-sidebar-utility {
+  @apply w-[22px] h-[22px] flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-all duration-75;
 }
 
 @utility popup-glass-big {
@@ -295,7 +306,7 @@ html[data-interface-size="big"] {
 }
 
 @utility popup-divider {
-  @apply h-px bg-white/5 my-1.5 -mx-1.5;
+  @apply h-px bg-white/5 my-1.5 mx-3;
 }
 
 @utility popup-item-danger {

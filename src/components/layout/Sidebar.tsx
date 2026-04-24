@@ -5,7 +5,7 @@ import type { EntityType, Entity, SidebarSectionId } from '@/data/store';
 import { getDescendantIds } from '@/data/store.helpers';
 import { getEntityIcon } from '@/data/icons';
 
-import { Search, LayoutDashboard, Star, ChevronRight, ChevronDown, Moon, Plus, ChevronLeft, Folder, Sun, X, FileText, Frame, Layers, MoreHorizontal, Settings, Columns, GripVertical, Activity, ListTodo } from 'lucide-react';
+import { Search, LayoutDashboard, Star, ChevronRight, ChevronDown, Moon, Plus, ChevronLeft, Folder, Sun, X, FileText, Frame, Layers, MoreHorizontal, Settings, Columns, GripVertical, Activity, ListTodo, ChevronsUpDown } from 'lucide-react';
 import { Toggle } from '../ui/Toggle';
 import clsx from 'clsx';
 import { useState, useMemo, useCallback } from 'react';
@@ -64,6 +64,7 @@ export const Sidebar = React.memo(function Sidebar() {
   const sidebarSectionSettings = useStore(state => state.sidebarSectionSettings);
   const hiddenEntityIds = useStore(state => state.hiddenEntityIds);
   const setSectionSortMode = useStore(state => state.setSectionSortMode);
+  const contextMenu = useStore(state => state.contextMenu);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isFavoritesCollapsed, setIsFavoritesCollapsed] = useState(false);
@@ -341,7 +342,7 @@ export const Sidebar = React.memo(function Sidebar() {
                 <button
                   onClick={() => setActiveEntityId('dashboard')}
                   className={clsx(
-                    "p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
+                    "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
                     activeEntityId === 'dashboard'
                       ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
                       : "bg-transparent text-[var(--bone-60)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
@@ -354,7 +355,7 @@ export const Sidebar = React.memo(function Sidebar() {
                 <button
                   onClick={() => setActiveEntityId('tracker')}
                   className={clsx(
-                    "p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
+                    "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
                     activeEntityId === 'tracker'
                       ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
                       : "bg-transparent text-[var(--bone-60)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
@@ -412,30 +413,30 @@ export const Sidebar = React.memo(function Sidebar() {
                     <button
                       onClick={() => setActiveEntityId('dashboard')}
                       className={clsx(
-                        "flex items-center w-full cursor-pointer select-none text-sm rounded-[var(--radius-small)] px-3 py-[3px] group border border-transparent transition-all duration-0",
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent transition-all duration-0",
                         activeEntityId === 'dashboard'
-                          ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
+                          ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-medium"
                           : "bg-transparent text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                       )}
                     >
-                      <div className="w-5 shrink-0 flex items-center justify-center">
-                        <LayoutDashboard strokeWidth={2} className="w-4 h-4" />
+                      <div className="w-7 shrink-0 flex items-center justify-center">
+                        <LayoutDashboard strokeWidth={2} className="w-3.5 h-3.5" />
                       </div>
-                      <span className="ml-[8px] flex-1 truncate text-left text-[14px] font-medium">Dashboard</span>
+                      <span className="ml-0 flex-1 truncate text-left text-[14px]">Dashboard</span>
                     </button>
                     <button
                       onClick={() => setActiveEntityId('tracker')}
                       className={clsx(
-                        "flex items-center w-full cursor-pointer select-none text-sm rounded-[var(--radius-small)] px-3 py-[3px] group border border-transparent transition-all duration-0",
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent transition-all duration-0",
                         activeEntityId === 'tracker'
-                          ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
+                          ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-medium"
                           : "bg-transparent text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                       )}
                     >
-                      <div className="w-5 shrink-0 flex items-center justify-center">
-                        <ListTodo strokeWidth={2} className="w-4 h-4" />
+                      <div className="w-7 shrink-0 flex items-center justify-center">
+                        <ListTodo strokeWidth={2} className="w-3.5 h-3.5" />
                       </div>
-                      <span className="ml-[8px] flex-1 truncate text-left text-[14px] font-medium">Tracker</span>
+                      <span className="ml-0 flex-1 truncate text-left text-[14px]">Tracker</span>
                     </button>
                     <div className="h-px bg-border/30 -mx-3 mt-3 mb-4" />
                   </div>
@@ -455,7 +456,7 @@ export const Sidebar = React.memo(function Sidebar() {
                             <div key="favorites" className="flex flex-col">
                                <div
                                  onClick={() => setIsFavoritesCollapsed(!isFavoritesCollapsed)}
-                                 className="px-3 py-[3px] flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-small)] transition-all duration-0"
+                                 className="px-3 py-[3px] flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-8)] transition-all duration-0"
                                >
                                  <span className="text-[10px] font-ui-label font-medium uppercase tracking-wider">Pinned</span>
                                  <div className="flex items-center gap-0.5">
@@ -465,7 +466,10 @@ export const Sidebar = React.memo(function Sidebar() {
                                        const rect = e.currentTarget.getBoundingClientRect();
                                        openContextMenu('pinned', rect.right, rect.top, 'sidebar-section');
                                      }}
-                                     className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-6)]"
+                                     className={clsx(
+                                       "btn-sidebar-utility",
+                                       contextMenu?.entityId === 'pinned' && "bg-[var(--bone-10)] text-[var(--bone-100)] opacity-100"
+                                     )}
                                    >
                                      <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
                                    </button>
@@ -504,17 +508,20 @@ export const Sidebar = React.memo(function Sidebar() {
                             <div key="unsorted" className="flex flex-col">
                                <div
                                  onClick={() => setIsUnsortedCollapsed(!isUnsortedCollapsed)}
-                                 className="px-3 py-[3px] flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-small)] transition-all duration-0"
+                                 className="px-3 h-7 flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-8)] transition-all duration-0"
                                >
                                  <span className="text-[10px] font-ui-label font-medium uppercase tracking-wider">Unsorted</span>
-                                 <div className="flex items-center gap-0.5">
+                                 <div className="flex items-center gap-1">
                                    <button
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        const rect = e.currentTarget.getBoundingClientRect();
                                        openContextMenu('unsorted', rect.right, rect.top, 'sidebar-section');
                                      }}
-                                     className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-6)]"
+                                     className={clsx(
+                                       "btn-sidebar-utility",
+                                       contextMenu?.entityId === 'unsorted' && "bg-[var(--bone-10)] text-[var(--bone-100)] opacity-100"
+                                     )}
                                    >
                                      <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
                                    </button>
@@ -545,18 +552,21 @@ export const Sidebar = React.memo(function Sidebar() {
                           return (
                             <div key="workspaces" className="flex flex-col">
                                <div
-                                 className="px-3 py-[3px] flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-small)] transition-all duration-0"
+                                 className="px-3 h-7 flex items-center justify-between group cursor-pointer select-none text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] rounded-[var(--radius-8)] transition-all duration-0"
                                  onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
-                               >
+                                >
                                  <span className="text-[10px] font-ui-label font-medium uppercase tracking-wider">Workspaces</span>
-                                 <div className="flex items-center gap-0.5">
+                                 <div className="flex items-center gap-1">
                                    <button
                                      onClick={(e) => {
                                        e.stopPropagation();
                                        const rect = e.currentTarget.getBoundingClientRect();
                                        openContextMenu('workspaces', rect.right, rect.top, 'sidebar-section');
                                      }}
-                                     className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-6)]"
+                                     className={clsx(
+                                       "btn-sidebar-utility",
+                                       contextMenu?.entityId === 'workspaces' && "bg-[var(--bone-10)] text-[var(--bone-100)] opacity-100"
+                                     )}
                                    >
                                      <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
                                    </button>
@@ -565,7 +575,7 @@ export const Sidebar = React.memo(function Sidebar() {
                                        e.stopPropagation();
                                        openModal({ kind: 'newCollection' });
                                      }}
-                                     className="p-1 hover:bg-[var(--bone-6)] rounded-[var(--radius-small)]"
+                                     className="btn-sidebar-utility"
                                    >
                                      <Plus strokeWidth={2} className="w-3.5 h-3.5" />
                                    </button>
@@ -604,24 +614,42 @@ export const Sidebar = React.memo(function Sidebar() {
       </div>
 
       <div className={clsx("p-3 border-t border-border flex items-center mt-auto", isSidebarCollapsed ? "flex-col gap-4" : "justify-between")}>
-        <div className="flex items-center gap-2">
-          <Tooltip content="Toggle Theme">
-            <button onClick={toggleTheme} className="p-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]">
-              {theme === 'dark' ? <Moon strokeWidth={2} className="w-4 h-4" /> : <Sun strokeWidth={2} className="w-4 h-4" />}
-            </button>
-          </Tooltip>
+        <div className="flex items-center gap-2 overflow-hidden">
           {!isSidebarCollapsed && (
-             <div className="flex flex-col">
-               <span className="text-xs font-medium text-[var(--bone-100)]">Misha</span>
-               <span className="text-[10px] text-[var(--bone-60)]">Free Plan</span>
+             <div className="flex flex-col min-w-0">
+               <span className="text-xs font-medium text-[var(--bone-100)] truncate">Misha</span>
+               <span className="text-[10px] text-[var(--bone-60)] truncate">
+                 {activeWorkspace?.name || 'Personal'}
+               </span>
              </div>
           )}
         </div>
-        <Tooltip content="Settings">
-          <button className="p-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]">
-            <Settings strokeWidth={2} className="w-4 h-4" />
-          </button>
-        </Tooltip>
+        <div className="flex items-center gap-1 shrink-0">
+          <Tooltip content="Spaces">
+            <button 
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                openContextMenu(null, rect.left, rect.top, 'spaces');
+              }}
+              className="btn-sidebar-utility"
+            >
+              <ChevronsUpDown strokeWidth={2} className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Toggle Theme">
+            <button onClick={toggleTheme} className="btn-sidebar-utility">
+              {theme === 'dark' ? <Moon strokeWidth={2} className="w-4 h-4" /> : <Sun strokeWidth={2} className="w-4 h-4" />}
+            </button>
+          </Tooltip>
+          <Tooltip content="Settings">
+            <button 
+              onClick={() => openModal({ kind: 'settings' })}
+              className="btn-sidebar-utility"
+            >
+              <Settings strokeWidth={2} className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
     </aside>
   );

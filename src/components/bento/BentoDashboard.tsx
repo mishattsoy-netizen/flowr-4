@@ -35,6 +35,7 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
     isLoading,
     draggedId,
     swapTargetId,
+    stackTargetId,
     toggleEditMode,
     addWidget,
     removeWidget,
@@ -312,55 +313,101 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
       const posL = positions.get(leftItem.i);
       if (!posL) return;
 
-      // Find unique boundaries on the right
       const rightNeighbors = layout.filter(it => {
         const posR = positions.get(it.i);
-        return posR && posR.x === (posL.x + posL.w) && 
-               Math.max(posL.y, posR.y) < Math.min(posL.y + posL.h, posR.y + posR.h);
+        if (!posR) return false;
+        const isAdjacent = posR.x === (posL.x + posL.w);
+        const overlapTop = Math.max(posL.y, posR.y);
+        const overlapBottom = Math.min(posL.y + posL.h, posR.y + posR.h);
+        const hasOverlap = overlapTop < overlapBottom;
+        return isAdjacent && hasOverlap;
       });
 
       if (rightNeighbors.length > 0) {
-        // Create a handle for this widget's right edge
+        const rightItem = rightNeighbors.find(it => positions.get(it.i)?.y === posL.y) || rightNeighbors[0];
+        const posR = positions.get(rightItem.i);
+        if (!posR) return;
+
+        const minL = widgetRegistry[leftItem.type]?.minW ?? 2;
+        const maxL = widgetRegistry[leftItem.type]?.maxW ?? 6;
+        const minR = widgetRegistry[rightItem.type]?.minW ?? 2;
+        const maxR = widgetRegistry[rightItem.type]?.maxW ?? 6;
+
+        // A resize handle is only useful if we can move it in at least one direction
+        const canMoveRight = leftItem.w < maxL && rightItem.w > minR;
+        const canMoveLeft = leftItem.w > minL && rightItem.w < maxR;
+
+        if (canMoveRight || canMoveLeft) {
           divs.push({
             row: posL.y,
             leftId: leftItem.i,
-            rightId: rightNeighbors[0].i, 
+            rightId: rightItem.i, 
             xFraction: (posL.x + posL.w) / 6,
             yPct: (posL.y / MAX_ROWS) * 100,
-            hPct: (posL.h / MAX_ROWS) * 100
+            hPct: ((Math.min(posL.y + posL.h, posR.y + posR.h) - Math.max(posL.y, posR.y)) / MAX_ROWS) * 100,
+            yOffset: (Math.max(posL.y, posR.y) / MAX_ROWS) * 100
           });
         }
+      }
+    });
+    return divs;
+  }, [layout, positions, editMode, dragState]);
+  
+  const verticalDividers = useMemo(() => {
+    if (!editMode || dragState) return [];
+    const divs: { topId: string; bottomId: string; yPct: number; xPct: number; wPct: number; xOffset: number }[] = [];
+    
+    layout.forEach(topItem => {
+      const posT = positions.get(topItem.i);
+      if (!posT) return;
+
+      const bottomNeighbors = layout.filter(it => {
+        const posB = positions.get(it.i);
+        if (!posB) return false;
+        const isAdjacent = posB.y === (posT.y + posT.h);
+        const overlapLeft = Math.max(posT.x, posB.x);
+        const overlapRight = Math.min(posT.x + posT.w, posB.x + posB.w);
+        const hasOverlap = overlapLeft < overlapRight;
+        return isAdjacent && hasOverlap;
       });
-      return divs;
-    }, [layout, positions, editMode, dragState]);
-  
-    const verticalDividers = useMemo(() => {
-      if (!editMode || dragState) return [];
-      const divs: { topId: string; bottomId: string; yPct: number; xPct: number; wPct: number }[] = [];
-      
-      layout.forEach(topItem => {
-        const posT = positions.get(topItem.i);
-        if (!posT) return;
-  
-        const bottomNeighbors = layout.filter(it => {
-          const posB = positions.get(it.i);
-          return posB && posB.y === (posT.y + posT.h) &&
-                 Math.max(posT.x, posB.x) < Math.min(posT.x + posT.w, posB.x + posB.w);
-        });
-  
-        if (bottomNeighbors.length > 0) {
+
+      if (bottomNeighbors.length > 0) {
+        const bottomItem = bottomNeighbors.find(it => positions.get(it.i)?.x === posT.x) || bottomNeighbors[0];
+        const posB = positions.get(bottomItem.i);
+        if (!posB) return;
+
+        const minT = widgetRegistry[topItem.type]?.minH ?? 1;
+        const maxT = widgetRegistry[topItem.type]?.maxH ?? 4;
+        const minB = widgetRegistry[bottomItem.type]?.minH ?? 1;
+        const maxB = widgetRegistry[bottomItem.type]?.maxH ?? 4;
+
+        const combinedH = topItem.h + bottomItem.h;
+        
+        // STRICTURE: Hide handle if the combined height occupies the full grid height.
+        // In a fixed 4-row grid, changing height in a full column almost always 
+        // triggers a cascade of pushes that breaks the layout.
+        if (topItem.row + combinedH >= MAX_ROWS) {
+          return;
+        }
+
+        const canMoveDown = topItem.h < maxT && bottomItem.h > minB;
+        const canMoveUp = topItem.h > minT && bottomItem.h < maxB;
+
+        if (canMoveDown || canMoveUp) {
           divs.push({
             topId: topItem.i,
-            bottomId: bottomNeighbors[0].i,
+            bottomId: bottomItem.i,
             yPct: ((posT.y + posT.h) / MAX_ROWS) * 100,
-            xPct: (posT.x / 6) * 100,
-            wPct: (posT.w / 6) * 100
+            xPct: (Math.max(posT.x, posB.x) / 6) * 100,
+            wPct: ((Math.min(posT.x + posT.w, posB.x + posB.w) - Math.max(posT.x, posB.x)) / 6) * 100,
+            xOffset: Math.max(posT.x, posB.x)
           });
         }
-      });
-      return divs;
-    }, [layout, positions, editMode, dragState]);
-
+      }
+    });
+    return divs;
+  }, [layout, positions, editMode, dragState]);
+  
   // ─── Render Helpers ───────────────────────────────────────────────────────
 
   function getStyle(pos: {x: number, y: number, w: number, h: number}) {
@@ -388,10 +435,10 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
               <div className="flex items-center gap-2 mr-1">
                 {editMode && (
                   <>
-                    <button onClick={undo} disabled={!canUndo} className="btn-bento px-2 disabled:opacity-50">
+                    <button onClick={undo} disabled={!canUndo} className="btn-bento disabled:opacity-50">
                       ↶ Undo
                     </button>
-                    <button onClick={redo} disabled={!canRedo} className="btn-bento px-2 disabled:opacity-50">
+                    <button onClick={redo} disabled={!canRedo} className="btn-bento disabled:opacity-50">
                       ↷ Redo
                     </button>
                     <button onClick={resetLayout} className="btn-bento-danger">
@@ -428,7 +475,8 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
               
               const isDragged = item.i === dragState?.id;
               const isSwapTarget = item.i === swapTargetId;
-              
+              const isStackTarget = item.i === stackTargetId;
+
               const style = getStyle(pos);
 
               return (
@@ -439,21 +487,23 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
                       'absolute bento-widget-cell',
                       isDragged && 'opacity-0 pointer-events-none', // hide original while dragging
                       editMode && 'cursor-grab active:cursor-grabbing hover:z-10',
-                      isSwapTarget && 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-[var(--radius-big)]'
+                      isSwapTarget && 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-[var(--radius-big)]',
+                      isStackTarget && 'ring-2 ring-accent ring-offset-2 ring-offset-background rounded-[var(--radius-big)] bg-accent/5 z-20 scale-105 transition-all duration-300'
                     )}
-                    style={{ ...style, transition: (isDragged || isResizing) ? 'none' : 'all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
-onPointerDown={(e) => onWidgetPointerDown(e, item.i)}
->
-<BentoWidget
-item={item}
-contextId={contextId}
-editMode={editMode}
-isLoading={isLoading}
-onUpdateData={(newData) => updateWidgetData(item.i, newData)}
-onRemove={() => removeWidget(item.i)}
-isSwapTarget={isSwapTarget}
-/>
-</div>
+                     style={{ ...style, transition: isDragged ? 'none' : 'all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+                    onPointerDown={(e) => onWidgetPointerDown(e, item.i)}
+
+              >
+              <BentoWidget
+              item={item}
+              contextId={contextId}
+              editMode={editMode}
+              isLoading={isLoading}
+              onUpdateData={(newData) => updateWidgetData(item.i, newData)}
+              onRemove={() => removeWidget(item.i)}
+              isSwapTarget={isSwapTarget}
+              isStackTarget={isStackTarget}
+              /></div>
 
                     {/* Placeholder shows where it will drop */}
                     {isDragged && dragState && (
@@ -510,7 +560,7 @@ isSwapTarget={isSwapTarget}
                  className="absolute z-30 cursor-col-resize group"
                  style={{ 
                    left: `calc(${div.xFraction * 100}% - 10px)`, 
-                   top: `calc(${div.yPct}% + ${GAP/2}px)`,
+                   top: `calc(${div.yOffset}% + ${GAP/2}px)`,
                    height: `calc(${div.hPct}% - ${GAP}px)`,
                    width: 20,
                  }}
@@ -519,18 +569,18 @@ isSwapTarget={isSwapTarget}
                    setDividerDrag({ row: div.row, leftId: div.leftId, rightId: div.rightId, startX: e.clientX });
                  }}
                >
-                {/* Visual Line */}
-                <div className={clsx(
-                  "absolute inset-y-0 left-1/2 -translate-x-1/2",
-                  !dividerDrag && "transition-all duration-800",
-                  dividerDrag?.leftId === div.leftId 
-                    ? "bg-accent w-[2px] shadow-[0_0_15px_rgba(233,233,226,0.3)]" 
-                    : "bg-[var(--bone-20)] w-[1px] group-hover:bg-accent/50 group-hover:w-[2px]"
-                )} />
-                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4" />
-              </div>
-            ))}
-
+                 {/* Visual Line */}
+                 <div className={clsx(
+                   "absolute inset-y-0 left-1/2 -translate-x-1/2",
+                   !dividerDrag && "transition-all duration-800",
+                   dividerDrag?.leftId === div.leftId 
+                     ? "bg-accent w-[2px] shadow-[0_0_15px_rgba(233,233,226,0.3)]" 
+                     : "bg-[var(--bone-20)] w-[1px] group-hover:bg-accent/50 group-hover:w-[2px]"
+                 )} />
+                 <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4" />
+               </div>
+             ))}
+            
             {verticalDividers.map((div, idx) => (
               <div
                 key={`vdiv-${div.topId}-${div.xPct}`}
@@ -561,13 +611,14 @@ isSwapTarget={isSwapTarget}
         </div>
       </div>
 
-      <WidgetPicker
-        open={editMode}
-        onAdd={addWidget}
-        onDragStart={() => {}}
-        onDragEnd={() => {}}
-        contextId={contextId}
-      />
+<WidgetPicker
+  open={editMode}
+  onAdd={addWidget}
+  onDragStart={() => {}}
+  onDragEnd={() => {}}
+  contextId={contextId}
+  layout={layout}
+/>
     </div>
   );
 }

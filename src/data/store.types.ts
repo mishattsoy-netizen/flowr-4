@@ -184,7 +184,7 @@ export type ModalType =
   | { kind: 'journalDetail'; id: string | null }
   | { kind: 'routineDetail'; id: string | null };
 
-export type EditingSource = 'sidebar' | 'sidebar-section' | 'header' | 'view' | 'favorites' | 'recent' | 'canvas' | 'editor' | 'modal' | 'all-files' | 'folders';
+export type EditingSource = 'sidebar' | 'sidebar-section' | 'header' | 'view' | 'favorites' | 'recent' | 'canvas' | 'editor' | 'modal' | 'all-files' | 'folders' | 'spaces';
 
 export interface AIAttachment {
   type: 'image' | 'audio' | 'file';
@@ -310,7 +310,7 @@ export interface AppState {
   favoriteIds: string[];
   collapsedIds: string[];
   modal: ModalType;
-  contextMenu: { entityId: string; x: number; y: number; source: EditingSource } | null;
+  contextMenu: { entityId: string | null; x: number; y: number; source: EditingSource } | null;
   editingEntity: { id: string; source: EditingSource } | null;
   theme: 'dark' | 'light';
   interfaceSize: 'small' | 'regular' | 'big';
@@ -447,7 +447,7 @@ export interface AppState {
   setKnowledgeData: (data: Partial<AppState>) => void;
   openModal: (modal: ModalType) => void;
   closeModal: () => void;
-  openContextMenu: (entityId: string, x: number, y: number, source: EditingSource) => void;
+  openContextMenu: (entityId: string | null, x: number, y: number, source: EditingSource) => void;
   closeContextMenu: () => void;
   copyBlock: (block: EditorBlock) => void;
   pasteBlock: (entityId: string, afterBlockId: string) => void;

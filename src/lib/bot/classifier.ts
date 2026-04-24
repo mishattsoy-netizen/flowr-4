@@ -19,23 +19,56 @@ Respond with ONLY the category name.
 User Message:
 `
 
+export interface ClassifyResult {
+  category: IntentCategory
+  classifierModel: string
+}
+
 /**
  * Uses Gemini Flash to classify user intent.
  * This is the gateway to the Flowr Routing Engine.
  */
 export async function classifyIntent(message: string, aiApiKey?: string, modelId?: string, platform: Platform = 'telegram'): Promise<IntentCategory> {
+  return (await classifyIntentWithModel(message, aiApiKey, modelId, platform)).category
+}
+
+export async function classifyIntentWithModel(message: string, aiApiKey?: string, modelId?: string, platform: Platform = 'telegram'): Promise<ClassifyResult> {
   // 1. Keyword Overrides (Efficiency)
   const text = message.toLowerCase()
-  if (text.startsWith('/') || text.length < 5) return 'FAST_SIMPLE'
-  if (text.includes('draw') || text.includes('generate image') || text.includes('create a picture') || text.includes('visualize') || text.includes('make an image') || text.includes('generate a logo')) return 'IMAGE_GEN'
-  if (text.includes('search') || text.includes('who is') || text.includes('news about')) return 'WEB_SEARCH'
-  if (text.includes('note') || text.includes('folder') || text.includes('task') || text.includes('delete') || text.includes('create')) {
-    // If it mentions workspace actions, it might be tool calling, but we still let AI decide unless very obvious
+
+  // Slash commands: route by command name, not blindly to FAST_SIMPLE
+  if (text.startsWith('/')) {
+    const cmd = text.split(/\s/)[0].slice(1)
+    if (['image', 'img', 'draw', 'generate', 'pic', 'photo'].includes(cmd)) return { category: 'IMAGE_GEN', classifierModel: 'keyword' }
+    if (['task', 'note', 'folder', 'reminder', 'todo'].includes(cmd)) return { category: 'TOOL_CALLING', classifierModel: 'keyword' }
+    if (['search', 'find', 'web', 'news'].includes(cmd)) return { category: 'WEB_SEARCH', classifierModel: 'keyword' }
+    return { category: 'FAST_SIMPLE', classifierModel: 'keyword' }
   }
+
+  if (text.length < 5) return { category: 'FAST_SIMPLE', classifierModel: 'keyword' }
+
+  // Image generation: broad keyword match
+  const imageWords = ['image', 'picture', 'photo', 'random', 'art', 'logo', 'illustration', 'artwork', 'wallpaper', 'portrait', 'landscape']
+  if (
+    text.includes('draw') ||
+    text.includes('paint me') ||
+    text.includes('illustrate') ||
+    text.includes('visualize') ||
+    text.includes('make an image') ||
+    text.includes('make a picture') ||
+    text.includes('create an image') ||
+    text.includes('create a picture') ||
+    text.includes('generate a logo') ||
+    (text.includes('generate') && imageWords.some(w => text.includes(w))) ||
+    (text.includes('create') && imageWords.some(w => text.includes(w))) ||
+    (text.includes('make') && imageWords.some(w => text.includes(w)))
+  ) return { category: 'IMAGE_GEN', classifierModel: 'keyword' }
+
+  if (text.includes('search') || text.includes('who is') || text.includes('news about')) return { category: 'WEB_SEARCH', classifierModel: 'keyword' }
 
   // 2. Dynamic Classification Model from DB
   const { chain } = await getRouterChain('CLASSIFIER', platform)
-  
+
   // Use provided modelId if exists (client override), otherwise use the chain
   const activeChain = modelId ? [{ id: modelId, provider: 'google', is_enabled: true }] : chain
 
@@ -47,21 +80,20 @@ export async function classifyIntent(message: string, aiApiKey?: string, modelId
       let rawResponse: string | null = null
 
       if (modelConfig.provider === 'google') {
-        rawResponse = await runGoogle(modelConfig.id, `${INTENT_CLASSIFICATION_PROMPT}\n"${prompt}"`, undefined, undefined, { aiApiKey, platform })
+        rawResponse = await runGoogle(modelConfig.id, `${INTENT_CLASSIFICATION_PROMPT}\n"${message}"`, undefined, undefined, { aiApiKey, platform })
       } else if (modelConfig.provider === 'groq') {
-        rawResponse = await runGroq(modelConfig.id, `${INTENT_CLASSIFICATION_PROMPT}\n"${prompt}"`, undefined, aiApiKey)
+        rawResponse = await runGroq(modelConfig.id, `${INTENT_CLASSIFICATION_PROMPT}\n"${message}"`, undefined, aiApiKey)
       }
 
       if (rawResponse) {
-        const rawCategory = rawResponse.trim().toUpperCase() as any
         const validCategories: IntentCategory[] = [
-          'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING', 
+          'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING',
           'IMAGE_GEN', 'WEB_SEARCH', 'AUDIO_VOICE', 'TOOL_CALLING'
         ]
 
         for (const cat of validCategories) {
           if (rawResponse.toUpperCase().includes(cat)) {
-            return cat
+            return { category: cat, classifierModel: modelConfig.id }
           }
         }
       }
@@ -70,5 +102,5 @@ export async function classifyIntent(message: string, aiApiKey?: string, modelId
     }
   }
 
-  return 'FAST_SIMPLE'
+  return { category: 'FAST_SIMPLE', classifierModel: 'fallback' }
 }

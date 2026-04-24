@@ -37,7 +37,9 @@ const MAX_WIDGETS = 12;
 
 export function useBentoLayout(contextId: string) {
   const [layout, setLayout] = useState<BentoLayoutItem[]>(() => {
-    return rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
+    const initial = DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? [];
+    const balanced = rebalanceAll(initial);
+    return validateLayout(balanced).valid ? balanced : initial;
   });
   const [editMode, setEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +48,7 @@ export function useBentoLayout(contextId: string) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [previewLayout, setPreviewLayout] = useState<BentoLayoutItem[] | null>(null);
   const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
+  const [stackTargetId, setStackTargetId] = useState<string | null>(null);
 
   // History State
   const [undoStack, setUndoStack] = useState<BentoLayout[]>([]);
@@ -64,7 +67,14 @@ export function useBentoLayout(contextId: string) {
       if (saved) {
         // Migration: Fix legacy 'upcoming' type
         const items = saved.items.map(it => it.type === 'upcoming' ? { ...it, type: 'recent' } : it);
-        setLayout(compactLayout(rebalanceAll(items)));
+        const balanced = compactLayout(rebalanceAll(items));
+        if (validateLayout(balanced).valid) {
+          setLayout(balanced);
+        } else {
+          console.error("[useBentoLayout] Saved layout is invalid, using default.");
+          const defaults = rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
+          setLayout(defaults);
+        }
       }
       setTimeout(() => setIsLoading(false), 200);
     });
@@ -87,26 +97,27 @@ export function useBentoLayout(contextId: string) {
 
   const commitLayout = useCallback((nextItems: BentoLayoutItem[], skipHistory = false) => {
     const balancedItems = rebalanceAll(nextItems);
-
+ 
     const validation = validateLayout(balancedItems);
     if (!validation.valid) {
       console.error("Layout validation failed:", validation.error);
       return;
     }
-
+ 
     // Compact items
     const usedRows = [...new Set(balancedItems.map(it => it.row))].sort((a, b) => a - b);
     const remap = new Map(usedRows.map((r, i) => [r, i]));
     const finalItems = balancedItems.map(it => ({ ...it, row: remap.get(it.row) ?? it.row }));
-
+ 
     if (!skipHistory) {
       setUndoStack(prev => [...prev.slice(-MAX_UNDO_DEPTH + 1), { items: layoutRef.current, rowHeights: [6, 6, 6, 6] }]);
       setRedoStack([]);
     }
-
+ 
     setLayout(finalItems);
     debouncedSave(finalItems);
   }, [debouncedSave]);
+
 
   // Keyboard Shortcuts (Undo/Redo)
   useEffect(() => {
@@ -155,11 +166,18 @@ export function useBentoLayout(contextId: string) {
     const entry = widgetRegistry[type];
     if (!entry) return;
 
+    // Prevent adding duplicates
+    if (layoutRef.current.some(it => it.type === type)) {
+      console.warn(`Widget of type ${type} is already present in the layout.`);
+      return;
+    }
+
     if (layoutRef.current.length >= MAX_WIDGETS) {
       alert(`Maximum of ${MAX_WIDGETS} widgets allowed.`);
       return;
     }
 
+    // Try to find a slot that actually fits without breaking the layout
     const slot = findFirstFit(layoutRef.current, entry.defaultW, entry.defaultH);
     if (!slot) {
       alert('Dashboard is full. Remove some widgets to make room.');
@@ -175,8 +193,34 @@ export function useBentoLayout(contextId: string) {
       h: entry.defaultH,
     };
 
-    // Insert normally
-    commitLayout([...layoutRef.current, newItem]);
+    // To prevent the "Adding breaks everything" bug:
+    // We first create a trial layout, rebalance it, and check if it's valid.
+    const trialLayout = [...layoutRef.current, newItem];
+    const balancedTrial = rebalanceAll(trialLayout);
+    const validation = validateLayout(balancedTrial);
+
+    if (!validation.valid) {
+      console.warn("Trial layout invalid, attempting to make room by shrinking others:", validation.error);
+      
+      // Attempt to make room: shrink all native widgets in the target row to their minW
+      const shrunkLayout = layoutRef.current.map(it => {
+        if (it.row === slot.row) {
+          return { ...it, w: widgetRegistry[it.type]?.minW ?? 2 };
+        }
+        return it;
+      });
+      
+      const balancedShrunk = rebalanceAll([...shrunkLayout, newItem]);
+      if (validateLayout(balancedShrunk).valid) {
+        commitLayout(balancedShrunk);
+        return;
+      }
+      
+      alert('Could not fit widget without breaking layout. Try removing another widget first.');
+      return;
+    }
+
+    commitLayout(trialLayout);
   }, [commitLayout]);
 
   const removeWidget = useCallback((instanceId: string) => {
@@ -230,6 +274,7 @@ export function useBentoLayout(contextId: string) {
       currentHoverRef.current = { id: targetId, row, order: null };
       setPreviewLayout(layoutRef.current);
       setSwapTargetId(null);
+      setStackTargetId(null);
       return;
     }
 
@@ -237,12 +282,31 @@ export function useBentoLayout(contextId: string) {
       currentHoverRef.current = { id: targetId, row, order: null };
       if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
       
-      setSwapTargetId(targetId);
+      const targetItem = layoutRef.current.find(it => it.i === targetId);
+      const draggedItem = layoutRef.current.find(it => it.i === draggedId);
       
-      dwellTimerRef.current = setTimeout(() => {
-        setPreviewLayout(calculateSwapLayout(layoutRef.current, draggedId, targetId));
+      const isStackedWidget = targetItem?.type === 'stacked-widgets';
+      const canStack = isStackedWidget && targetItem && (!targetItem.data?.widgets || targetItem.data.widgets.length < 3) && draggedItem && draggedItem.type !== 'stacked-widgets';
+
+      if (canStack) {
+        setStackTargetId(targetId);
         setSwapTargetId(null);
-      }, DWELL_DELAY_MS);
+        dwellTimerRef.current = setTimeout(() => {
+          setStackTargetId(null);
+          setSwapTargetId(targetId);
+          setPreviewLayout(calculateSwapLayout(layoutRef.current, draggedId, targetId));
+          dwellTimerRef.current = setTimeout(() => {
+             setSwapTargetId(null);
+          }, DWELL_DELAY_MS);
+        }, 1200); // Wait 1.2s before switching to swap mode
+      } else {
+        setStackTargetId(null);
+        setSwapTargetId(targetId);
+        dwellTimerRef.current = setTimeout(() => {
+          setPreviewLayout(calculateSwapLayout(layoutRef.current, draggedId, targetId));
+          setSwapTargetId(null);
+        }, DWELL_DELAY_MS);
+      }
     }
   }, [draggedId]);
 
@@ -258,6 +322,7 @@ export function useBentoLayout(contextId: string) {
       if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
       currentHoverRef.current = { id: null, row, order };
       setPreviewLayout(layoutRef.current);
+      setStackTargetId(null);
       return;
     }
     
@@ -266,6 +331,7 @@ export function useBentoLayout(contextId: string) {
       if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
       
       setSwapTargetId(null);
+      setStackTargetId(null);
       
       dwellTimerRef.current = setTimeout(() => {
         const pushed = calculatePushLayout(layoutRef.current, draggedId, row, order);
@@ -277,6 +343,35 @@ export function useBentoLayout(contextId: string) {
   const handleDragEnd = useCallback(() => {
     if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
     
+    if (stackTargetId && draggedId) {
+      const targetItem = layoutRef.current.find(it => it.i === stackTargetId);
+      const draggedItem = layoutRef.current.find(it => it.i === draggedId);
+      if (targetItem && draggedItem) {
+        const currentWidgets = targetItem.data?.widgets || [];
+        if (!currentWidgets.includes(draggedItem.type)) {
+          const nextWidgets = [...currentWidgets, draggedItem.type];
+          
+          // Remove the dragged item from the layout
+          const layoutWithoutDragged = layoutRef.current.filter(it => it.i !== draggedId);
+          // Update the stacked widget's data
+          const nextLayout = layoutWithoutDragged.map(it => 
+            it.i === stackTargetId 
+              ? { ...it, data: { ...it.data, widgets: nextWidgets, activeTabIndex: nextWidgets.length - 1 } }
+              : it
+          );
+          
+          commitLayout(compactLayout(rebalanceAll(nextLayout)));
+          
+          setDraggedId(null);
+          setPreviewLayout(null);
+          setSwapTargetId(null);
+          setStackTargetId(null);
+          currentHoverRef.current = { id: null, row: null, order: null };
+          return;
+        }
+      }
+    }
+    
     if (previewLayout && draggedId) {
       commitLayout(previewLayout);
     }
@@ -284,8 +379,9 @@ export function useBentoLayout(contextId: string) {
     setDraggedId(null);
     setPreviewLayout(null);
     setSwapTargetId(null);
+    setStackTargetId(null);
     currentHoverRef.current = { id: null, row: null, order: null };
-  }, [previewLayout, draggedId, commitLayout]);
+  }, [previewLayout, draggedId, commitLayout, stackTargetId]);
 
   const [verticalDividerDrag, setVerticalDividerDrag] = useState<{ topId: string, bottomId: string, startY: number } | null>(null);
 
@@ -322,6 +418,7 @@ export function useBentoLayout(contextId: string) {
     isLoading,
     draggedId,
     swapTargetId,
+    stackTargetId,
     toggleEditMode,
     addWidget,
     removeWidget,

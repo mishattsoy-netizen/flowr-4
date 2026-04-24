@@ -39,18 +39,32 @@ export function rebalanceRow(items: BentoLayoutItem[], total: number = HALF_COLS
   }
 
   // 3. Special cases for common distributions
-  if (n === 1) return [{ ...items[0], w: Math.max(minWidths[0], total) }];
+  if (n === 1) return [{ ...items[0], w: total }];
   
-  // 4. Proportional distribution with minW enforcement
-  // If total < totalMin, we will overflow, but rebalanceAll should prevent this.
-  // We'll distribute the extra space beyond totalMin.
-  const extra = Math.max(0, total - totalMin);
+  // 4. Handle underflow (total < totalMin)
+  // We must shrink items below minW to fit the grid and avoid "out of boundaries" errors.
+  // validateLayout will catch if they are too small.
+  if (total < totalMin) {
+    const ratio = total / totalMin;
+    let distributedW = items.map((it, i) => Math.floor(minWidths[i] * ratio));
+    let currentSum = distributedW.reduce((s, w) => s + w, 0);
+    let diff = total - currentSum;
+    
+    // Distribute rounding error
+    for (let i = 0; i < diff; i++) {
+      distributedW[i % n]++;
+    }
+    
+    return items.map((it, i) => ({ ...it, w: distributedW[i] }));
+  }
+
+  // 5. Proportional distribution with minW enforcement
+  const extra = total - totalMin;
   const perItemExtra = Math.floor(extra / n);
   const remainder = extra % n;
 
   return items.map((it, i) => {
     const minW = minWidths[i];
-    // Distribute extra space evenly, giving the remainder to the first few items
     const w = minW + perItemExtra + (i < remainder ? 1 : 0);
     return { ...it, w };
   });
@@ -61,8 +75,8 @@ export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
     let result = [...layout];
     
     for (let r = 0; r < MAX_ROWS; r++) {
-      // 1. Calculate space taken by spanners from previous rows
-      const spanW = layout.filter(it => it.row < r && r < it.row + it.h).reduce((s, it) => s + it.w, 0);
+      // 1. Calculate space taken by spanners from previous rows (use result!)
+      const spanW = result.filter(it => it.row < r && r < it.row + it.h).reduce((s, it) => s + it.w, 0);
       const avail = Math.max(0, HALF_COLS - spanW);
       
       // 2. Get native items for this row, sorted by order
@@ -71,12 +85,13 @@ export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
       // 3. Push items that don't fit (considering minW and MAX_PER_ROW)
       const getMinTotal = (items: BentoLayoutItem[]) => items.reduce((s, it) => s + (widgetRegistry[it.type]?.minW ?? 2), 0);
       
-      while (natives.length > 0 && (natives.length > MAX_PER_ROW || getMinTotal(natives) > avail)) {
+      while (r < MAX_ROWS - 1 && natives.length > 0 && (natives.length > MAX_PER_ROW || getMinTotal(natives) > avail)) {
         const toPush = natives.pop()!;
         const idx = result.findIndex(it => it.i === toPush.i);
         if (idx !== -1) {
-          // Push to next row, maintaining relative order (simplification: put at end)
-          result[idx] = { ...toPush, row: r + 1, order: 99 }; 
+          // Push to next row
+          const nextRow = r + 1;
+          result[idx] = { ...toPush, row: nextRow, order: 99 }; 
         }
       }
       
@@ -93,16 +108,15 @@ export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
       }
     }
     
-    // Filter out anything pushed beyond MAX_ROWS
-    // Instead of deleting, we keep them. validateLayout will catch them if they are off-grid.
     return result;
   } catch (e) {
     console.error("rebalanceAll crashed:", e);
     return layout;
   }
 }
+ 
+ // ─── Compact (gravity) ────────────────────────────────────────────────────────
 
-// ─── Compact (gravity) ────────────────────────────────────────────────────────
 
 export function compactLayout(layout: BentoLayoutItem[]): BentoLayoutItem[] {
   const usedRows = [...new Set(layout.map(it => it.row))].sort((a, b) => a - b);
@@ -121,18 +135,42 @@ export function calculateSwapLayout(
   const target = layout.find(it => it.i === targetId);
   if (!dragged || !target) return layout;
 
-   const result = layout.map(it => {
-     if (it.i === draggedId) return { ...it, row: target.row, order: target.order };
-     if (it.i === targetId) return { ...it, row: dragged.row, order: dragged.order };
-     return it;
-   });
+  // 1. Simple Swap
+  const swapCoords = layout.map(it => {
+    if (it.i === draggedId) return { ...it, row: target.row, order: target.order };
+    if (it.i === targetId) return { ...it, row: dragged.row, order: dragged.order };
+    return it;
+  });
 
-  const rebalanced = rebalanceAll(result);
+  const rebalanced = rebalanceAll(swapCoords);
 
-  if (!validateLayout(rebalanced).valid || rebalanced.length < layout.length) {
-    return layout;
+  if (validateLayout(rebalanced).valid && rebalanced.length === layout.length) {
+    return rebalanced;
   }
-  return rebalanced;
+
+  // 2. Smart Swap: Try to make room by shrinking other widgets in the affected rows
+  const affectedRows = [dragged.row, target.row];
+  const roomMade = layout.map(it => {
+    if (affectedRows.includes(it.row) && it.i !== draggedId && it.i !== targetId) {
+      return { ...it, w: widgetRegistry[it.type]?.minW ?? 2 };
+    }
+    return it;
+  });
+
+  // Apply coordinates to the "room-made" layout
+  const smartSwap = roomMade.map(it => {
+    if (it.i === draggedId) return { ...it, row: target.row, order: target.order };
+    if (it.i === targetId) return { ...it, row: dragged.row, order: dragged.order };
+    return it;
+  });
+
+  const smartRebalanced = rebalanceAll(smartSwap);
+
+  if (validateLayout(smartRebalanced).valid && smartRebalanced.length === layout.length) {
+    return smartRebalanced;
+  }
+
+  return layout;
 }
 
 // ─── Insert / Push ────────────────────────────────────────────────────────────
@@ -298,7 +336,7 @@ export function validateLayout(layout: BentoLayoutItem[]): { valid: boolean; err
       return { valid: false, error: `Widget ${item.type} (${item.i}) is smaller than its minimum dimensions (${minW}x${minH})` };
     }
 
-    if (pos.y < 0 || pos.y >= MAX_ROWS || pos.x < 0 || pos.x + pos.w > 6) {
+    if (pos.y < 0 || pos.y + pos.h > MAX_ROWS || pos.x < 0 || pos.x + pos.w > 6) {
       return { valid: false, error: `Widget ${item.i} is out of grid boundaries` };
     }
   }
@@ -326,8 +364,10 @@ export function computeGridPositions(layout: BentoLayoutItem[]) {
       x++;
     }
     
-    const finalW = Math.max(0, Math.min(item.w, 6 - x));
-    const finalH = Math.max(0, Math.min(item.h, MAX_ROWS - item.row));
+    // Removed hard-capping. The engine must ensure item.w fits.
+    // If it doesn't fit, we still set it, and validateLayout will catch it.
+    const finalW = item.w;
+    const finalH = item.h;
     
     if (finalW > 0 && finalH > 0) {
       positions.set(item.i, { x, y: item.row, w: finalW, h: finalH });
@@ -340,7 +380,6 @@ export function computeGridPositions(layout: BentoLayoutItem[]) {
         }
       }
     } else {
-      // Still set it so we don't crash, but w:0 will hide it in UI
       positions.set(item.i, { x, y: item.row, w: 0, h: 0 });
     }
   }

@@ -14,6 +14,7 @@ import {
   Bot,
   MessageSquareText,
   BarChart3,
+  ScrollText,
   ArrowLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export default function Sidebar() {
         <PlatformSection title="Global Management">
           <NavLink href="/admin" icon={Activity}>System Overview</NavLink>
           <NavLink href="/admin/analytics" icon={BarChart3}>Analytics Engine</NavLink>
+          <NavLink href="/admin/logs" icon={ScrollText}>Message Logs</NavLink>
           <NavLink href="/admin/users" icon={Users}>Global Users</NavLink>
           <NavLink href="/admin/vault" icon={Shield}>Secure Vault</NavLink>
           <NavLink href="/admin/presets" icon={Zap}>Usage Presets</NavLink>

@@ -15,9 +15,10 @@ interface BentoWidgetProps {
   onRemove: () => void;
   onUpdateData: (newData: any) => void;
   isSwapTarget?: boolean;
+  isStackTarget?: boolean;
 }
 
-export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, onUpdateData, isSwapTarget }: BentoWidgetProps) {
+export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, onUpdateData, isSwapTarget, isStackTarget }: BentoWidgetProps) {
   const entry = widgetRegistry[item.type];
   const ref = useRef<HTMLDivElement>(null);
 
@@ -42,7 +43,8 @@ export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, on
       className={clsx(
         'h-full relative group/bento-widget transition-all duration-500 rounded-[var(--radius-big)] overflow-hidden',
         editMode && 'cursor-grab active:cursor-grabbing select-none',
-        isSwapTarget && 'ring-2 ring-[var(--bone-100)]'
+        isSwapTarget && 'ring-2 ring-[var(--bone-100)]',
+        isStackTarget && 'ring-2 ring-accent bg-accent/5 scale-105 z-20'
       )}
     >
       <WidgetComponent 

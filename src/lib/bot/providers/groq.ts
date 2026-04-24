@@ -4,11 +4,12 @@ import { FLOWR_TOOLS } from '../tools/definitions'
 import { toolHandlers } from '../tools/handlers'
 
 export async function runGroq(
-  modelId: string, 
-  prompt: string, 
-  systemPrompt?: string, 
+  modelId: string,
+  prompt: string,
+  systemPrompt?: string,
   aiApiKey?: string,
-  context?: any
+  context?: any,
+  history: any[] = []
 ): Promise<string | null> {
   let keys = aiApiKey ? [aiApiKey] : []
   
@@ -31,10 +32,17 @@ export async function runGroq(
     }
   }))
 
+  // Convert Gemini-format history [{role, parts: [{text}]}] to OpenAI format [{role, content}]
+  const historyMessages = history.map((h: any) => ({
+    role: h.role === 'model' ? 'assistant' : 'user',
+    content: h.parts?.[0]?.text || ''
+  }))
+
   for (const key of keys) {
     try {
       let messages: any[] = [
         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        ...historyMessages,
         { role: 'user', content: prompt }
       ]
 
@@ -51,8 +59,8 @@ export async function runGroq(
           body: JSON.stringify({
             model: modelId,
             messages,
-            tools: modelId.includes('vision') ? undefined : tools, // Groq vision doesn't support tools yet
-            tool_choice: 'auto',
+            tools: (context?.useTools && !modelId.includes('vision')) ? tools : undefined,
+            tool_choice: context?.useTools ? 'auto' : undefined,
             temperature: 0.7
           })
         })

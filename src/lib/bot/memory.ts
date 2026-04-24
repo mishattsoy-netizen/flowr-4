@@ -7,7 +7,7 @@ export interface MemoryItem {
 }
 
 /**
- * Fetches the last N messages for a chat to provide context.
+ * Fetches the last N messages for a Telegram chat to provide context.
  */
 export async function getConversationMemory(telegramId: number, limit: number = 20): Promise<MemoryItem[]> {
   try {
@@ -20,7 +20,6 @@ export async function getConversationMemory(telegramId: number, limit: number = 
 
     if (error) throw error
 
-    // Reverse to get chronological order for LLM
     const history = data.reverse().map((msg: any) => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: [{ text: msg.content || "" }]
@@ -29,6 +28,37 @@ export async function getConversationMemory(telegramId: number, limit: number = 
     return history as MemoryItem[]
   } catch (error) {
     logger.error(`Failed to fetch memory for ${telegramId}:`, error)
+    return []
+  }
+}
+
+/**
+ * Fetches the last N messages for a web app user to provide context.
+ * Requires message_logs to have an auth_user_id column (added via migration).
+ * Falls back to empty history gracefully if column is missing.
+ */
+export async function getWebConversationMemory(authUserId: string, limit: number = 20): Promise<MemoryItem[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('message_logs')
+      .select('role, content')
+      .eq('auth_user_id', authUserId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      logger.warn(`Web memory unavailable for ${authUserId}: ${error.message}`)
+      return []
+    }
+
+    const history = (data || []).reverse().map((msg: any) => ({
+      role: msg.role === 'model' ? 'model' : 'user',
+      parts: [{ text: msg.content || "" }]
+    }))
+
+    return history as MemoryItem[]
+  } catch (error) {
+    logger.error(`Failed to fetch web memory for ${authUserId}:`, error)
     return []
   }
 }

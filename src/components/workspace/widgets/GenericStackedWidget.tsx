@@ -42,9 +42,32 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
     onUpdateData?.({ ...data, widgets: newWidgets, activeTabIndex: newActiveIndex });
   };
 
+  const dragCounter = React.useRef(0);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    // Check if we're dragging a widget to prevent showing drop styles for other types of drags (e.g. files)
+    if (e.dataTransfer.types.includes('application/flowr-widget-type')) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragOver(false);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounter.current = 0;
     setIsDragOver(false);
     const type = e.dataTransfer.getData('application/flowr-widget-type');
     if (type && type !== 'stacked-widgets') {
@@ -71,8 +94,8 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
         isDragOver && "ring-2 ring-accent ring-inset bg-accent/5"
       )}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(true); }}
-      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragOver(false); }}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Dynamic Header Section */}

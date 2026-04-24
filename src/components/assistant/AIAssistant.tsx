@@ -32,7 +32,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setIsHoveringToggle] = useState(false);
-  const [agentEnabled, setAgentEnabled] = useState(true);
+  const [agentEnabled, setAgentEnabled] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [attachments, setAttachments] = useState<AIAttachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);

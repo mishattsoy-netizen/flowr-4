@@ -16,8 +16,8 @@ function detectProvider(keyId: string): string {
 export default async function VaultPage() {
   const keys = await getVaultKeys()
 
-  const cloudflareKeys = keys.filter(k => CLOUDFLARE_KEY_IDS.includes(k.key_id))
-  const otherKeys = keys.filter(k => !CLOUDFLARE_KEY_IDS.includes(k.key_id))
+  const cloudflareKeys = keys.filter((k: { key_id: string }) => CLOUDFLARE_KEY_IDS.includes(k.key_id))
+  const otherKeys = keys.filter((k: { key_id: string }) => !CLOUDFLARE_KEY_IDS.includes(k.key_id))
 
   const grouped: Record<string, { key_id: string }[]> = {}
   for (const provider of KNOWN_PROVIDERS) {

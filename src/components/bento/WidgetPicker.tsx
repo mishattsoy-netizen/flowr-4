@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import { widgetRegistry, WidgetRegistryEntry } from './registry';
 import { useMemo } from 'react';
+import type { BentoLayoutItem } from './types';
 
 interface WidgetPickerProps {
   open: boolean;
@@ -10,9 +11,10 @@ interface WidgetPickerProps {
   onDragStart: (type: string) => void;
   onDragEnd: () => void;
   contextId: string;
+  layout: BentoLayoutItem[];
 }
 
-export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId }: WidgetPickerProps) {
+export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId, layout }: WidgetPickerProps) {
   const isDashboard = contextId === 'dashboard';
   
   const groupedRegistry = useMemo(() => {
@@ -29,7 +31,7 @@ export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId }:
   }, []);
 
   // Order of categories
-  const categories = ['General', 'Organization', 'Life', 'Knowledge'] as const;
+  const categories = ['General', 'Organization'] as const;
 
   return (
     <div
@@ -57,27 +59,47 @@ export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId }:
                 </div>
                 
                 <div className="space-y-2">
-                  {widgets.map(([type, entry]) => (
-                    <div
-                      key={type}
-                      draggable
-                       onDragStart={(e) => {
-                         e.dataTransfer.setData('application/flowr-widget-type', type);
-                         onDragStart(type);
-                       }}
-                      onDragEnd={onDragEnd}
-                      onClick={() => onAdd(type)}
-                      className="group w-full text-left p-3 rounded-xl border border-border/40 bg-[var(--bone-2)] hover:border-accent/20 hover:bg-[var(--bone-8)] cursor-grab active:cursor-grabbing select-none"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="text-sm font-semibold text-foreground group-hover:text-accent">{entry.label}</p>
-                        <span className="text-[10px] font-medium text-muted-foreground/60 bg-[var(--bone-6)] px-1.5 py-0.5 rounded">
-                          {entry.defaultW}×{entry.defaultH}
-                        </span>
+                  {widgets.map(([type, entry]) => {
+                    const isAdded = layout.some(it => it.type === type);
+                    
+                    return (
+                      <div
+                        key={type}
+                        draggable={!isAdded}
+                        onDragStart={(e) => {
+                          if (isAdded) return;
+                          e.dataTransfer.setData('application/flowr-widget-type', type);
+                          onDragStart(type);
+                        }}
+                        onDragEnd={onDragEnd}
+                        onClick={() => !isAdded && onAdd(type)}
+                        className={clsx(
+                          "group w-full text-left p-3 rounded-xl border border-border/40 bg-[var(--bone-2)] transition-all select-none",
+                          isAdded 
+                            ? "opacity-50 cursor-not-allowed bg-muted/30 grayscale-[0.5]" 
+                            : "hover:border-accent/20 hover:bg-[var(--bone-8)] cursor-grab active:cursor-grabbing"
+                        )}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <p className={clsx(
+                            "text-sm font-semibold",
+                            isAdded ? "text-muted-foreground" : "text-foreground group-hover:text-accent"
+                          )}>
+                            {entry.label}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {isAdded && (
+                              <span className="text-[9px] font-bold uppercase text-accent bg-accent/10 px-1 rounded">Added</span>
+                            )}
+                            <span className="text-[10px] font-medium text-muted-foreground/60 bg-[var(--bone-6)] px-1.5 py-0.5 rounded">
+                              {entry.defaultW}×{entry.defaultH}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{entry.description}</p>
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{entry.description}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -87,3 +109,4 @@ export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId }:
     </div>
   );
 }
+

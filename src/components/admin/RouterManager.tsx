@@ -101,6 +101,11 @@ function ModelSelector({
   
   const currentModel = models.find(m => m.id === value)
 
+  // Sync search with value when not open
+  useEffect(() => {
+    if (!isOpen) setSearch(value)
+  }, [value, isOpen])
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -116,16 +121,26 @@ function ModelSelector({
     <div className="relative flex-1" ref={containerRef}>
       <div className="relative group flex items-center gap-2">
         <input 
-          value={isOpen ? search : value}
+          value={search}
+          title={search}
           onChange={(e) => {
-            setSearch(e.target.value)
+            const newVal = e.target.value
+            setSearch(newVal)
+            onChange(newVal)
             if (!isOpen) setIsOpen(true)
           }}
-          onFocus={() => {
-            setSearch('')
+          onFocus={(e) => {
             setIsOpen(true)
           }}
-          className="w-full bg-transparent border-none p-0 focus:ring-0 text-[13.5px] font-medium text-bone-60 group-hover:text-bone-100 placeholder:text-bone-60/20"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setIsOpen(false)
+            } else if (e.key === 'Escape') {
+              setIsOpen(false)
+              setSearch(value)
+            }
+          }}
+          className="w-full bg-transparent border-none p-0 focus:ring-0 text-[13.5px] font-medium text-bone-60 group-hover:text-bone-100 placeholder:text-bone-60/20 truncate"
           placeholder="Model node ID..."
         />
         
@@ -140,6 +155,19 @@ function ModelSelector({
 
       {isOpen && (
         <div className="absolute top-full left-0 w-full mt-1.5 bg-panel border border-white/10 rounded-medium shadow-2xl z-50 max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200 py-1">
+          {search && !models.some(m => m.id === search) && (
+            <button
+              onClick={() => {
+                onChange(search)
+                setIsOpen(false)
+              }}
+              className="w-full flex flex-col items-start gap-0.5 px-3 py-2 border-b border-white/5 hover:bg-bone-hover group/custom"
+            >
+              <span className="text-[8px] font-bold text-accent uppercase tracking-wider opacity-60 group-hover/custom:opacity-100">Custom ID</span>
+              <span className="text-[11px] font-medium text-bone-100 truncate w-full" title={search}>{search}</span>
+            </button>
+          )}
+          
           {filtered.length > 0 ? (
             filtered.map(model => (
               <button
@@ -154,7 +182,7 @@ function ModelSelector({
                   value === model.id ? "bg-accent/10 text-accent" : "text-bone-60 hover:bg-bone-hover hover:text-bone-100"
                 )}
               >
-                <span className="truncate">{model.id}</span>
+                <span className="truncate" title={model.id}>{model.id}</span>
                 <span className={cn(
                   "text-[8px] font-bold px-1 py-0.5 rounded-sm border",
                   value === model.id ? "bg-accent/20 border-accent/30 text-accent" : "bg-background border-white/5 text-bone-60 opacity-40 group-hover:opacity-100"
@@ -163,7 +191,7 @@ function ModelSelector({
                 </span>
               </button>
             ))
-          ) : (
+          ) : !search && (
             <div className="px-4 py-4 text-center text-[9px] font-bold text-bone-60 opacity-30 italic tracking-tight uppercase">Empty node list</div>
           )}
         </div>
@@ -215,11 +243,18 @@ export default function RouterManager({
 
   const updateLocalModel = (index: number, field: keyof ModelConfig, value: any) => {
     const newModels = [...models]
+    const oldProvider = newModels[index].provider
+    const oldId = newModels[index].id
     newModels[index] = { ...newModels[index], [field]: value }
     
     if (field === 'provider') {
+      const oldModels = PROVIDER_MODELS[oldProvider.toLowerCase()] || []
+      const wasKnownModel = oldModels.some(m => m.id === oldId)
+      
       const available = PROVIDER_MODELS[value.toLowerCase()] || []
-      if (available.length > 0 && !available.some(m => m.id === newModels[index].id)) {
+      
+      // Only auto-switch if it was a known model of the old provider AND is not in the new provider's known list
+      if (wasKnownModel && available.length > 0 && !available.some(m => m.id === oldId)) {
         newModels[index].id = available[0].id
       }
     }

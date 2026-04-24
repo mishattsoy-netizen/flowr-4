@@ -2,70 +2,115 @@
 
 import { useStore } from '@/data/store';
 import type { SidebarSectionId } from '@/data/store';
-import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings } from 'lucide-react';
+import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings, Plus, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
 import { IconPicker } from './IconPicker';
 
 interface MenuItem {
   icon?: React.ReactNode;
-  label: string;
+  label?: string;
   onClick?: () => void;
   danger?: boolean;
   hidden?: boolean;
+  isDivider?: boolean;
   children?: MenuItem[];
+}
+
+function MenuItemsList({ 
+  items, 
+  closeMenu, 
+  depth = 0 
+}: { 
+  items: MenuItem[]; 
+  closeMenu: () => void; 
+  depth?: number 
+}) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <>
+      {items.map((item, i) => (
+        <MenuItemComponent 
+          key={i} 
+          item={item} 
+          isOpen={openIndex === i}
+          onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+          closeMenu={closeMenu} 
+          depth={depth} 
+        />
+      ))}
+    </>
+  );
 }
 
 function MenuItemComponent({ 
   item, 
+  isOpen,
+  onToggle,
   closeMenu, 
   depth = 0 
 }: { 
   item: MenuItem; 
+  isOpen: boolean;
+  onToggle: () => void;
   closeMenu: () => void; 
   depth?: number 
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [subMenuPos, setSubMenuPos] = useState({ x: 0, y: 0 });
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  if (item.isDivider) {
+    if (item.hidden) return null;
+    return <div className="popup-divider" />;
+  }
+
+  const handleToggle = (e: React.MouseEvent) => {
+    if (item.children && itemRef.current) {
+      e.stopPropagation();
+      const rect = itemRef.current.getBoundingClientRect();
+      setSubMenuPos({ 
+        x: rect.right - 4,
+        y: rect.top - 6
+      });
+      onToggle();
+    } else if (item.onClick) {
+      item.onClick();
+      closeMenu();
+    }
+  };
 
   return (
     <div 
+      ref={itemRef}
       className="relative flex flex-col w-full"
-      onMouseEnter={() => item.children && setIsOpen(true)}
-      onMouseLeave={() => item.children && setIsOpen(false)}
     >
       <button
-        onClick={() => {
-          if (item.onClick) {
-            item.onClick();
-            if (!item.children) closeMenu();
-          }
-        }}
+        onClick={handleToggle}
         className={clsx(
           "popup-item w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors",
-          item.danger && "popup-item-danger"
+          item.danger && "popup-item-danger",
+          isOpen && "bg-[var(--bone-10)] text-[var(--bone-100)]"
         )}
       >
         {item.icon && <div className="w-4 h-4 shrink-0">{item.icon}</div>}
         <span className="flex-1 text-left font-medium">{item.label}</span>
-        {item.children && <ChevronRight className="w-3 h-3 opacity-50" />}
+        {item.children && <ChevronRight className={clsx("w-3 h-3 opacity-50 transition-transform", isOpen && "rotate-90")} />}
       </button>
 
       {item.children && isOpen && (
         <div 
           className="fixed z-[310] popup-glass-small min-w-[180px] p-1.5"
           style={{ 
-            left: `calc(var(--menu-width) + ${depth * 180}px)`, 
-            top: `var(--item-top)` 
+            left: subMenuPos.x, 
+            top: subMenuPos.y 
           }}
         >
-          {item.children.map((child, i) => (
-            <MenuItemComponent 
-              key={i} 
-              item={child} 
-              closeMenu={closeMenu} 
-              depth={depth + 1} 
-            />
-          ))}
+          <MenuItemsList 
+            items={item.children} 
+            closeMenu={closeMenu} 
+            depth={depth + 1} 
+          />
         </div>
       )}
     </div>
@@ -89,14 +134,17 @@ export function ContextMenu() {
     insertSidebarDivider,
     sidebarSectionSettings,
     hiddenEntityIds,
-    activeEntityId
+    activeEntityId,
+    workspaces,
+    activeWorkspaceId,
+    setActiveWorkspaceId
   } = useStore();
   const ref = useRef<HTMLDivElement>(null);
 
   const [adjustedPos, setAdjustedPos] = useState({ x: 0, y: 0 });
   const [pickerEntityId, setPickerEntityId] = useState<string | null>(null);
-
-  const showIconPicker = pickerEntityId === contextMenu?.entityId;
+  
+  const showIconPicker = pickerEntityId !== null && pickerEntityId === contextMenu?.entityId;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -119,11 +167,19 @@ export function ContextMenu() {
       let x = contextMenu.x;
       let y = contextMenu.y;
 
+      // Shift menu upwards if it's the spaces menu (footer trigger)
+      if (contextMenu.source === 'spaces') {
+        y -= (rect.height + padding);
+      }
+
       if (x + rect.width > window.innerWidth - padding) {
         x = window.innerWidth - rect.width - padding;
       }
       if (y + rect.height > window.innerHeight - padding) {
         y = window.innerHeight - rect.height - padding;
+      }
+      if (y < padding) {
+        y = padding;
       }
       
       setAdjustedPos({ x, y });
@@ -145,8 +201,9 @@ export function ContextMenu() {
   // Handle case where entityId might be a sectionId instead of an entityId
   const entity = entities.find(e => e.id === contextMenu.entityId);
   const isSectionMenu = contextMenu.source === 'sidebar-section';
+  const isSpacesMenu = contextMenu.source === 'spaces';
 
-  if (!isSectionMenu && !entity) return null;
+  if (!isSectionMenu && !isSpacesMenu && !entity) return null;
 
   const getItems = (): MenuItem[] => {
     if (isSectionMenu) {
@@ -183,6 +240,7 @@ export function ContextMenu() {
             onClick: () => setSectionItemLimit(sectionId, limit)
           }))
         },
+        { isDivider: true, hidden: !activeEntityId },
         {
           label: 'Move Up',
           icon: <ArrowUp className="w-4 h-4" />,
@@ -210,17 +268,29 @@ export function ContextMenu() {
             }
           }
         },
-        {
-          label: 'Insert Divider',
-          icon: <div className="w-4 h-px bg-current" />,
-          onClick: () => { insertSidebarDivider(null); },
-        },
+        { isDivider: true },
         {
           label: 'Sidebar Settings',
           icon: <Settings className="w-4 h-4" />,
           onClick: () => { openModal({ kind: 'settings' }); },
         },
       ].filter(item => !item.hidden);
+    }
+
+    if (isSpacesMenu) {
+      return [
+        ...workspaces.map(ws => ({
+          label: ws.name,
+          icon: ws.id === activeWorkspaceId ? <Check className="w-4 h-4 text-accent" /> : <div className="w-4 h-4" />,
+          onClick: () => { setActiveWorkspaceId(ws.id); closeContextMenu(); }
+        })),
+        { isDivider: true },
+        {
+          label: 'New space',
+          icon: <Plus className="w-4 h-4" />,
+          onClick: () => { openModal({ kind: 'newWorkspace' }); closeContextMenu(); }
+        }
+      ];
     }
 
     // Standard entity menu
@@ -278,6 +348,7 @@ export function ContextMenu() {
       });
     }
 
+    items.push({ isDivider: true });
     items.push({
       icon: <Trash2 className="w-4 h-4" />,
       label: 'Delete',
@@ -308,13 +379,10 @@ export function ContextMenu() {
             e.currentTarget.style.setProperty('--menu-width', `${rect.width}px`);
           }}
         >
-          {getItems().map((item, i) => (
-            <MenuItemComponent 
-              key={i} 
-              item={item} 
-              closeMenu={closeContextMenu} 
-            />
-          ))}
+          <MenuItemsList 
+            items={getItems()} 
+            closeMenu={closeContextMenu} 
+          />
         </div>
       )}
 
