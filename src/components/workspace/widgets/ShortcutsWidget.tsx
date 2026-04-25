@@ -2,7 +2,7 @@
 
 import { useStore } from '@/data/store';
 import { Plus, X, ExternalLink, FileText, Layout } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { getEntityIcon } from '@/data/icons';
 import clsx from 'clsx';
 
@@ -23,6 +23,17 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
   const [newLabel, setNewLabel] = useState('');
   const [newValue, setNewValue] = useState('');
   const [type, setType] = useState<'url' | 'entity'>('url');
+  const dragIdx = useRef<number | null>(null);
+
+  const handleDragStart = (idx: number) => { dragIdx.current = idx; };
+  const handleDrop = (targetIdx: number) => {
+    if (dragIdx.current === null || dragIdx.current === targetIdx) return;
+    const reordered = [...shortcuts];
+    const [moved] = reordered.splice(dragIdx.current, 1);
+    reordered.splice(targetIdx, 0, moved);
+    onUpdateData({ shortcuts: reordered });
+    dragIdx.current = null;
+  };
 
   const handleAdd = () => {
     if (!newValue.trim()) return;
@@ -117,7 +128,12 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
               }
 
               return (
-                <div key={s.id} className="relative group/shortcut">
+                <div key={s.id} className="relative group/shortcut cursor-grab"
+                  draggable
+                  onDragStart={() => handleDragStart(shortcuts.indexOf(s))}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => handleDrop(shortcuts.indexOf(s))}
+                >
                   <button
                     onClick={() => {
                       if (isInternal) {
