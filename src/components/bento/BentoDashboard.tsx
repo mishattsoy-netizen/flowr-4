@@ -9,7 +9,7 @@ import { widgetRegistry } from './registry';
 import { BentoWidget } from './BentoWidget';
 import { WidgetPicker } from './WidgetPicker';
 import type { BentoLayoutItem } from '@/components/bento/types';
-import { snapDivider, snapVerticalDivider, computeGridPositions } from '@/lib/bento-engine';
+import { computeGridPositions } from '@/lib/bento-engine';
 
 const MAX_ROWS = 4;
 const GAP = 12; // Matches gap-3 (0.75rem)
@@ -222,30 +222,27 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
       if (!gridRef.current) return;
       const rect = gridRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      
-      // Calculate fraction of container width
-      const totalWidth = rect.width;
-      const normalizedX = Math.max(0, Math.min(x, totalWidth));
-      const colX = (normalizedX / totalWidth) * 6;
-      
-      const leftItem = layout.find(it => it.i === dividerDrag.leftId);
-      const rightItem = layout.find(it => it.i === dividerDrag.rightId);
+
+      const leftItem = realLayoutRef.current.find(it => it.i === dividerDrag.leftId);
+      const rightItem = realLayoutRef.current.find(it => it.i === dividerDrag.rightId);
       if (!leftItem || !rightItem) return;
 
-      const posL = positions.get(leftItem.i);
-      if (!posL) return;
+      const { positions: realPos } = computeGridPositions(realLayoutRef.current);
+      const posL = realPos.get(leftItem.i);
+      const posR = realPos.get(rightItem.i);
+      if (!posL || !posR) return;
 
-      const totalW = leftItem.w + rightItem.w;
-      const startX = posL.x; 
-      
-      // Relative fraction within the combined span of the two widgets
-      const relFraction = (colX - startX) / totalW;
-      
-      const minL = widgetRegistry[leftItem.type]?.minW ?? 2;
-      const minR = widgetRegistry[rightItem.type]?.minW ?? 2;
+      const colX = (x / rect.width) * 6;
+      const oldBoundary = posL.x + posL.w;
+      const rawBoundary = Math.round(colX);
+      const newBoundary = Math.max(1, Math.min(5, rawBoundary));
 
-      const [w0, w1] = snapDivider(relFraction, minL, minR, totalW);
-      handleDividerDragPreview(leftItem.i, rightItem.i, w0, w1);
+      if (newBoundary === oldBoundary) return;
+
+      const claimerId = newBoundary > oldBoundary ? rightItem.i : leftItem.i;
+      const victimId  = newBoundary > oldBoundary ? leftItem.i  : rightItem.i;
+
+      handleDividerDragPreview(claimerId, victimId, newBoundary);
     };
 
     const onPointerUp = () => {
@@ -259,7 +256,7 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, [dividerDrag, layout, handleDividerDragPreview, handleDividerDragEnd]);
+  }, [dividerDrag, handleDividerDragPreview, handleDividerDragEnd]);
 
   useEffect(() => {
     if (!verticalDividerDrag) return;
@@ -269,23 +266,25 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
       const rect = gridRef.current.getBoundingClientRect();
       const y = e.clientY - rect.top;
 
-      // Use realLayoutRef so we compute against the committed widget positions, not the preview.
-      const topWidget = realLayoutRef.current.find(it => it.i === verticalDividerDrag.topId);
+      const topWidget    = realLayoutRef.current.find(it => it.i === verticalDividerDrag.topId);
       const bottomWidget = realLayoutRef.current.find(it => it.i === verticalDividerDrag.bottomId);
       if (!topWidget || !bottomWidget) return;
 
-      const minT = widgetRegistry[topWidget.type]?.minH ?? 1;
-      const maxT = widgetRegistry[topWidget.type]?.maxH ?? 4;
-      const minB = widgetRegistry[bottomWidget.type]?.minH ?? 1;
-      const totalH = topWidget.h + bottomWidget.h;
+      const { positions: realPos } = computeGridPositions(realLayoutRef.current);
+      const posT = realPos.get(topWidget.i);
+      const posB = realPos.get(bottomWidget.i);
+      if (!posT || !posB) return;
 
-      // Map pixel Y → how many rows the top widget should span.
-      const rowHeight = rect.height / MAX_ROWS;
-      const rawH0 = (y / rowHeight) - topWidget.row;
-      const newH0 = Math.max(minT, Math.min(totalH - minB, maxT, Math.round(rawH0)));
-      const newH1 = totalH - newH0;
+      const rowY = (y / rect.height) * MAX_ROWS;
+      const oldBoundary = posT.y + posT.h;
+      const newBoundary = Math.max(1, Math.min(MAX_ROWS - 1, Math.round(rowY)));
 
-      handleVerticalDividerDragPreview(topWidget.i, bottomWidget.i, newH0, newH1);
+      if (newBoundary === oldBoundary) return;
+
+      const claimerId = newBoundary < oldBoundary ? bottomWidget.i : topWidget.i;
+      const victimId  = newBoundary < oldBoundary ? topWidget.i    : bottomWidget.i;
+
+      handleVerticalDividerDragPreview(claimerId, victimId, newBoundary);
     };
 
     const onPointerUp = () => {
