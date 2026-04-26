@@ -10,8 +10,7 @@ import {
   fillGaps,
   compactLayout,
   resolveDrop,
-  adjustDivider,
-  adjustVerticalDivider,
+  resizeDivider,
   computeGridPositions,
   validateLayout,
   recoverLayout
@@ -447,11 +446,14 @@ export function useBentoLayout(contextId: string) {
 
   const [verticalDividerDrag, setVerticalDividerDrag] = useState<{ topId: string, bottomId: string, startY: number } | null>(null);
 
-  const handleDividerDragPreview = useCallback((leftId: string, rightId: string, w0: number, w1: number) => {
-    const current = previewLayout || layoutRef.current;
-    const adjusted = adjustDivider(current, leftId, rightId, w0, w1);
-    setPreviewLayout(rebalanceAll(adjusted));
-  }, [previewLayout]);
+  const handleDividerDragPreview = useCallback((
+    claimerId: string,
+    victimId: string,
+    newBoundary: number
+  ) => {
+    const result = resizeDivider(layoutRef.current, claimerId, victimId, newBoundary, 'horizontal');
+    if (result) setPreviewLayout(result);
+  }, []);
 
   const handleDividerDragEnd = useCallback(() => {
     if (previewLayout && validateLayout(previewLayout).valid) {
@@ -460,11 +462,14 @@ export function useBentoLayout(contextId: string) {
     setPreviewLayout(null);
   }, [previewLayout, commitLayout]);
 
-  const handleVerticalDividerDragPreview = useCallback((topId: string, bottomId: string, h0: number, h1: number) => {
-    const current = previewLayout || layoutRef.current;
-    const adjusted = adjustVerticalDivider(current, topId, bottomId, h0, h1);
-    setPreviewLayout(adjusted);
-  }, [previewLayout]);
+  const handleVerticalDividerDragPreview = useCallback((
+    claimerId: string,
+    victimId: string,
+    newBoundary: number
+  ) => {
+    const result = resizeDivider(layoutRef.current, claimerId, victimId, newBoundary, 'vertical');
+    if (result) setPreviewLayout(result);
+  }, []);
 
   const handleVerticalDividerDragEnd = useCallback(() => {
     if (previewLayout && validateLayout(previewLayout).valid) {
