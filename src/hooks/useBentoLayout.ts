@@ -26,8 +26,8 @@ const DEFAULT_LAYOUTS: Record<string, BentoLayoutItem[]> = {
   ],
   workspace: [
     { i: 'ws-tasks',     type: 'smart-tasks', row: 0, order: 0, w: 4, h: 2 },
-    { i: 'ws-all-files', type: 'all-files',   row: 0, order: 1, w: 2, h: 2 }, 
-    { i: 'ws-shortcuts', type: 'shortcuts',   row: 1, order: 0, w: 6, h: 1 },
+    { i: 'ws-all-files', type: 'all-files',   row: 0, order: 1, w: 2, h: 2 },
+    { i: 'ws-shortcuts', type: 'shortcuts',   row: 1, order: 0, w: 6, h: 2 },
   ],
 };
 
@@ -72,19 +72,15 @@ export function useBentoLayout(contextId: string) {
       if (saved) {
         // Migration: Fix legacy 'upcoming' type
         const items = saved.items.map(it => it.type === 'upcoming' ? { ...it, type: 'recent' } : it);
-        const balanced = compactLayout(rebalanceAll(items));
-        if (validateLayout(balanced).valid) {
-          setLayout(balanced);
+        // Always run recoverLayout first — it clamps w/h to current registry bounds,
+        // which migrates saved layouts when constraints change (e.g. minH 1→2).
+        const recovered = recoverLayout(items) ?? compactLayout(rebalanceAll(items));
+        if (validateLayout(recovered).valid) {
+          setLayout(recovered);
         } else {
-          const recovered = recoverLayout(items);
-          if (recovered) {
-            console.warn("[useBentoLayout] Saved layout recovered after clamping invalid values.");
-            setLayout(recovered);
-          } else {
-            console.error("[useBentoLayout] Saved layout is invalid and unrecoverable, using default.");
-            const defaults = rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
-            setLayout(defaults);
-          }
+          console.error("[useBentoLayout] Saved layout is invalid and unrecoverable, using default.");
+          const defaults = rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
+          setLayout(defaults);
         }
       }
       setTimeout(() => setIsLoading(false), 200);
@@ -106,8 +102,8 @@ export function useBentoLayout(contextId: string) {
     debounceRef.current = setTimeout(() => saveBentoLayout(contextId, nextItems, [6, 6, 6, 6]), 500);
   }, [contextId]);
 
-  const commitLayout = useCallback((nextItems: BentoLayoutItem[], skipHistory = false) => {
-    let balancedItems = rebalanceAll(nextItems);
+  const commitLayout = useCallback((nextItems: BentoLayoutItem[], skipHistory = false, skipRebalance = false) => {
+    let balancedItems = skipRebalance ? nextItems : rebalanceAll(nextItems);
 
     const validation = validateLayout(balancedItems);
     if (!validation.valid) {
@@ -295,17 +291,18 @@ export function useBentoLayout(contextId: string) {
       return;
     }
 
-    // Intent based on pointer position within target widget:
-    //   left 20% band  → insert-before
-    //   right 20% band → insert-after
-    //   center 60%     → swap
+    // Intent based on pointer position within target widget.
+    // col is a coarse integer grid column — use it only for direction, not fine zones.
+    // A widget of w=2 only has 2 possible col values, so we can't reliably detect
+    // narrow edge bands. Default to swap; only insert when pointer is in the outermost col.
     const { positions } = computeGridPositions(realLayoutRef.current);
     const targetPos = positions.get(targetId);
     let intent: 'swap' | 'insert-before' | 'insert-after' = 'swap';
-    if (targetPos) {
+    if (targetPos && targetPos.w > 2) {
+      // Only use insert-before/after on wider widgets where col resolution is meaningful
       const relX = (col - targetPos.x) / Math.max(1, targetPos.w);
-      if (relX < 0.2) intent = 'insert-before';
-      else if (relX > 0.8) intent = 'insert-after';
+      if (relX < 0.15) intent = 'insert-before';
+      else if (relX > 0.85) intent = 'insert-after';
     }
 
     // Re-trigger when target OR intent changes (so moving within a widget can switch modes).
@@ -447,33 +444,73 @@ export function useBentoLayout(contextId: string) {
   const [verticalDividerDrag, setVerticalDividerDrag] = useState<{ topId: string, bottomId: string, startY: number } | null>(null);
 
   const handleDividerDragPreview = useCallback((
-    claimerId: string,
-    victimId: string,
+    leftId: string,
+    rightId: string,
     newBoundary: number
   ) => {
-    const result = resizeDivider(layoutRef.current, claimerId, victimId, newBoundary, 'horizontal');
+    const current = layoutRef.current;
+    const { positions } = computeGridPositions(current);
+    const posL = positions.get(leftId);
+    const posR = positions.get(rightId);
+    if (!posL || !posR) return;
+    const oldBoundary = posL.x + posL.w;
+    if (newBoundary === oldBoundary) return;
+    const movingRight = newBoundary > oldBoundary;
+    const claimerId = movingRight ? leftId : rightId;
+    const victimId  = movingRight ? rightId : leftId;
+    let result = resizeDivider(current, claimerId, victimId, newBoundary, 'horizontal');
+    if (!result) {
+      // Case B (cell-claim) requires an all-or-nothing boundary snap.
+      // If the dragged boundary doesn't land exactly on the full-claim position,
+      // try the extreme boundary so the claim snaps as soon as the pointer crosses it.
+      const posV = movingRight ? posR : posL;
+      const extremeBoundary = movingRight ? posV.x + posV.w : posV.x;
+      if (extremeBoundary !== newBoundary && extremeBoundary !== oldBoundary) {
+        result = resizeDivider(current, claimerId, victimId, extremeBoundary, 'horizontal');
+      }
+    }
     if (result) setPreviewLayout(result);
   }, []);
 
   const handleDividerDragEnd = useCallback(() => {
     if (previewLayout && validateLayout(previewLayout).valid) {
-      commitLayout(previewLayout);
+      commitLayout(previewLayout, false, true);
     }
     setPreviewLayout(null);
   }, [previewLayout, commitLayout]);
 
   const handleVerticalDividerDragPreview = useCallback((
-    claimerId: string,
-    victimId: string,
+    topId: string,
+    bottomId: string,
     newBoundary: number
   ) => {
-    const result = resizeDivider(layoutRef.current, claimerId, victimId, newBoundary, 'vertical');
+    // Use layoutRef (preview-aware) so oldBoundary tracks the live position,
+    // preventing claimer/victim flip when the preview has already shifted the boundary.
+    const currentLayout = layoutRef.current;
+    const { positions } = computeGridPositions(currentLayout);
+    const posT = positions.get(topId);
+    const posB = positions.get(bottomId);
+    if (!posT || !posB) return;
+    const oldBoundary = posT.y + posT.h;
+    // Direction-aware: drag up → bottom widget is claimer (grows into top's space)
+    const movingUp = newBoundary < oldBoundary;
+    const claimerId = movingUp ? bottomId : topId;
+    const victimId  = movingUp ? topId : bottomId;
+    let result = resizeDivider(currentLayout, claimerId, victimId, newBoundary, 'vertical');
+    if (!result) {
+      // Case B (cell-claim) snap: try extreme boundary if intermediate fails.
+      const posV = movingUp ? posT : posB;
+      const extremeBoundary = movingUp ? posV.y : posV.y + posV.h;
+      if (extremeBoundary !== newBoundary && extremeBoundary !== oldBoundary) {
+        result = resizeDivider(currentLayout, claimerId, victimId, extremeBoundary, 'vertical');
+      }
+    }
     if (result) setPreviewLayout(result);
   }, []);
 
   const handleVerticalDividerDragEnd = useCallback(() => {
     if (previewLayout && validateLayout(previewLayout).valid) {
-      commitLayout(previewLayout);
+      commitLayout(previewLayout, false, true);
     }
     setPreviewLayout(null);
   }, [previewLayout, commitLayout]);
