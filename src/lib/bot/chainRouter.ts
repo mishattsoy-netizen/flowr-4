@@ -9,6 +9,7 @@ import { runCloudflare } from './providers/cloudflare'
 import { runPollinations } from './providers/pollinations'
 import { getConversationMemory, getWebConversationMemory } from './memory'
 import { supabaseAdmin } from '../supabase'
+import { getCompiledPrompt } from './compilePrompt'
 
 function trackModelUsage(modelId: string, provider: string) {
   supabaseAdmin.rpc('increment_model_usage', { p_model_id: modelId, p_provider: provider })
@@ -117,6 +118,12 @@ export async function runChain(
   }
   if (!system_prompt && category === 'IMAGE_GEN') {
     system_prompt = "You are a creative artist. Generate high-quality images based on user prompts."
+  }
+
+  // Inject global compiled prompt (settings + brain entries) as prefix
+  const globalPrompt = await getCompiledPrompt()
+  if (globalPrompt) {
+    system_prompt = globalPrompt + "\n\n" + (system_prompt || "")
   }
 
   // Global constraint to prevent leaking internal reasoning/analysis
