@@ -26,11 +26,11 @@ import { widgetRegistry } from '@/components/bento/registry';
 export function rebalanceRow(items: BentoLayoutItem[], total: number = HALF_COLS): BentoLayoutItem[] {
   const n = items.length;
   if (n === 0) return items;
-  
+
   // 1. Get min widths from registry
   const minWidths = items.map(it => widgetRegistry[it.type]?.minW ?? 2);
   const totalMin = minWidths.reduce((s, w) => s + w, 0);
-  
+
   // 2. If existing widths already sum to total and satisfy minW, preserve them
   const currentTotal = items.reduce((s, it) => s + it.w, 0);
   const allSatisfyMin = items.every((it, i) => it.w >= minWidths[i]);
@@ -40,7 +40,7 @@ export function rebalanceRow(items: BentoLayoutItem[], total: number = HALF_COLS
 
   // 3. Special cases for common distributions
   if (n === 1) return [{ ...items[0], w: total }];
-  
+
   // 4. Handle underflow (total < totalMin)
   // We must shrink items below minW to fit the grid and avoid "out of boundaries" errors.
   // validateLayout will catch if they are too small.
@@ -49,12 +49,12 @@ export function rebalanceRow(items: BentoLayoutItem[], total: number = HALF_COLS
     let distributedW = items.map((it, i) => Math.floor(minWidths[i] * ratio));
     let currentSum = distributedW.reduce((s, w) => s + w, 0);
     let diff = total - currentSum;
-    
+
     // Distribute rounding error
     for (let i = 0; i < diff; i++) {
       distributedW[i % n]++;
     }
-    
+
     return items.map((it, i) => ({ ...it, w: distributedW[i] }));
   }
 
@@ -73,18 +73,18 @@ export function rebalanceRow(items: BentoLayoutItem[], total: number = HALF_COLS
 export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
   try {
     let result = [...layout];
-    
+
     for (let r = 0; r < MAX_ROWS; r++) {
       // 1. Calculate space taken by spanners from previous rows (use result!)
       const spanW = result.filter(it => it.row < r && r < it.row + it.h).reduce((s, it) => s + it.w, 0);
       const avail = Math.max(0, HALF_COLS - spanW);
-      
+
       // 2. Get native items for this row, sorted by order
       let natives = result.filter(it => it.row === r).sort((a, b) => a.order - b.order);
-      
+
       // 3. Push items that don't fit (considering minW and MAX_PER_ROW)
       const getMinTotal = (items: BentoLayoutItem[]) => items.reduce((s, it) => s + (widgetRegistry[it.type]?.minW ?? 2), 0);
-      
+
       while (r < MAX_ROWS - 1 && natives.length > 0 && (natives.length > MAX_PER_ROW || getMinTotal(natives) > avail)) {
         const toPush = natives.pop()!;
         const idx = result.findIndex(it => it.i === toPush.i);
@@ -94,11 +94,30 @@ export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
           result[idx] = { ...toPush, row: nextRow, order: 99, h: clampedH };
         }
       }
-      
+
+      // NEW Step: Pull items from below if there's room. 
+      // This fills "columns" (vertical space) before expanding widgets horizontally.
+      while (r < MAX_ROWS - 1 && natives.length < MAX_PER_ROW) {
+        const currentSum = natives.reduce((s, it) => s + it.w, 0);
+        const gap = avail - currentSum;
+        if (gap < 2) break; // Smallest widget is w2
+
+        // Find candidate from the row immediately below first
+        const nextRowItems = result.filter(it => it.row === r + 1).sort((a, b) => a.order - b.order);
+        const toPull = nextRowItems.find(it => it.w <= gap);
+
+        if (!toPull) break;
+
+        const resIdx = result.findIndex(it => it.i === toPull.i);
+        result[resIdx] = { ...toPull, row: r, order: 99 };
+        natives.push(result[resIdx]);
+        natives.sort((a, b) => a.order - b.order);
+      }
+
       // 4. Rebalance the items that stayed in this row to fill the available space
       if (natives.length > 0) {
         const balanced = rebalanceRow(natives, avail);
-        
+
         balanced.forEach((b, i) => {
           const resIdx = result.findIndex(it => it.i === b.i);
           if (resIdx !== -1) {
@@ -107,14 +126,24 @@ export function rebalanceAll(layout: BentoLayoutItem[]): BentoLayoutItem[] {
         });
       }
     }
-    
+
+    // Clamp h so no item overflows below the grid (row + h must not exceed MAX_ROWS)
+    result = result.map(it => {
+      const maxFit = MAX_ROWS - it.row;
+      if (it.h > maxFit) {
+        const minH = widgetRegistry[it.type]?.minH ?? 1;
+        return { ...it, h: Math.max(minH, maxFit) };
+      }
+      return it;
+    });
+
     return result;
   } catch (e) {
     console.error("rebalanceAll crashed:", e);
     return layout;
   }
 }
- 
+
 // ─── Fill Gaps (vertical expansion) ──────────────────────────────────────────
 
 // Expand widgets downward into empty cells so no grid space is wasted.
@@ -158,7 +187,7 @@ export function fillGaps(layout: BentoLayoutItem[]): BentoLayoutItem[] {
   return result;
 }
 
- // ─── Compact (gravity) ────────────────────────────────────────────────────────
+// ─── Compact (gravity) ────────────────────────────────────────────────────────
 
 
 export function compactLayout(layout: BentoLayoutItem[]): BentoLayoutItem[] {
@@ -202,7 +231,7 @@ const tryFinalize = (candidate: BentoLayoutItem[], expectedLen: number): BentoLa
 // Each widget adopts the other's height (clamped to its own maxH) so no gaps are created.
 function ruleDirectSwap(layout: BentoLayoutItem[], dragged: BentoLayoutItem, target: BentoLayoutItem): BentoLayoutItem[] | null {
   const draggedEntry = widgetRegistry[dragged.type];
-  const targetEntry  = widgetRegistry[target.type];
+  const targetEntry = widgetRegistry[target.type];
 
   // Dragged widget adopts target's height (clamped to dragged widget's maxH and row bounds).
   const draggedNewH = Math.max(
@@ -217,11 +246,11 @@ function ruleDirectSwap(layout: BentoLayoutItem[], dragged: BentoLayoutItem, tar
 
   // Width adoption — each widget takes the other's width, clamped to its own registry bounds
   const draggedNewW = Math.max(draggedEntry?.minW ?? 2, Math.min(target.w, draggedEntry?.maxW ?? 6));
-  const targetNewW  = Math.max(targetEntry?.minW ?? 2, Math.min(dragged.w, targetEntry?.maxW ?? 6));
+  const targetNewW = Math.max(targetEntry?.minW ?? 2, Math.min(dragged.w, targetEntry?.maxW ?? 6));
 
   const swapped = layout.map(it => {
     if (it.i === dragged.i) return { ...it, row: target.row, order: target.order, w: draggedNewW, h: draggedNewH };
-    if (it.i === target.i)  return { ...it, row: dragged.row, order: dragged.order, w: targetNewW, h: targetNewH };
+    if (it.i === target.i) return { ...it, row: dragged.row, order: dragged.order, w: targetNewW, h: targetNewH };
     return it;
   });
   return tryFinalize(swapped, layout.length);
@@ -232,7 +261,7 @@ function ruleDirectSwap(layout: BentoLayoutItem[], dragged: BentoLayoutItem, tar
 function ruleRowSwap(layout: BentoLayoutItem[], dragged: BentoLayoutItem, target: BentoLayoutItem): BentoLayoutItem[] | null {
   if (dragged.row === target.row) return null;
   const draggedRowH = Math.max(...layout.filter(it => it.row === dragged.row).map(it => it.h));
-  const targetRowH  = Math.max(...layout.filter(it => it.row === target.row).map(it => it.h));
+  const targetRowH = Math.max(...layout.filter(it => it.row === target.row).map(it => it.h));
   const swapped = layout.map(it => {
     if (it.row === dragged.row) {
       const entry = widgetRegistry[it.type];
@@ -302,12 +331,12 @@ function ruleSmartSwap(layout: BentoLayoutItem[], dragged: BentoLayoutItem, targ
     return it;
   });
   const draggedEntry = widgetRegistry[dragged.type];
-  const targetEntry  = widgetRegistry[target.type];
+  const targetEntry = widgetRegistry[target.type];
   const draggedNewH = Math.max(draggedEntry?.minH ?? 1, Math.min(target.h, draggedEntry?.maxH ?? 4, MAX_ROWS - target.row));
-  const targetNewH  = Math.max(targetEntry?.minH ?? 1, Math.min(dragged.h, targetEntry?.maxH ?? 4, MAX_ROWS - dragged.row));
+  const targetNewH = Math.max(targetEntry?.minH ?? 1, Math.min(dragged.h, targetEntry?.maxH ?? 4, MAX_ROWS - dragged.row));
   const swapped = roomMade.map(it => {
     if (it.i === dragged.i) return { ...it, row: target.row, order: target.order, h: draggedNewH };
-    if (it.i === target.i)  return { ...it, row: dragged.row, order: dragged.order, h: targetNewH };
+    if (it.i === target.i) return { ...it, row: dragged.row, order: dragged.order, h: targetNewH };
     return it;
   });
   return tryFinalize(swapped, layout.length);
@@ -398,14 +427,14 @@ export function calculatePushLayout(
 
 /** Snap divider to nearest of 3 positions: 2+4, 3+3, 4+2, filtered by min widths */
 export function snapDivider(
-  rawFraction: number, 
-  minL: number = 2, 
-  minR: number = 2, 
+  rawFraction: number,
+  minL: number = 2,
+  minR: number = 2,
   total: number = HALF_COLS
 ): [number, number] {
   const allOptions: [number, number][] = [[2, 4], [3, 3], [4, 2]];
   const options = allOptions.filter(opt => opt[0] >= minL && opt[1] >= minR);
-  
+
   if (options.length === 0) {
     // If no preset matches, just return the most balanced fit that respects minW
     const w0 = Math.max(minL, Math.min(total - minR, Math.round(rawFraction * total)));
@@ -514,7 +543,7 @@ export function resizeDivider(
 ): BentoLayoutItem[] | null {
   const { positions } = computeGridPositions(layout);
   const claimer = layout.find(it => it.i === claimerId);
-  const victim  = layout.find(it => it.i === victimId);
+  const victim = layout.find(it => it.i === victimId);
   if (!claimer || !victim) return null;
 
   const posC = positions.get(claimerId);
@@ -564,16 +593,16 @@ export function resizeDivider(
   let newVictim = { ...victim };
 
   if (axis === 'vertical') {
-    const claimerLeft  = posC.x;
+    const claimerLeft = posC.x;
     const claimerRight = posC.x + posC.w;
-    const victimLeft   = posV.x;
-    const victimRight  = posV.x + posV.w;
+    const victimLeft = posV.x;
+    const victimRight = posV.x + posV.w;
 
-    const spansMatch   = claimerLeft === victimLeft && claimerRight === victimRight;
+    const spansMatch = claimerLeft === victimLeft && claimerRight === victimRight;
     // Claimer fully contains victim's col span → plain height resize
     const victimContainedV = claimerLeft <= victimLeft && claimerRight >= victimRight;
-    const atLeftEdge   = claimerLeft === victimLeft  && claimerRight < victimRight;
-    const atRightEdge  = claimerRight === victimRight && claimerLeft  > victimLeft;
+    const atLeftEdge = claimerLeft === victimLeft && claimerRight < victimRight;
+    const atRightEdge = claimerRight === victimRight && claimerLeft > victimLeft;
 
     if (!spansMatch && !victimContainedV && !atLeftEdge && !atRightEdge) return null;
 
@@ -611,15 +640,15 @@ export function resizeDivider(
     if (newVictim.row < 0 || newVictim.row + newVictim.h > MAX_ROWS) return null;
     if (newVictim.w < (victimEntry?.minW ?? 2)) return null;
   } else {
-    const claimerTop    = posC.y;
+    const claimerTop = posC.y;
     const claimerBottom = posC.y + posC.h;
-    const victimTop     = posV.y;
-    const victimBottom  = posV.y + posV.h;
+    const victimTop = posV.y;
+    const victimBottom = posV.y + posV.h;
 
-    const spansMatch  = claimerTop === victimTop && claimerBottom === victimBottom;
+    const spansMatch = claimerTop === victimTop && claimerBottom === victimBottom;
     // Victim fully contained within claimer's rows — still a plain width resize
     const victimContained = claimerTop <= victimTop && claimerBottom >= victimBottom;
-    const atTopEdge    = claimerTop === victimTop    && claimerBottom < victimBottom;
+    const atTopEdge = claimerTop === victimTop && claimerBottom < victimBottom;
     const atBottomEdge = claimerBottom === victimBottom && claimerTop > victimTop;
 
     if (!spansMatch && !victimContained && !atTopEdge && !atBottomEdge) return null;
@@ -656,14 +685,14 @@ export function resizeDivider(
   // Only claimer and victim change. No other widgets are touched.
   let candidate = layout.map(it => {
     if (it.i === claimerId) return newClaimer;
-    if (it.i === victimId)  return newVictim;
+    if (it.i === victimId) return newVictim;
     return it;
   });
 
   // Re-assign orders for any row where an item's row changed, so computeGridPositions
   // places items at the correct x positions after the reshape.
   const claimerRowChanged = newClaimer.row !== claimer.row;
-  const victimRowChanged  = newVictim.row  !== victim.row;
+  const victimRowChanged = newVictim.row !== victim.row;
 
   if (claimerRowChanged || victimRowChanged) {
     // Collect all destination rows that need order normalization.
@@ -822,11 +851,12 @@ export function recoverLayout(layout: BentoLayoutItem[]): BentoLayoutItem[] | nu
     const maxW = entry?.maxW ?? 6;
     const minH = entry?.minH ?? 1;
     const maxH = entry?.maxH ?? 4;
+    const row = Math.min(Math.max(it.row, 0), MAX_ROWS - 1);
     return {
       ...it,
       w: Math.min(Math.max(it.w, minW), maxW),
-      h: Math.min(Math.max(it.h, minH), maxH),
-      row: Math.min(Math.max(it.row, 0), MAX_ROWS - 1),
+      h: Math.min(Math.max(it.h, minH), Math.min(maxH, MAX_ROWS - row)),
+      row,
     };
   });
 
@@ -837,13 +867,13 @@ export function recoverLayout(layout: BentoLayoutItem[]): BentoLayoutItem[] | nu
 export function computeGridPositions(layout: BentoLayoutItem[]) {
 
   const grid = Array(MAX_ROWS).fill(null).map(() => Array(6).fill(null));
-  
+
   const sorted = [...layout].sort((a, b) => {
     if (a.row !== b.row) return a.row - b.row;
     return a.order - b.order;
   });
 
-  const positions = new Map<string, {x: number, y: number, w: number, h: number}>();
+  const positions = new Map<string, { x: number, y: number, w: number, h: number }>();
 
   for (const item of sorted) {
     let x = 0;
@@ -853,19 +883,19 @@ export function computeGridPositions(layout: BentoLayoutItem[]) {
     while (x < 6 && grid[row] && grid[row][x] !== null) {
       x++;
     }
-    
+
     // Removed hard-capping. The engine must ensure item.w fits.
     // If it doesn't fit, we still set it, and validateLayout will catch it.
     const finalW = item.w;
     const finalH = item.h;
-    
+
     if (finalW > 0 && finalH > 0) {
       positions.set(item.i, { x, y: item.row, w: finalW, h: finalH });
-      
+
       for (let r = item.row; r < item.row + finalH; r++) {
         for (let c = x; c < x + finalW; c++) {
           if (r < MAX_ROWS && c < 6) {
-             grid[r][c] = item.i;
+            grid[r][c] = item.i;
           }
         }
       }
