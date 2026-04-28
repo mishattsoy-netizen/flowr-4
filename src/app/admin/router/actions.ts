@@ -2,6 +2,7 @@
 
 import { supabaseAdmin as supabase } from '@/lib/supabase'
 import { revalidatePath } from 'next/cache'
+import { logAdminAction } from '@/lib/admin/logAction'
 
 export async function getRouterChains(platform: 'app' | 'telegram') {
   const { data, error } = await supabase
@@ -24,6 +25,7 @@ export async function updateRouterChain(id: string, modelList: any[]) {
     .eq('id', id)
 
   if (error) throw error
+  logAdminAction('router_changed', `Updated router chain ${id}`, { id })
   revalidatePath('/admin/app/router')
   revalidatePath('/admin/telegram/router')
   return { success: true }

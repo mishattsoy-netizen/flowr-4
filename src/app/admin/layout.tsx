@@ -1,5 +1,6 @@
 import React from 'react'
 import Sidebar from '@/components/admin/Sidebar'
+import ActivityLogSidebar from '@/components/admin/ActivityLogSidebar'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </div>
       </main>
+      <ActivityLogSidebar />
     </div>
   )
 }

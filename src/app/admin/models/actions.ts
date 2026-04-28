@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase'
 import { revalidatePath } from 'next/cache'
+import { logAdminAction } from '@/lib/admin/logAction'
 
 export async function getModels() {
   const { data, error } = await supabaseAdmin
@@ -29,6 +30,7 @@ export async function updateModel(id: string, updates: {
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+  logAdminAction('router_changed', `Updated model ${id}`, { id, updates })
   revalidatePath('/admin/models')
 }
 
