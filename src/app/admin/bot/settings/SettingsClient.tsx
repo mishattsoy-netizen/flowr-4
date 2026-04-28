@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { Settings, RefreshCw, Eye, EyeOff, Check } from 'lucide-react'
-import { saveSettingBlock, syncCompiledPrompt } from './actions'
+import { saveSettingBlock, syncCompiledPrompt, toggleSettingBlock, setGlobalPromptEnabled } from './actions'
 import type { BotSetting, SettingsCategory } from './actions'
 import { cn } from '@/lib/utils'
 
@@ -19,9 +19,11 @@ interface Props {
   compiledAt: string
   entryCount: number
   compiledContent: string
+  globalEnabled: boolean
+  initialActiveStates: Record<string, boolean>
 }
 
-export default function SettingsClient({ initialSettings, compiledAt, entryCount, compiledContent }: Props) {
+export default function SettingsClient({ initialSettings, compiledAt, entryCount, compiledContent, globalEnabled, initialActiveStates }: Props) {
   const [activeTab, setActiveTab] = useState<SettingsCategory>('core_rules')
   const [drafts, setDrafts] = useState<Record<string, string>>(
     Object.fromEntries(initialSettings.map(s => [s.category, s.content]))
@@ -32,6 +34,8 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'done'>('idle')
   const [currentCompiledAt, setCurrentCompiledAt] = useState(compiledAt)
   const [mounted, setMounted] = useState(false)
+  const [globalOn, setGlobalOn] = useState(globalEnabled)
+  const [activeStates, setActiveStates] = useState<Record<string, boolean>>(initialActiveStates)
 
   useEffect(() => {
     setMounted(true)
@@ -56,6 +60,16 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
     setTimeout(() => setSyncStatus('idle'), 3000)
   }
 
+  async function handleGlobalToggle(val: boolean) {
+    setGlobalOn(val)
+    await setGlobalPromptEnabled(val)
+  }
+
+  async function handleBlockToggle(category: SettingsCategory, val: boolean) {
+    setActiveStates(s => ({ ...s, [category]: val }))
+    await toggleSettingBlock(category, val)
+  }
+
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
       <div className="mb-2">
@@ -65,21 +79,56 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
         </p>
       </div>
 
+      {/* Master kill switch */}
+      <div className={cn(
+        "flex items-center justify-between px-4 py-3 rounded-xl border transition-colors",
+        globalOn ? "bg-[var(--bone-6)] border-[var(--bone-10)]" : "bg-red-500/5 border-red-500/20"
+      )}>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Global Prompt Injection</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {globalOn ? 'Brain + Settings are active on every chat request' : '⚠️ Disabled — bot runs without any global prompt (raw)'}
+          </p>
+        </div>
+        <button
+          onClick={() => handleGlobalToggle(!globalOn)}
+          className={cn(
+            "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none",
+            globalOn ? "bg-green-500" : "bg-[var(--bone-20)]"
+          )}
+        >
+          <span className={cn(
+            "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm",
+            globalOn ? "translate-x-4" : "translate-x-1"
+          )} />
+        </button>
+      </div>
+
       {/* Category tabs */}
       <div className="flex gap-2 flex-wrap">
         {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
-              activeTab === tab.key
-                ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
-                : "bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]"
-            )}
-          >
-            {tab.label}
-          </button>
+          <div key={tab.key} className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+                !activeStates[tab.key] && "opacity-40 line-through",
+                activeTab === tab.key
+                  ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
+                  : "bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]"
+              )}
+            >
+              {tab.label}
+            </button>
+            <button
+              onClick={() => handleBlockToggle(tab.key, !activeStates[tab.key])}
+              title={activeStates[tab.key] ? 'Disable this block' : 'Enable this block'}
+              className={cn(
+                "w-2 h-2 rounded-full transition-colors",
+                activeStates[tab.key] ? "bg-green-400 hover:bg-red-400" : "bg-[var(--bone-20)] hover:bg-green-400"
+              )}
+            />
+          </div>
         ))}
       </div>
 

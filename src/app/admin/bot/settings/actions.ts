@@ -17,9 +17,13 @@ export interface BotSetting {
 export async function getSettings(): Promise<BotSetting[]> {
   const { data, error } = await supabase
     .from('bot_settings')
-    .select('category, content, is_active, updated_at')
+    .select('*')
     .order('category')
-  if (error) throw error
+  if (error) {
+    console.error('getSettings error:', error)
+    throw error
+  }
+  console.log('bot_settings columns:', data && data.length > 0 ? Object.keys(data[0]) : 'no data')
   return (data ?? []) as BotSetting[]
 }
 
@@ -36,10 +40,14 @@ export async function saveSettingBlock(category: SettingsCategory, content: stri
 export async function getCompiledPromptMeta(): Promise<{ content: string; compiled_at: string; entry_count: number }> {
   const { data, error } = await supabase
     .from('bot_compiled_prompt')
-    .select('content, compiled_at, entry_count')
+    .select('*')
     .eq('id', 1)
     .single()
-  if (error || !data) return { content: '', compiled_at: '', entry_count: 0 }
+  if (error) {
+    console.error('getCompiledPromptMeta error:', error)
+    if (!data) return { content: '', compiled_at: '', entry_count: 0 }
+  }
+  console.log('bot_compiled_prompt columns:', data ? Object.keys(data) : 'no data')
   return data as { content: string; compiled_at: string; entry_count: number }
 }
 
@@ -47,4 +55,33 @@ export async function syncCompiledPrompt(): Promise<void> {
   await recompilePrompt()
   await logAdminAction('prompt_synced', 'Manual brain sync triggered')
   revalidatePath('/admin/bot/settings')
+}
+
+export async function toggleSettingBlock(category: SettingsCategory, isActive: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('bot_settings')
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq('category', category)
+  if (error) throw error
+  await recompilePrompt()
+  revalidatePath('/admin/bot/settings')
+}
+
+export async function setGlobalPromptEnabled(enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('bot_compiled_prompt')
+    .update({ global_enabled: enabled })
+    .eq('id', 1)
+  if (error) throw error
+  await logAdminAction('prompt_synced', `Global prompt ${enabled ? 'enabled' : 'disabled'}`, { enabled })
+  revalidatePath('/admin/bot/settings')
+}
+
+export async function getGlobalEnabled(): Promise<boolean> {
+  const { data } = await supabase
+    .from('bot_compiled_prompt')
+    .select('global_enabled')
+    .eq('id', 1)
+    .single()
+  return data?.global_enabled ?? true
 }
