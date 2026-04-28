@@ -1,3 +1,7 @@
-export default function BotRoutinePage() {
-  return <div className="text-foreground">Bot Routine — coming soon</div>
+import { getLatestPlans } from './planActions'
+import RoutineClient from './RoutineClient'
+
+export default async function BotRoutinePage() {
+  const plans = await getLatestPlans()
+  return <RoutineClient initialPlans={plans} />
 }
