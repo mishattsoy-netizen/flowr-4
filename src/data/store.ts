@@ -323,7 +323,7 @@ export const useStore = create<AppState>()(
           const data = await res.json();
           set(s => ({
             aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
-              ? { ...m, content: data.content, model: data.model }
+              ? { ...m, content: data.content, model: data.model, logId: data.log_id ?? undefined }
               : m
             ),
             isAILoading: false,

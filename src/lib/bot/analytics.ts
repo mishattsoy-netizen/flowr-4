@@ -103,3 +103,49 @@ export async function logWebInteraction(
     logger.error('Web logging failed:', error)
   }
 }
+
+export async function logModelWebMessage(
+  authUserId: string,
+  content: string,
+  usageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat',
+  status: 'success' | 'error' = 'success',
+  modelChain?: string,
+  requestId?: string
+): Promise<number | null> {
+  if (!supabaseAdmin) return null
+  try {
+    const { data, error } = await supabaseAdmin.from('message_logs').insert({
+      auth_user_id: authUserId,
+      content,
+      role: 'model',
+      type: 'text',
+      usage_type: usageType,
+      status,
+      model_chain: modelChain ?? null,
+      request_id: requestId ?? null
+    }).select('id').single()
+
+    if (error?.message?.includes('auth_user_id')) {
+      const { data: d2, error: e2 } = await supabaseAdmin.from('message_logs').insert({
+        content,
+        role: 'model',
+        type: 'text',
+        usage_type: usageType,
+        topic_tag: `app:${authUserId.slice(0, 8)}`,
+        status,
+        model_chain: modelChain ?? null,
+        request_id: requestId ?? null
+      }).select('id').single()
+      if (e2) { logger.warn(`logModelWebMessage fallback failed: ${e2.message}`); return null }
+      logger.info(`Model message logged (no auth_user_id) id=${d2?.id}`)
+      return d2?.id ?? null
+    }
+
+    if (error) { logger.warn(`logModelWebMessage failed: ${error.message}`); return null }
+    logger.info(`Model message logged id=${data?.id}`)
+    return data?.id ?? null
+  } catch (error) {
+    logger.error('logModelWebMessage failed:', error)
+    return null
+  }
+}

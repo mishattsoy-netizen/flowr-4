@@ -103,6 +103,7 @@ export const ChatMessage = memo(({
   const isInitiallyFinished = isImageContent || !isLast || (!isAILoading && targetContent.length > 0);
   const [displayContent, setDisplayContent] = useState(isInitiallyFinished ? targetContent : '');
   const [hasFinishedTyping, setHasFinishedTyping] = useState(isInitiallyFinished);
+  const [feedbackState, setFeedbackState] = useState<'like' | 'dislike' | null>(null);
   const soundPlayedRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const displayedLenRef = useRef(isInitiallyFinished ? targetContent.length : 0);
@@ -228,6 +229,22 @@ export const ChatMessage = memo(({
   const isStatusOnly = useMemo(() =>
     msg.role === 'assistant' && isLast && isAILoading && (!displayContent || displayContent === 'Preparing tool...')
     , [msg.role, isLast, isAILoading, displayContent]);
+
+  async function submitFeedback(value: 'like' | 'dislike') {
+    if (!msg.logId || feedbackState === value) return
+    setFeedbackState(value)
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session } } = await supabase.auth.getSession()
+      const authUserId = session?.user?.id
+      if (!authUserId) return
+      await fetch('/api/ai/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_log_id: msg.logId, auth_user_id: authUserId, feedback: value })
+      })
+    } catch { setFeedbackState(null) }
+  }
 
   const isError = msg.role === 'assistant' && (msg.content || '').startsWith('Error:');
 
@@ -365,12 +382,18 @@ export const ChatMessage = memo(({
                     </button>
                   </Tooltip>
                   <Tooltip content="Good response">
-                    <button className="p-0.5 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)] transition-colors">
+                    <button
+                      onClick={() => submitFeedback('like')}
+                      className={clsx("p-0.5 rounded-md hover:bg-[var(--bone-6)] transition-colors", feedbackState === 'like' ? "text-green-400" : "text-[var(--bone-60)] hover:text-[var(--bone-100)]")}
+                    >
                       <ThumbsUp strokeWidth={2} className="w-3 h-3" />
                     </button>
                   </Tooltip>
                   <Tooltip content="Bad response">
-                    <button className="p-0.5 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)] transition-colors">
+                    <button
+                      onClick={() => submitFeedback('dislike')}
+                      className={clsx("p-0.5 rounded-md hover:bg-[var(--bone-6)] transition-colors", feedbackState === 'dislike' ? "text-red-400" : "text-[var(--bone-60)] hover:text-[var(--bone-100)]")}
+                    >
                       <ThumbsDown strokeWidth={2} className="w-3 h-3" />
                     </button>
                   </Tooltip>

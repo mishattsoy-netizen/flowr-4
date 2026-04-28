@@ -203,6 +203,7 @@ export interface AIMessage {
   name?: string;
   model?: string;
   attachments?: AIAttachment[];
+  logId?: number;
 }
 
 export interface AICursor {

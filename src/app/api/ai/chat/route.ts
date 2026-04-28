@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runChain } from '@/lib/bot/chainRouter'
 import { supabaseAdmin, isSupabaseEnabled } from '@/lib/supabase'
-import { logWebInteraction } from '@/lib/bot/analytics'
+import { logWebInteraction, logModelWebMessage } from '@/lib/bot/analytics'
 
 const DEFAULT_DAILY_LIMIT = 50
 
@@ -84,26 +84,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Log to message_logs — never store raw base64 image data
-    const logId = user?.id || 'anonymous'
+    const logUserId = user?.id || 'anonymous'
     const requestId = crypto.randomUUID()
     const loggedContent = (result.type === 'photo' || (typeof content === 'string' && content.startsWith('![')))
       ? '[image]'
       : (typeof content === 'string' ? content : '[image]')
     const modelChain = result.model_chain
     const usageType = result.usage_type || 'chat'
-    logWebInteraction(logId, prompt, 'user', usageType as any, 'success', modelChain, requestId).catch(() => {})
-    logWebInteraction(logId, loggedContent, 'model', usageType as any, result.status || 'success', modelChain, requestId).catch(() => {})
+    logWebInteraction(logUserId, prompt, 'user', usageType as any, 'success', modelChain, requestId).catch(() => {})
+    const messageLogId = await logModelWebMessage(logUserId, loggedContent, usageType as any, result.status || 'success', modelChain, requestId).catch(() => null)
 
     return NextResponse.json({
       content,
       type: result.type,
       usage_type: result.usage_type,
-      model: result.model
+      model: result.model,
+      log_id: messageLogId ?? undefined,
     })
   } catch (error: any) {
     console.error('[AI API Error]', error);
-    const logId = user?.id || 'anonymous'
-    logWebInteraction(logId, error.message || 'AI request failed.', 'model', 'chat', 'error').catch(() => {})
+    logWebInteraction(user?.id || 'anonymous', error.message || 'AI request failed.', 'model', 'chat', 'error').catch(() => {})
     return NextResponse.json({
       error: error.message || 'AI request failed.',
       model: 'system'
