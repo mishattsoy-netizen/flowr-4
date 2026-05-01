@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Crimson+Pro:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 @import "tailwindcss";
 
 /* Global font weight tracking - adds 0.025em letter-spacing to all font weights */
@@ -45,6 +45,7 @@
   --bone-3: rgba(233, 233, 226, 0.03);
   --bone-6: rgba(233, 233, 226, 0.06);
   --bone-10: rgba(233, 233, 226, 0.10);
+  --bone-12: rgba(233, 233, 226, 0.12);
   --bone-15: rgba(233, 233, 226, 0.15);
   --bone-30: rgba(233, 233, 226, 0.30);
   --bone-60: rgba(233, 233, 226, 0.60);
@@ -115,6 +116,7 @@ html[data-interface-size="big"] {
 
   --color-bone-5: var(--bone-5);
   --color-bone-10: var(--bone-10);
+  --color-bone-12: var(--bone-12);
   --color-bone-15: var(--bone-15);
   --color-bone-30: var(--bone-30);
   --color-bone-60: var(--bone-60);
@@ -186,7 +188,7 @@ html[data-interface-size="big"] {
 }
 
 @utility font-crimson {
-  font-family: 'Crimson Pro', serif;
+  font-family: 'Crimson Text', serif;
   font-weight: 600;
   letter-spacing: -0.01em;
 }

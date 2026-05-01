@@ -1,12 +1,13 @@
 import Script from "next/script";
-import { Crimson_Pro, DM_Sans, DM_Mono } from "next/font/google";
+import { Crimson_Text, DM_Sans, DM_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 import SupabaseProvider from "@/components/SupabaseProvider";
 
-const crimsonPro = Crimson_Pro({
+const crimsonText = Crimson_Text({
   variable: "--font-display",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
 const dmSans = DM_Sans({
@@ -39,7 +40,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${crimsonPro.variable} ${dmSans.variable} ${dmMono.variable} h-full antialiased preload`}
+      className={`${crimsonText.variable} ${dmSans.variable} ${dmMono.variable} h-full antialiased preload`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <SupabaseProvider>

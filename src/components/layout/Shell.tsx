@@ -260,7 +260,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             }}
             className={clsx(
               "w-2 h-full cursor-col-resize absolute left-0 z-50 transition-colors group",
-              isResizingRight ? "bg-accent/10" : ""
+              isResizingRight ? "bg-accent/10" : "bg-transparent"
             )}
             style={{ 
               left: `calc(100% - ${currentAiSidebarWidth}px - 4px)`,
@@ -275,19 +275,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Right AI Sidebar Wrapper */}
-        <div 
-          className={clsx(
-            "h-full bg-sidebar shrink-0 overflow-hidden relative z-40 border-[var(--bone-15)] transition-colors",
-            (isAIAssistantExtended && isAIAssistantOpen) ? "border-l w-auto" : "border-l-0 w-0"
-          )}
-          style={{ 
+        <div
+          className="h-full bg-sidebar shrink-0 overflow-hidden relative z-40 border-l border-[var(--bone-12)] transition-colors"
+          style={{
             width: (isAIAssistantExtended && isAIAssistantOpen) ? `${currentAiSidebarWidth}px` : '0px',
-            transition: (isResizingRight || isResizingLeft) ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1), border-color 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: (isResizingRight || isResizingLeft) ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
-          <div className="h-full" style={{ width: `${currentAiSidebarWidth}px` }}> 
-            {hasHydrated && isAIAssistantExtended && <AIAssistant />}
-          </div>
+          {hasHydrated && isAIAssistantExtended && <AIAssistant />}
         </div>
       </div>
 

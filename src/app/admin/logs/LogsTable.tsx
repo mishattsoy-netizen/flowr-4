@@ -144,7 +144,7 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
       </div>
 
       {/* Table */}
-      <div className="bg-panel border border-white/5 rounded-big overflow-hidden">
+      <div className="bg-panel rounded-big overflow-hidden">
         {/* Header */}
         <div className="grid grid-cols-[28px_100px_140px_1fr_1fr_220px_72px_28px] gap-3 px-4 py-2.5 border-b border-white/5 bg-background/40">
           <button
@@ -355,14 +355,14 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
             <button
               onClick={() => load(filters, page - 1)}
               disabled={page === 0 || isPending}
-              className="p-1.5 rounded-medium bg-panel border border-white/5 text-bone-60 hover:text-bone-100 disabled:opacity-20 transition-all"
+              className="p-1.5 rounded-medium bg-panel text-bone-60 hover:text-bone-100 disabled:opacity-20 transition-all"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => load(filters, page + 1)}
               disabled={page >= totalPages - 1 || isPending}
-              className="p-1.5 rounded-medium bg-panel border border-white/5 text-bone-60 hover:text-bone-100 disabled:opacity-20 transition-all"
+              className="p-1.5 rounded-medium bg-panel text-bone-60 hover:text-bone-100 disabled:opacity-20 transition-all"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>

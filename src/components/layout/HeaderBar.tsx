@@ -142,7 +142,7 @@ export const HeaderBar = memo(function HeaderBar() {
     }`;
 
   return (
-    <div className="h-8 flex items-center px-3 bg-sidebar border-b border-border shrink-0 relative z-30">
+    <div className="h-8 flex items-center px-3 bg-sidebar border-b border-b-[var(--bone-6)] shrink-0 relative z-30">
       {/* Left Nav Actions */}
       <div className="flex items-center gap-1 shrink-0">
         <button 
@@ -175,7 +175,7 @@ export const HeaderBar = memo(function HeaderBar() {
       </div>
 
       {/* Divider (only if not dashboard or if we want it always) */}
-      <div className="w-px h-5 bg-border mx-3" />
+      <div className="w-px h-5 bg-[var(--bone-6)] mx-3" />
 
       {/* Tabs */}
       <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-none h-full px-2">

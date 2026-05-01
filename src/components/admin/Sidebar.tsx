@@ -32,7 +32,7 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-border">
-      <div className="flex items-center justify-between px-4 py-5 border-b border-border transition-all duration-0">
+      <div className="flex items-center justify-between px-4 py-5 border-b border-[var(--bone-6)] transition-all duration-0">
         <div className="flex items-center gap-3 group">
           <LogoSimple className="w-7 h-7" />
           <h1 className="text-2xl font-display font-normal text-foreground tracking-tight leading-none">Admin</h1>
@@ -93,7 +93,7 @@ export default function Sidebar() {
         </PlatformSection>
       </nav>
 
-      <div className="p-3 border-t border-border flex items-center mt-auto justify-between">
+      <div className="p-3 border-t border-[var(--bone-6)] flex items-center mt-auto justify-between">
         <Link
           href="/"
           className="sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px] text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"

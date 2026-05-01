@@ -257,7 +257,7 @@ export default function RouterManager({
 
   return (
     <div className={cn(
-      "bg-panel border border-white/5 rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative",
+      "bg-panel rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative",
       hasChanges ? "ring-1 ring-accent/20" : ""
     )}>
       {/* Integrated Header */}

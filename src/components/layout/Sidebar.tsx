@@ -315,7 +315,7 @@ export const Sidebar = React.memo(function Sidebar() {
       <div 
         onClick={toggleSidebar}
         className={clsx(
-          "flex items-center px-3 py-3 border-b border-border group cursor-pointer transition-all duration-0", 
+          "flex items-center px-3 py-3 border-b border-[var(--bone-6)] group cursor-pointer transition-all duration-0", 
           isSidebarCollapsed ? "justify-center" : "justify-between"
         )}
       >
@@ -667,7 +667,7 @@ export const Sidebar = React.memo(function Sidebar() {
         </div>
       </div>
 
-      <div className={clsx("p-3 border-t border-border flex items-center mt-auto", isSidebarCollapsed ? "flex-col gap-5 py-4" : "justify-between")}>
+      <div className={clsx("p-3 border-t border-[var(--bone-6)] flex items-center mt-auto", isSidebarCollapsed ? "flex-col gap-5 py-4" : "justify-between")}>
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--bone-15)] to-[var(--bone-6)] border border-[var(--bone-10)] flex items-center justify-center shrink-0 overflow-hidden">
             <span className="text-[10px] font-bold text-[var(--bone-60)] tracking-wide">M</span>

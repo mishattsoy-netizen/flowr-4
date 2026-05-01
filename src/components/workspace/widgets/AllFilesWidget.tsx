@@ -41,7 +41,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: { data?: { sor
   };
 
   return (
-    <section className="bg-sidebar border border-[var(--bone-3)] group/widget px-4 pb-4 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
+    <section className="bg-sidebar group/widget px-4 pb-4 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground">All Files</h2>
         {onUpdateData && (

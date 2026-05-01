@@ -22,7 +22,7 @@ export function FoldersWidget({ entity }: { entity: Entity }) {
   }, [entities, entity.id]);
 
   return (
-    <section className="bg-sidebar border border-[var(--bone-3)] group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
       <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground mb-4">
         Folders
       </h2>

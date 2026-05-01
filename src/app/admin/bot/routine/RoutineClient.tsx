@@ -98,7 +98,7 @@ export default function RoutineClient({ initialPlans }: Props) {
       </div>
 
       {/* Controls */}
-      <div className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl p-4 flex items-center gap-4">
+      <div className="bg-[var(--bone-6)] rounded-xl p-4 flex items-center gap-4">
         <button
           onClick={runAnalysis}
           disabled={running}
@@ -143,7 +143,7 @@ export default function RoutineClient({ initialPlans }: Props) {
             const isExpanded = expandedId === plan.id
             const isEditing = editingId === plan.id
             return (
-              <div key={plan.id} className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl overflow-hidden">
+              <div key={plan.id} className="bg-[var(--bone-6)] rounded-xl overflow-hidden">
                 {/* Card header */}
                 <div
                   className="flex items-center gap-3 p-4 cursor-pointer hover:bg-[var(--bone-8)]"

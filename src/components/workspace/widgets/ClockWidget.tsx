@@ -45,7 +45,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
     ...(timezone ? { timeZone: timezone } : {}),
   });
 
-  const timeStr = new Intl.DateTimeFormat('en-US', fmtOpts({ hour: '2-digit', minute: '2-digit', hour12 })).format(now);
+  const timeStr = new Intl.DateTimeFormat('en-US', fmtOpts({ hour: 'numeric', minute: '2-digit', hour12 })).format(now);
   const dateStr = new Intl.DateTimeFormat('en-US', fmtOpts({ weekday: 'long', month: 'long', day: 'numeric' })).format(now);
 
   const hours = Number(new Intl.DateTimeFormat('en-US', fmtOpts({ hour: 'numeric', hour12: false })).format(now));
@@ -62,7 +62,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
   ];
 
   return (
-    <section className="bg-sidebar border border-[var(--bone-3)] group/widget rounded-[var(--radius-big)] widget-shadow h-full flex flex-col relative">
+    <section className="bg-sidebar group/widget rounded-[var(--radius-big)] widget-shadow h-full flex flex-col relative">
       {onUpdateData && isEditing && (
         <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[var(--radius-small)] p-0.5">

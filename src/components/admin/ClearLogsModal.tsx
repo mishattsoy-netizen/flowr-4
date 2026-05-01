@@ -60,7 +60,7 @@ export default function ClearLogsModal({
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
 
           {/* Modal */}
-          <div className="relative bg-panel border border-white/10 rounded-big w-full max-w-md mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-panel rounded-big w-full max-w-md mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
               <div className="flex items-center gap-2.5">

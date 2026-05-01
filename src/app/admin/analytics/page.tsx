@@ -21,7 +21,7 @@ export default async function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-sidebar border border-[var(--bone-10)] group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
+        <div className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[80px] -mr-16 -mt-16" />
           
           <div className="space-y-1 relative z-10">
@@ -49,7 +49,7 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="bg-sidebar border border-[var(--bone-10)] group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
+        <div className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
           <div className="space-y-1">
             <h2 className="text-[10px] font-bold text-bone-60 uppercase tracking-[0.1em] flex items-center gap-2 opacity-50">
               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />

@@ -369,7 +369,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
               )}
             </div>
 
-            <div className="pt-3 border-t border-[var(--bone-15)] space-y-2">
+            <div className="pt-3 border-t border-[var(--bone-6)] space-y-2">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[9px] font-bold uppercase text-muted-foreground/40">Input Test</span>
                 <div className="flex gap-0.5">
@@ -398,7 +398,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
         className={clsx(
           "flex flex-col overflow-hidden bg-sidebar",
           actualExtended
-            ? "relative w-full h-full slide-in-from-right-4"
+            ? "relative w-full h-full"
             : "fixed bottom-6 right-6 w-[380px] h-[680px] max-h-[calc(100vh-3rem)] z-[100] bg-sidebar rounded-[var(--radius-big)] border border-[var(--bone-15)] hover:border-[var(--bone-30)] overflow-hidden zoom-in-95 slide-in-from-bottom-4"
         )}
         style={{ display: isAIAssistantOpen ? 'flex' : 'none' }}
@@ -414,10 +414,10 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
           </div>
         )}
 
-        <div className="py-3 border-b border-[var(--bone-15)] flex items-center justify-between shrink-0 px-6">
+        <div className="py-3 border-b border-[var(--bone-6)] flex items-center justify-between shrink-0 px-6">
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none" style={{ fontFamily: '"Crimson Pro", serif' }}>
+              <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none" style={{ fontFamily: '"Crimson Text", serif' }}>
                 AI Agent
               </h1>
               <div className={clsx("w-1.5 h-1.5 rounded-full mt-1 shadow-[0_0_8px_rgba(34,197,94,0.4)]", isMounted ? "bg-[#22C55E]" : "bg-[#EF4444]")} />
@@ -519,7 +519,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
         </div>
 
         {attachments.length > 0 && (
-          <div className="px-6 py-2 bg-background border-t border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+          <div className="px-6 py-2 bg-background border-t border-[var(--bone-6)] flex gap-2 overflow-x-auto scrollbar-hide">
             {attachments.map((att, i) => (
               <div key={`pending-att-${i}`} className="relative group shrink-0">
                 <div className={clsx(
@@ -552,11 +552,11 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
           </div>
         )}
 
-        <div className="px-6 pb-6 pt-3 shrink-0 bg-sidebar border-t border-[var(--bone-15)] relative">
+        <div className="px-6 pb-6 pt-3 shrink-0 bg-sidebar border-t border-[var(--bone-6)] relative">
           <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
 
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center bg-[var(--bone-6)] border border-[var(--bone-6)] rounded-[10px] px-4 min-h-[48px] h-auto py-3 focus-within:border-accent/30 overflow-hidden">
+            <div className="flex-1 flex items-center bg-[var(--bone-6)] border border-transparent rounded-[10px] px-4 min-h-[48px] h-auto py-3 focus-within:border-[var(--bone-12)] overflow-hidden transition-colors">
               <textarea
                 ref={textareaRef}
                 value={input}

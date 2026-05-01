@@ -133,7 +133,7 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
       </div>
 
       {/* Editor card */}
-      <div className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl p-5">
+      <div className="bg-[var(--bone-6)] rounded-xl p-5">
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground">{activeTab_.label}</h3>
@@ -160,7 +160,7 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
       </div>
 
       {/* Compiled prompt panel */}
-      <div className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl p-5">
+      <div className="bg-[var(--bone-6)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">

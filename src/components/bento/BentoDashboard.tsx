@@ -422,7 +422,7 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
   return (
     <div className="flex-1 flex flex-row overflow-hidden h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-8 py-5 max-w-6xl mx-auto w-full h-full flex flex-col min-h-0">
+        <div className="px-8 py-5 w-full h-full flex flex-col min-h-0">
           <header className="flex items-end justify-between mb-3">
             <div className="flex-1">{title}</div>
 

@@ -361,7 +361,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
     ) : null
 
   return (
-    <div className="bg-panel border border-white/5 rounded-big overflow-hidden">
+    <div className="bg-panel rounded-big overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>

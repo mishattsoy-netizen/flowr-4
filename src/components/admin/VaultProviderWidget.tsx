@@ -173,7 +173,7 @@ export default function VaultProviderWidget({
   // ── render ───────────────────────────────────────────────
 
   return (
-    <div className="bg-panel border border-white/5 rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative">
+    <div className="bg-panel rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative">
       {/* Header */}
       <div className="px-2 py-2 mb-1 flex items-center justify-between">
         <div className="flex items-center gap-2">

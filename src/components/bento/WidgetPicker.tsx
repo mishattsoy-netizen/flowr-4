@@ -36,8 +36,8 @@ export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId, l
   return (
     <div
       className={clsx(
-        'h-full bg-sidebar border-l border-border transition-[width] duration-300 overflow-hidden shrink-0',
-        open ? 'w-[280px]' : 'w-0'
+        'h-full bg-sidebar transition-[width] duration-300 overflow-hidden shrink-0',
+        open ? 'w-[280px] border-l border-border' : 'w-0'
       )}
     >
       <div className="w-[280px] h-full flex flex-col px-1">

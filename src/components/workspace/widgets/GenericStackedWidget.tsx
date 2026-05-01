@@ -90,7 +90,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
   return (
     <section 
       className={clsx(
-        "h-full w-full relative bg-sidebar border border-[var(--bone-3)] rounded-[var(--radius-big)] widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
+        "h-full w-full relative bg-sidebar rounded-[var(--radius-big)] widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
         isDragOver && "ring-2 ring-accent ring-inset bg-accent/5"
       )}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}

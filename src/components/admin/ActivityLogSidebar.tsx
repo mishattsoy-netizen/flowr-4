@@ -59,7 +59,7 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
 
   return (
     <div className={cn(
-      "flex-shrink-0 border-l border-border bg-sidebar transition-all duration-200 overflow-hidden h-full flex flex-col",
+      "flex-shrink-0 bg-sidebar transition-all duration-200 overflow-hidden h-full flex flex-col",
       open ? "w-64" : "w-10"
     )}>
       {/* Toggle button */}

@@ -143,7 +143,7 @@ export default function BrainClient({ initialEntries }: Props) {
 
       {/* Graph */}
       <div
-        className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl overflow-hidden"
+        className="bg-[var(--bone-6)] rounded-xl overflow-hidden"
         style={{ height: 300 }}
       >
         <ReactFlow
@@ -208,7 +208,7 @@ export default function BrainClient({ initialEntries }: Props) {
 
       {/* Add entry form */}
       {showAdd && (
-        <div className="bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl p-4 space-y-3">
+        <div className="bg-[var(--bone-6)] rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">New Brain Entry</h3>
             <button onClick={() => setShowAdd(false)}>
@@ -270,7 +270,7 @@ export default function BrainClient({ initialEntries }: Props) {
             <div
               key={entry.id}
               className={cn(
-                'bg-[var(--bone-6)] border border-[var(--bone-10)] rounded-xl p-4 flex gap-3 items-start group transition-opacity',
+                'bg-[var(--bone-6)] rounded-xl p-4 flex gap-3 items-start group transition-opacity',
                 !entry.is_active && 'opacity-40'
               )}
             >

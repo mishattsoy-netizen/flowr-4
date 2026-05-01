@@ -31,7 +31,7 @@ export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter 
   );
 
   return (
-    <section className="bg-sidebar border border-[var(--bone-3)] group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground group-hover/widget:text-accent transition-colors" />
