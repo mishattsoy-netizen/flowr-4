@@ -19,7 +19,8 @@ export async function logInteraction(
   usageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat',
   status: 'success' | 'error' = 'success',
   modelChain?: string,
-  requestId?: string
+  requestId?: string,
+  contextMessages?: any
 ) {
   try {
     let topicTag = null
@@ -43,7 +44,8 @@ export async function logInteraction(
       usage_type: usageType,
       status,
       model_chain: modelChain ?? null,
-      request_id: requestId ?? null
+      request_id: requestId ?? null,
+      context_messages: contextMessages ?? null
     })
 
     if (error) throw error
@@ -64,13 +66,16 @@ export async function logWebInteraction(
   usageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat',
   status: 'success' | 'error' = 'success',
   modelChain?: string,
-  requestId?: string
+  requestId?: string,
+  contextMessages?: any
 ) {
   if (!supabaseAdmin) return
   try {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)
+    const validAuthUserId = (isUUID && authUserId !== '00000000-0000-0000-0000-000000000000') ? authUserId : null
     // Try with auth_user_id (requires migration 20260424_message_logs_web_users.sql)
     const { error } = await supabaseAdmin.from('message_logs').insert({
-      auth_user_id: authUserId,
+      auth_user_id: validAuthUserId,
       content,
       role,
       type: 'text',
@@ -110,12 +115,18 @@ export async function logModelWebMessage(
   usageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat',
   status: 'success' | 'error' = 'success',
   modelChain?: string,
-  requestId?: string
+  requestId?: string,
+  contextMessages?: any
 ): Promise<number | null> {
-  if (!supabaseAdmin) return null
+  if (!supabaseAdmin) {
+    console.log('[Analytics] supabaseAdmin is missing or not initialized in logModelWebMessage!')
+    return null
+  }
   try {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)
+    const validAuthUserId = (isUUID && authUserId !== '00000000-0000-0000-0000-000000000000') ? authUserId : null
     const { data, error } = await supabaseAdmin.from('message_logs').insert({
-      auth_user_id: authUserId,
+      auth_user_id: validAuthUserId,
       content,
       role: 'model',
       type: 'text',
@@ -123,7 +134,7 @@ export async function logModelWebMessage(
       status,
       model_chain: modelChain ?? null,
       request_id: requestId ?? null
-    }).select('id').single()
+    }).select('id')
 
     if (error?.message?.includes('auth_user_id')) {
       const { data: d2, error: e2 } = await supabaseAdmin.from('message_logs').insert({
@@ -135,15 +146,17 @@ export async function logModelWebMessage(
         status,
         model_chain: modelChain ?? null,
         request_id: requestId ?? null
-      }).select('id').single()
+      }).select('id')
       if (e2) { logger.warn(`logModelWebMessage fallback failed: ${e2.message}`); return null }
-      logger.info(`Model message logged (no auth_user_id) id=${d2?.id}`)
-      return d2?.id ?? null
+      const id2 = d2?.[0]?.id
+      logger.info(`Model message logged (no auth_user_id) id=${id2}`)
+      return id2 ?? null
     }
 
     if (error) { logger.warn(`logModelWebMessage failed: ${error.message}`); return null }
-    logger.info(`Model message logged id=${data?.id}`)
-    return data?.id ?? null
+    const id = data?.[0]?.id
+    logger.info(`Model message logged id=${id}`)
+    return id ?? null
   } catch (error) {
     logger.error('logModelWebMessage failed:', error)
     return null

@@ -9,7 +9,7 @@ export async function runGoogle(
   prompt: string,
   systemPrompt?: string,
   imageBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean },
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean; temperature?: number },
   history: any[] = []
 ): Promise<string | null> {
   let keys = context?.aiApiKey ? [context.aiApiKey] : []
@@ -23,17 +23,30 @@ export async function runGoogle(
     return null
   }
 
-  for (const key of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
     try {
       const genAI = new GoogleGenerativeAI(key)
       
+      const isGemma = modelId.toLowerCase().includes('gemma')
+      let finalPrompt = prompt || "Analyze this."
+
+      // Legacy Gemma models (1, 2, 3) don't support native systemInstruction role or tools on Gemini API.
+      // We prepend system instructions to the prompt text instead to bypass the 400 Bad Request.
+      if (isGemma && systemPrompt) {
+        finalPrompt = `System Instructions:\n${systemPrompt}\n\nUser Request: ${finalPrompt}`
+      }
+
       const model = genAI.getGenerativeModel({
         model: modelId,
-        systemInstruction: systemPrompt,
-        ...(context?.useTools ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {})
-      })
+        systemInstruction: !isGemma ? systemPrompt : undefined,
+        ...(context?.useTools && !isGemma ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {}),
+        generationConfig: {
+          temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7
+        }
+      }, { apiVersion: 'v1beta' })
       
-      const parts: any[] = [{ text: prompt || "Analyze this." }]
+      const parts: any[] = [{ text: finalPrompt }]
       
       if (imageBuffer) {
         parts.push({
@@ -83,7 +96,10 @@ export async function runGoogle(
       }
       
       const finalAnswer = response.text()
-      if (finalAnswer) return finalAnswer
+      if (finalAnswer) {
+        if (context) (context as any).usedKeyIndex = (context as any).usedKeyIndex || i + 1
+        return finalAnswer
+      }
     } catch (error: any) {
       if (error.message?.includes('429') || error.message?.includes('quota')) {
         logger.warn(`Gemini key rate limited. Trying next key...`)

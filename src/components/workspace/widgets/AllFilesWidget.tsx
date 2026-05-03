@@ -12,6 +12,7 @@ type ViewMode = 'flat' | 'tree';
 export function AllFilesWidget({ data, onUpdateData, contextId }: { data?: { sort?: SortBy; view?: ViewMode }; onUpdateData?: (d: any) => void; contextId?: string; isEditing?: boolean }) {
   const entities = useStore(s => s.entities);
   const setActiveEntityId = useStore(s => s.setActiveEntityId);
+  const openModal = useStore(s => s.openModal);
   const [search, setSearch] = useState('');
   const sort: SortBy = data?.sort ?? 'modified';
   const view: ViewMode = data?.view ?? 'flat';
@@ -66,7 +67,21 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: { data?: { sor
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {(view === 'flat' ? filtered : rootItems).map(e => renderItem(e))}
-        {filtered.length === 0 && <div className="flex items-center justify-center h-16"><p className="text-sm text-muted-foreground">No files found.</p></div>}
+        {filtered.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
+            <Search strokeWidth={1} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <div className="text-center max-w-[320px]">
+              <p className="text-base font-semibold text-bone-100 opacity-40">No files found</p>
+              <p className="text-xs text-bone-40 opacity-25 mt-1 leading-snug text-balance">Files you add or sync will appear here.</p>
+            </div>
+            <button
+              onClick={() => openModal({ kind: 'newItem' })}
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+            >
+              + New Item
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

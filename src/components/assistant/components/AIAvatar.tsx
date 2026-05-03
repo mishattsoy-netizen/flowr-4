@@ -15,7 +15,7 @@ export const AIAvatar = memo(({ className = "w-4 h-4", isTyping = false }: { cla
         "shrink-0 transition-opacity duration-300",
         shouldPulse && "animate-thinking-pulse"
       )}
-      style={{ color: '#E09952' }}
+      style={{ color: 'var(--accent)' }}
     />
   );
 });

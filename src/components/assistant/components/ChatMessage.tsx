@@ -109,6 +109,24 @@ export const ChatMessage = memo(({
   const displayedLenRef = useRef(isInitiallyFinished ? targetContent.length : 0);
   const lastTimeRef = useRef(0);
 
+  const [elapsed, setElapsed] = useState(0)
+  const [completionTime, setCompletionTime] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (msg.role === 'assistant') {
+      if (isAILoading && isLast) {
+        const start = Date.now()
+        const timer = setInterval(() => {
+          const sec = Math.floor((Date.now() - start) / 1000)
+          setElapsed(sec)
+        }, 1000)
+        return () => clearInterval(timer)
+      } else if (!isAILoading && elapsed > 0 && !completionTime) {
+        setCompletionTime(elapsed)
+      }
+    }
+  }, [msg.role, isLast, isAILoading, elapsed, completionTime])
+
   useEffect(() => {
     if (msg.role === 'user' || hasFinishedTyping || isImageContent) {
       setDisplayContent(targetContent);
@@ -183,6 +201,16 @@ export const ChatMessage = memo(({
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [targetContent, msg.role, isAILoading, hasFinishedTyping, isImageContent]);
 
+  useEffect(() => {
+    let unchangedTimeout: NodeJS.Timeout | null = null;
+    if (targetContent.length === displayedLenRef.current && isAILoading) {
+      unchangedTimeout = setTimeout(() => {
+        setHasFinishedTyping(true);
+      }, 1500);
+    }
+    return () => { if (unchangedTimeout) clearTimeout(unchangedTimeout); };
+  }, [targetContent, displayContent, isAILoading]);
+
   const markdownComponents = useMemo(() => {
     const isAtEnd = (node: any) => {
       if (!node?.position?.end?.offset) return false;
@@ -192,13 +220,40 @@ export const ChatMessage = memo(({
     return {
       p: ({ node, children }: any) => {
         const isStatus = typeof children === 'string' && (children.includes('Preparing tool') || children.includes('Thinking'));
-        const atEnd = !hasFinishedTyping && !isStatus && isAtEnd(node) && !!children;
+        const atEnd = isAILoading && !hasFinishedTyping && !isStatus && isAtEnd(node) && !!children;
         const isEmpty = !children || (Array.isArray(children) && children.length === 0) || (typeof children === 'string' && !children.trim());
 
           return <div className={clsx(isStatus ? "mb-0" : "mb-2 last:mb-0 break-words !max-w-full !w-full", isStatus && "font-sans font-medium opacity-30 text-[14px] tracking-wide flex items-center")}>
           {isStatus ? <StatusTyping text={children} /> : children}
           {(atEnd && !isEmpty) && <span className="ai-cursor-inline">█</span>}
         </div>;
+      },
+      a: ({ href, children }: any) => {
+        const isUrlOnly = typeof children === 'string' && (children.startsWith('http://') || children.startsWith('https://'));
+        const label = isUrlOnly ? new URL(href).hostname.replace('www.', '') : children;
+        let faviconUrl = '';
+        try {
+          if (href && href.startsWith('http')) {
+            const urlObj = new URL(href);
+            faviconUrl = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+          }
+        } catch { }
+
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1 mr-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full text-[11px] font-medium text-[var(--bone-60)] hover:text-accent no-underline transition-all duration-200 select-none"
+          >
+            {faviconUrl && (
+              <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 overflow-hidden bg-white/10 rounded-[4px]">
+                <img src={faviconUrl} alt="" className="w-3 h-3 object-contain select-none opacity-80" />
+              </span>
+            )}
+            <span className="max-w-[120px] truncate leading-none">{label}</span>
+          </a>
+        );
       },
       strong: ({ node, children }: any) => {
         const atEnd = !hasFinishedTyping && isAtEnd(node);
@@ -231,17 +286,36 @@ export const ChatMessage = memo(({
     , [msg.role, isLast, isAILoading, displayContent]);
 
   async function submitFeedback(value: 'like' | 'dislike') {
-    if (!msg.logId || feedbackState === value) return
+    if (feedbackState === value) return
     setFeedbackState(value)
+    const logId = msg.logId || (msg as any).log_id;
+    if (!logId) return
     try {
       const { supabase } = await import('@/lib/supabase')
       const { data: { session } } = await supabase.auth.getSession()
-      const authUserId = session?.user?.id
-      if (!authUserId) return
+      const authUserId = session?.user?.id || '00000000-0000-0000-0000-000000000000'
+
+      const currentMessages = useStore.getState().aiMessages || [];
+      const msgIndex = currentMessages.findIndex(m => m.id === msg.id);
+      const priorMessages = msgIndex !== -1 ? currentMessages.slice(0, msgIndex) : currentMessages;
+      const priorHistory = priorMessages.map(m => ({
+        role: m.role,
+        content: m.content
+      })).slice(-10);
+
       await fetch('/api/ai/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_log_id: msg.logId, auth_user_id: authUserId, feedback: value })
+        body: JSON.stringify({
+          message_log_id: logId,
+          auth_user_id: authUserId,
+          feedback: value,
+          context_messages: {
+            classify: (msg as any).classification_trace,
+            routing: (msg as any).routing_trace,
+            history: priorHistory
+          }
+        })
       })
     } catch { setFeedbackState(null) }
   }
@@ -278,12 +352,12 @@ export const ChatMessage = memo(({
       msg.role === 'user' ? "items-end mb-4" : "items-start mb-0"
     )}>
       <div className={clsx(
-        "flex gap-1 w-full",
+        "flex gap-3 w-full items-start",
         msg.role === 'user' ? "flex-row-reverse" : "flex-row"
       )}>
         {msg.role === 'assistant' && isLast && (
-          <div className="w-8 h-8 shrink-0 flex items-center justify-center mt-1 -ml-1">
-            <AIAvatar isTyping={!hasFinishedTyping && msg.role === 'assistant'} />
+          <div className="w-5 h-5 shrink-0 flex items-center justify-center mt-[5.5px] -ml-1 select-none">
+            <AIAvatar isTyping={!hasFinishedTyping && msg.role === 'assistant'} className="w-3.5 h-3.5" />
           </div>
         )}
          <div className={clsx(
@@ -291,12 +365,17 @@ export const ChatMessage = memo(({
            msg.role === 'user' ? "items-end max-w-[90%]" : "items-start max-w-[90%] flex-1"
          )}>
           {!displayContent && msg.role === 'assistant' ? (
-            <div className="flex items-center h-8 mt-1">
+            <div className="flex items-center h-5 mt-[5.5px] gap-2">
               <StatusTyping
                 text="Thinking..."
-                className="font-display font-medium text-[var(--bone-30)] text-[15px]"
+                className="font-display font-medium text-[var(--bone-30)] text-[14.5px]"
                 style={{ fontFamily: 'var(--font-display)', fontWeight: 500 } as any}
               />
+              {elapsed > 0 && (
+                <span className="text-[11px] text-[var(--bone-30)] font-mono opacity-80 select-none mt-0.5">
+                  ({elapsed}s)
+                </span>
+              )}
             </div>
           ) : (
              <div
@@ -417,6 +496,7 @@ export const ChatMessage = memo(({
                 )}>
                   <span className="text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--bone-40)]">
                     {msg.model.split('/').pop()?.replace(/-/g, ' ')}
+                    {completionTime ? ` (${completionTime}s)` : ''}
                   </span>
                 </div>
               )}

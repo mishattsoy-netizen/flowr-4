@@ -119,6 +119,18 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
     }
   }, [isLoading]);
 
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`bento_fullwidth_${contextId}`);
+      return saved !== 'false';
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`bento_fullwidth_${contextId}`, String(isFullWidth));
+  }, [isFullWidth, contextId]);
+
   const { positions, grid } = useMemo(() => computeGridPositions(layout), [layout]);
   // Hit-test against real layout so the grid doesn't shift under the pointer mid-drag
   const { grid: hitGrid } = useMemo(() => computeGridPositions(realLayout), [realLayout]);
@@ -422,14 +434,27 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
   return (
     <div className="flex-1 flex flex-row overflow-hidden h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-8 py-5 w-full h-full flex flex-col min-h-0">
-          <header className="flex items-end justify-between mb-3">
+        <div className={clsx("px-8 py-5 h-full flex flex-col min-h-0", isFullWidth ? "w-full" : "w-full max-w-[1200px] mx-auto")}>
+          <header className="flex items-end justify-between mb-3 px-[6px]">
             <div className="flex-1">{title}</div>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 mr-1">
                 {editMode && (
                   <>
+                    <label className="flex items-center gap-2 mr-3 cursor-pointer select-none text-xs text-bone-60">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={isFullWidth}
+                          onChange={() => setIsFullWidth(!isFullWidth)}
+                        />
+                        <div className="w-7 h-4 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent border border-white/5" />
+                      </div>
+                      <span className="font-medium text-bone-60 opacity-60 hover:opacity-100 transition-opacity">Full Width</span>
+                    </label>
+
                     <button onClick={undo} disabled={!canUndo} className="btn-bento disabled:opacity-50">
                       ↶ Undo
                     </button>

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { Settings, RefreshCw, Eye, EyeOff, Check } from 'lucide-react'
-import { saveSettingBlock, syncCompiledPrompt, toggleSettingBlock, setGlobalPromptEnabled } from './actions'
+import { Settings, RefreshCw, Eye, EyeOff, Check, Cpu } from 'lucide-react'
+import { saveSettingBlock, syncCompiledPrompt, toggleSettingBlock, setGlobalPromptEnabled, setOllamaEnabled, setBackendModel } from './actions'
 import type { BotSetting, SettingsCategory } from './actions'
 import { cn } from '@/lib/utils'
+import ModelDropdown from '@/components/admin/ModelDropdown'
 
 const TABS: { key: SettingsCategory; label: string; description: string }[] = [
   { key: 'core_rules',       label: 'Core Rules',      description: 'Hard constraints — what the bot must always or never do' },
@@ -21,9 +22,22 @@ interface Props {
   compiledContent: string
   globalEnabled: boolean
   initialActiveStates: Record<string, boolean>
+  initialOllamaEnabled: boolean
+  initialBackendModel: string
+  initialModels?: { id: string }[]
 }
 
-export default function SettingsClient({ initialSettings, compiledAt, entryCount, compiledContent, globalEnabled, initialActiveStates }: Props) {
+export default function SettingsClient({
+  initialSettings,
+  compiledAt,
+  entryCount,
+  compiledContent,
+  globalEnabled,
+  initialActiveStates,
+  initialOllamaEnabled,
+  initialBackendModel,
+  initialModels = [],
+}: Props) {
   const [activeTab, setActiveTab] = useState<SettingsCategory>('core_rules')
   const [drafts, setDrafts] = useState<Record<string, string>>(
     Object.fromEntries(initialSettings.map(s => [s.category, s.content]))
@@ -35,6 +49,8 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
   const [currentCompiledAt, setCurrentCompiledAt] = useState(compiledAt)
   const [mounted, setMounted] = useState(false)
   const [globalOn, setGlobalOn] = useState(globalEnabled)
+  const [ollamaOn, setOllamaOn] = useState(initialOllamaEnabled)
+  const [backendModel, setBackendModel_] = useState(initialBackendModel)
   const [activeStates, setActiveStates] = useState<Record<string, boolean>>(initialActiveStates)
 
   useEffect(() => {
@@ -65,138 +81,187 @@ export default function SettingsClient({ initialSettings, compiledAt, entryCount
     await setGlobalPromptEnabled(val)
   }
 
+  async function handleOllamaToggle(val: boolean) {
+    setOllamaOn(val)
+    await setOllamaEnabled(val)
+  }
+
+  async function handleBackendModelChange(val: string) {
+    setBackendModel_(val)
+    await setBackendModel(val)
+  }
+
   async function handleBlockToggle(category: SettingsCategory, val: boolean) {
     setActiveStates(s => ({ ...s, [category]: val }))
     await toggleSettingBlock(category, val)
   }
 
   return (
-    <div className="space-y-[10px] animate-in fade-in duration-500">
-      <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">Global Settings</h1>
-        <p className="text-muted-foreground text-sm font-medium">
+    <div className="space-y-4 animate-in fade-in duration-500 font-sans select-none">
+      <div>
+        <h1 className="text-4xl font-display font-normal tracking-tight text-foreground mb-1 select-none">Global Settings</h1>
+        <p className="text-muted-foreground text-sm font-medium select-none">
           Author the bot's global identity — personality, rules, and behavior for all users.
         </p>
       </div>
 
-      {/* Master kill switch */}
-      <div className={cn(
-        "flex items-center justify-between px-4 py-3 rounded-xl border transition-colors",
-        globalOn ? "bg-[var(--bone-6)] border-[var(--bone-10)]" : "bg-red-500/5 border-red-500/20"
-      )}>
+      {/* Global Prompt Injection */}
+       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
         <div>
-          <p className="text-sm font-semibold text-foreground">Global Prompt Injection</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {globalOn ? 'Brain + Settings are active on every chat request' : '⚠️ Disabled — bot runs without any global prompt (raw)'}
-          </p>
+          <p className="text-sm font-semibold tracking-wide text-foreground">Global Prompt Injection</p>
+          <p className="text-xs text-muted-foreground/60 mt-0.5">Brain + Settings are active on every chat request</p>
         </div>
         <button
           onClick={() => handleGlobalToggle(!globalOn)}
           className={cn(
-            "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none",
-            globalOn ? "bg-green-500" : "bg-[var(--bone-20)]"
+            "relative inline-flex h-6 w-11 items-center rounded-full transition-all focus:outline-none",
+            globalOn ? "bg-blue-500" : "bg-white/10"
           )}
         >
           <span className={cn(
-            "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm",
-            globalOn ? "translate-x-4" : "translate-x-1"
+            "inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-all",
+            globalOn ? "translate-x-5.5" : "translate-x-1"
           )} />
         </button>
       </div>
 
-      {/* Category tabs */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Local Ollama */}
+       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
+        <div>
+          <p className="text-sm font-semibold tracking-wide text-foreground">Local Ollama</p>
+          <p className="text-xs text-muted-foreground/60 mt-0.5">Your local Ollama instance is active for all users</p>
+        </div>
+        <button
+          onClick={() => handleOllamaToggle(!ollamaOn)}
+          className={cn(
+            "relative inline-flex h-6 w-11 items-center rounded-full transition-all focus:outline-none",
+            ollamaOn ? "bg-blue-500" : "bg-white/10"
+          )}
+        >
+          <span className={cn(
+            "inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-all",
+            ollamaOn ? "translate-x-5.5" : "translate-x-1"
+          )} />
+        </button>
+      </div>
+
+      {/* Backend Model */}
+       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
+        <div className="flex items-start gap-3">
+          <div className="text-accent mt-0.5 shrink-0 opacity-60">
+            <Cpu className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold tracking-wide text-foreground">Backend Model</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
+          </div>
+        </div>
+        <div className="relative w-[280px]">
+          <ModelDropdown
+            value={backendModel}
+            models={initialModels as any}
+            onChange={(val) => handleBackendModelChange(val)}
+          />
+        </div>
+      </div>
+
+      {/* Tabs with toggle switches */}
+      <div className="flex flex-wrap gap-2 pt-2">
         {TABS.map(tab => (
-          <div key={tab.key} className="flex items-center gap-1">
+          <div
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer select-none transition-all",
+               activeTab === tab.key
+                 ? "bg-[var(--bone-10)] text-foreground"
+                 : "bg-panel text-muted-foreground hover:bg-white/[0.06]"
+            )}
+          >
+            <span className="font-semibold tracking-wide select-none">{tab.label}</span>
             <button
-              onClick={() => setActiveTab(tab.key)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBlockToggle(tab.key, !activeStates[tab.key]);
+              }}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
-                !activeStates[tab.key] && "opacity-40 line-through",
-                activeTab === tab.key
-                  ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
-                  : "bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]"
+                "relative inline-flex h-4.5 w-8.5 items-center rounded-full transition-all focus:outline-none shrink-0 cursor-pointer",
+                activeStates[tab.key] ? "bg-blue-500" : "bg-white/10"
               )}
             >
-              {tab.label}
+              <span className={cn(
+                "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-all shadow-sm",
+                activeStates[tab.key] ? "translate-x-4.5" : "translate-x-0.5"
+              )} />
             </button>
-            <button
-              onClick={() => handleBlockToggle(tab.key, !activeStates[tab.key])}
-              title={activeStates[tab.key] ? 'Disable this block' : 'Enable this block'}
-              className={cn(
-                "w-2 h-2 rounded-full transition-colors",
-                activeStates[tab.key] ? "bg-green-400 hover:bg-red-400" : "bg-[var(--bone-20)] hover:bg-green-400"
-              )}
-            />
           </div>
         ))}
       </div>
 
       {/* Editor card */}
-      <div className="bg-[var(--bone-6)] rounded-xl p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{activeTab_.label}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{activeTab_.description}</p>
-          </div>
+      <div className="bg-panel rounded-big p-5 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold tracking-wide text-foreground select-none">{activeTab_.label}</h3>
+          <p className="text-xs text-muted-foreground/60 mt-0.5 select-none">{activeTab_.description}</p>
         </div>
         <textarea
           value={currentDraft}
           onChange={e => setDrafts(d => ({ ...d, [activeTab]: e.target.value }))}
-          rows={10}
-          className="w-full bg-background border border-[var(--bone-10)] rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground resize-y font-mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-[var(--bone-30)]"
+          rows={11}
+          className="w-full bg-background border border-white/[0.04] rounded-medium px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/30 resize-y font-mono leading-relaxed focus:outline-none focus:border-accent transition-all"
           placeholder={`Write the ${activeTab_.label.toLowerCase()} prompt here...`}
         />
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-muted-foreground">{currentDraft.length} chars</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground/40 font-mono select-none">{currentDraft.length} chars</span>
           <button
             onClick={handleSave}
             disabled={isPending}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 h-8 bg-white text-background rounded-medium text-xs font-semibold hover:brightness-95 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 transition-all select-none"
           >
-            {saved[activeTab] ? <><Check className="w-3.5 h-3.5" /> Saved</> : isPending ? 'Saving…' : 'Save'}
+            {saved[activeTab] ? <><Check className="w-3 h-3" /> Saved</> : isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
 
       {/* Compiled prompt panel */}
-      <div className="bg-[var(--bone-6)] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div className="bg-panel rounded-big p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="text-accent opacity-60">
+            <Settings className="w-4 h-4" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Compiled Prompt
-            </h3>
+            <p className="text-sm font-semibold tracking-wide text-foreground select-none">Compiled Prompt</p>
             {currentCompiledAt && mounted && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground/50 mt-0.5 select-none">
                 Last compiled: {new Date(currentCompiledAt).toLocaleString()} · {entryCount} brain entries
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowPreview(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[var(--bone-10)] rounded-lg text-xs font-medium text-[var(--bone-60)] hover:text-foreground transition-colors"
-            >
-              {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-              {showPreview ? 'Hide' : 'Preview'}
-            </button>
-            <button
-              onClick={handleSync}
-              disabled={syncStatus === 'syncing'}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[var(--bone-10)] rounded-lg text-xs font-medium text-[var(--bone-60)] hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-3 h-3", syncStatus === 'syncing' && "animate-spin")} />
-              {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'done' ? '✓ Synced' : 'Sync Brain'}
-            </button>
-          </div>
         </div>
-        {showPreview && (
-          <pre className="bg-background border border-[var(--bone-10)] rounded-lg p-4 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
-            {compiledContent || '(not yet compiled — click Sync Brain)'}
-          </pre>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPreview(v => !v)}
+            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-white/[0.02] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all select-none"
+          >
+            {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showPreview ? 'Hide' : 'Preview'}
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncStatus === 'syncing'}
+            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-white/[0.02] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all disabled:opacity-50 select-none"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === 'syncing' && "animate-spin")} />
+            {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'done' ? '✓ Synced' : 'Sync Brain'}
+          </button>
+        </div>
       </div>
+
+      {showPreview && (
+        <pre className="bg-background border border-white/[0.03] rounded-big p-4 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto mt-2">
+          {compiledContent || '(not yet compiled — click Sync Brain)'}
+        </pre>
+      )}
     </div>
   )
 }

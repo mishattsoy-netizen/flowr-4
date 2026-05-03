@@ -32,11 +32,10 @@ function truncate(text: string | null, max = 100) {
   return text.length > max ? text.slice(0, max) + '…' : text
 }
 
-// Parse "classifierModel → routedModel" into parts
 function parseChain(chain: string | null): { classifier: string; routed: string } | null {
   if (!chain) return null
   const parts = chain.split(' → ')
-  if (parts.length === 2) return { classifier: parts[0], routed: parts[1] }
+  if (parts.length >= 2) return { classifier: parts[0], routed: parts.slice(1).join(' → ') }
   return { classifier: '', routed: parts[0] }
 }
 
@@ -50,7 +49,7 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
   const [total, setTotal] = useState(initialTotal)
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState<Filters>({ platform: 'all', usage_type: 'all' })
-  const [expanded, setExpanded] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [isPending, startTransition] = useTransition()
 
@@ -74,12 +73,13 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     const next = { ...filters, [key]: value }
     setFilters(next)
-    setExpanded(null)
+    setExpanded(new Set())
     setSelected(new Set())
     load(next, 0)
   }
 
-  function toggleSelect(id: number) {
+  function toggleSelect(id: number, e?: React.MouseEvent) {
+    if (e) e.stopPropagation()
     setSelected(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -88,11 +88,20 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
   }
 
   function toggleSelectAll() {
-    if (selected.size === exchanges.length) {
+    if (selected.size === exchanges.length && exchanges.length > 0) {
       setSelected(new Set())
     } else {
       setSelected(new Set(exchanges.map(e => e.id)))
     }
+  }
+
+  function toggleExpand(id: number, e: React.MouseEvent) {
+    e.stopPropagation()
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
 
   function handleClearDone(deleted: number) {
@@ -101,33 +110,26 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 animate-in fade-in duration-500">
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterChips
-          label="Platform"
-          options={[
-            { value: 'all', label: 'All' },
-            { value: 'app', label: 'App' },
-            { value: 'telegram', label: 'Telegram' },
-          ]}
-          value={filters.platform}
-          onChange={(v) => setFilter('platform', v as Filters['platform'])}
-        />
-        <div className="w-px h-4 bg-white/10" />
-        <FilterChips
-          label="Type"
-          options={[
-            { value: 'all', label: 'All' },
-            { value: 'chat', label: 'Chat' },
-            { value: 'tool', label: 'Tool' },
-            { value: 'search', label: 'Search' },
-            { value: 'vision', label: 'Vision' },
-            { value: 'image', label: 'Image' },
-          ]}
-          value={filters.usage_type}
-          onChange={(v) => setFilter('usage_type', v)}
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        {(['all', 'app', 'telegram'] as const).map(p => (
+          <button key={p} onClick={() => setFilter('platform', p)}
+            className={cn("px-3 py-1 rounded-full text-xs font-medium capitalize transition-all",
+              filters.platform === p ? "bg-[var(--bone-15)] text-foreground" : "bg-[var(--bone-6)] text-muted-foreground hover:text-foreground"
+            )}>
+            {p}
+          </button>
+        ))}
+        <div className="w-px h-4 bg-white/10 mx-1" />
+        {(['all', 'chat', 'tool', 'search', 'vision', 'image'] as const).map(t => (
+          <button key={t} onClick={() => setFilter('usage_type', t)}
+            className={cn("px-3 py-1 rounded-full text-xs font-medium capitalize transition-all",
+              filters.usage_type === t ? "bg-[var(--bone-15)] text-foreground" : "bg-[var(--bone-6)] text-muted-foreground hover:text-foreground"
+            )}>
+            {t}
+          </button>
+        ))}
 
         <div className="ml-auto flex items-center gap-3">
           {isPending && <RefreshCw className="w-3.5 h-3.5 text-accent animate-spin" />}
@@ -144,13 +146,13 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
       </div>
 
       {/* Table */}
-      <div className="bg-panel rounded-big overflow-hidden">
+      <div className="bg-panel rounded-big overflow-hidden border border-white/5 animate-in fade-in duration-500">
         {/* Header */}
-        <div className="grid grid-cols-[28px_100px_140px_1fr_1fr_220px_72px_28px] gap-3 px-4 py-2.5 border-b border-white/5 bg-background/40">
+        <div className="grid grid-cols-[28px_90px_120px_1fr_1fr_140px_64px_48px] gap-3 px-4 py-2.5 border-b border-white/5 bg-background/40">
           <button
             onClick={toggleSelectAll}
             className={cn(
-              'w-4 h-4 rounded-[3px] border flex items-center justify-center transition-all self-center',
+              'w-4 h-4 rounded-[3px] border flex items-center justify-center transition-all self-center shrink-0',
               selected.size === exchanges.length && exchanges.length > 0
                 ? 'bg-accent border-accent'
                 : 'border-white/20 hover:border-white/40'
@@ -160,8 +162,16 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
               <CheckCircle2 className="w-2.5 h-2.5 text-background" />
             )}
           </button>
-          {['Time', 'User', 'Prompt', 'Response', 'Routing', 'Type', ''].map(h => (
-            <span key={h} className="text-[9px] font-bold uppercase tracking-[0.12em] text-bone-60 opacity-30">{h}</span>
+          {[
+            { id: 'time', label: 'Time' },
+            { id: 'user', label: 'User' },
+            { id: 'prompt', label: 'Prompt' },
+            { id: 'response', label: 'Response' },
+            { id: 'routing', label: 'Routing' },
+            { id: 'type', label: 'Type' },
+            { id: 'status', label: 'Status' }
+          ].map(h => (
+            <span key={h.id} className="text-[9px] font-bold uppercase tracking-[0.12em] text-bone-60 opacity-30 self-center">{h.label}</span>
           ))}
         </div>
 
@@ -173,18 +183,19 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
             </div>
           )}
           {exchanges.map((ex) => {
-            const isExpanded = expanded === ex.id
+            const isExpanded = expanded.has(ex.id)
             const usageCfg = USAGE_TYPE_CONFIG[ex.usage_type || '']
             const chain = parseChain(ex.model_chain)
+            const routeParts = ex.model_chain ? ex.model_chain.split(' → ') : []
 
             return (
               <div key={ex.id}>
-                <div className="w-full grid grid-cols-[28px_100px_140px_1fr_1fr_220px_72px_28px] gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors group">
+                <div className="w-full grid grid-cols-[28px_90px_120px_1fr_1fr_140px_64px_48px] gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors group">
                   {/* Checkbox */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleSelect(ex.id) }}
+                    onClick={(e) => toggleSelect(ex.id, e)}
                     className={cn(
-                      'w-4 h-4 rounded-[3px] border flex items-center justify-center transition-all self-center shrink-0',
+                      'w-4 h-4 rounded-[3px] border flex items-center justify-center transition-all self-center shrink-0 cursor-pointer',
                       selected.has(ex.id)
                         ? 'bg-accent border-accent'
                         : 'border-white/10 hover:border-white/30 opacity-0 group-hover:opacity-100'
@@ -192,104 +203,106 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
                   >
                     {selected.has(ex.id) && <CheckCircle2 className="w-2.5 h-2.5 text-background" />}
                   </button>
-                <button
-                  onClick={() => setExpanded(isExpanded ? null : ex.id)}
-                  className="contents text-left"
-                >
-                  {/* Time */}
-                  <span className="text-[10px] text-bone-60 opacity-40 font-mono truncate self-center">
-                    {formatTime(ex.created_at)}
-                  </span>
 
-                  {/* User */}
-                  <div className="flex items-center gap-1.5 self-center min-w-0">
-                    {ex.platform === 'app'
-                      ? <Globe className="w-3 h-3 text-blue-400 opacity-50 shrink-0" />
-                      : <Bot className="w-3 h-3 text-orange-400 opacity-50 shrink-0" />
-                    }
-                    <span className="text-[9px] font-mono text-bone-60 opacity-50 truncate" title={ex.user_email || ex.auth_user_id || String(ex.telegram_id) || '—'}>
-                      {ex.user_email
-                        ? ex.user_email
-                        : ex.telegram_id
-                          ? `tg:${ex.telegram_id}`
-                          : ex.auth_user_id
-                            ? ex.auth_user_id.slice(0, 8)
-                            : '—'
-                      }
+                  <div
+                    onClick={(e) => toggleExpand(ex.id, e)}
+                    className="contents text-left cursor-pointer"
+                  >
+                    {/* Time */}
+                    <span className="text-[10px] text-bone-60 opacity-40 font-mono truncate self-center">
+                      {formatTime(ex.created_at)}
                     </span>
-                  </div>
 
-                  {/* User prompt */}
-                  <span className="text-[11px] text-bone-60 opacity-60 self-center truncate">
-                    {truncate(ex.user_prompt)}
-                  </span>
-
-                  {/* Model response */}
-                  <span className={cn(
-                    "text-[11px] text-bone-60 self-center truncate transition-colors",
-                    isExpanded ? 'text-bone-100' : 'group-hover:text-bone-80'
-                  )}>
-                    {truncate(ex.model_response)}
-                  </span>
-
-                  {/* Routing chain */}
-                  <div className="self-center min-w-0">
-                    {chain ? (
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span className={cn(
-                          "text-[8px] font-mono truncate shrink-0 max-w-[72px]",
-                          chain.classifier === 'keyword' || chain.classifier === 'fallback'
-                            ? 'text-accent/50'
-                            : 'text-bone-60 opacity-35'
-                        )} title={chain.classifier}>
-                          {chain.classifier || '?'}
-                        </span>
-                        <ArrowRight className="w-2.5 h-2.5 text-bone-60 opacity-20 shrink-0" />
-                        <span className="text-[8px] font-mono text-bone-60 opacity-70 truncate" title={chain.routed}>
-                          {chain.routed}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-[9px] text-bone-60 opacity-20">—</span>
-                    )}
-                  </div>
-
-                  {/* Usage type */}
-                  <div className="self-center">
-                    {usageCfg ? (
-                      <span className={cn(
-                        "inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded-full border",
-                        usageCfg.color
-                      )}>
-                        {USAGE_ICONS[ex.usage_type || '']}
-                        {usageCfg.label}
+                    {/* User */}
+                    <div className="flex items-center gap-1.5 self-center min-w-0">
+                      {ex.platform === 'app'
+                        ? <Globe className="w-3 h-3 text-blue-400 opacity-50 shrink-0" />
+                        : <Bot className="w-3 h-3 text-orange-400 opacity-50 shrink-0" />
+                      }
+                      <span className="text-[9px] font-mono text-bone-60 opacity-50 truncate" title={ex.user_email || ex.auth_user_id || String(ex.telegram_id) || '—'}>
+                        {ex.user_email
+                          ? ex.user_email
+                          : ex.telegram_id
+                            ? `tg:${ex.telegram_id}`
+                            : ex.auth_user_id
+                              ? ex.auth_user_id.slice(0, 8)
+                              : '—'
+                        }
                       </span>
-                    ) : (
-                      <span className="text-[9px] text-bone-60 opacity-20">—</span>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Status */}
-                  <div className="self-center flex justify-center">
-                    {ex.status === 'error' ? (
-                      <XCircle className="w-3.5 h-3.5 text-red-400 opacity-70" />
-                    ) : ex.status === 'success' ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 opacity-60" />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-bone-60 opacity-20 inline-block" />
-                    )}
+                    {/* User prompt */}
+                    <span className="text-[11px] text-bone-60 opacity-60 self-center truncate">
+                      {truncate(ex.user_prompt)}
+                    </span>
+
+                    {/* Model response */}
+                    <span className={cn(
+                      "text-[11px] text-bone-60 self-center truncate transition-colors",
+                      isExpanded ? 'text-bone-100' : 'group-hover:text-bone-80'
+                    )}>
+                      {truncate(ex.model_response)}
+                    </span>
+
+                    {/* Routing chain */}
+                    <div className="self-center min-w-0">
+                      {chain ? (
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className={cn(
+                            "text-[8px] font-mono truncate shrink-0 max-w-[50px]",
+                            chain.classifier === 'keyword' || chain.classifier === 'fallback'
+                              ? 'text-accent/50'
+                              : 'text-bone-60 opacity-35'
+                          )} title={chain.classifier}>
+                            {chain.classifier || '?'}
+                          </span>
+                          <ArrowRight className="w-2.5 h-2.5 text-bone-60 opacity-20 shrink-0" />
+                          <span className="text-[8px] font-mono text-bone-60 opacity-70 truncate" title={chain.routed}>
+                            {chain.routed}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-bone-60 opacity-20">—</span>
+                      )}
+                    </div>
+
+                    {/* Usage type */}
+                    <div className="self-center">
+                      {usageCfg ? (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded-full border",
+                          usageCfg.color
+                        )}>
+                          {USAGE_ICONS[ex.usage_type || '']}
+                          {usageCfg.label}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-bone-60 opacity-20">—</span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div className="self-center flex justify-center">
+                      {ex.status === 'error' ? (
+                        <XCircle className="w-3.5 h-3.5 text-red-400 opacity-70" />
+                      ) : ex.status === 'success' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 opacity-60" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-bone-60 opacity-20 inline-block" />
+                      )}
+                    </div>
                   </div>
-                </button>
                 </div>
 
                 {/* Expanded row */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 bg-background/40 border-t border-white/[0.03] space-y-3">
+                  <div className="px-4 pb-4 pt-3 bg-background/40 border-t border-white/[0.03] space-y-4">
                     {/* Meta */}
                     <div className="flex flex-wrap gap-4 text-[10px] text-bone-60 opacity-40 font-mono">
-                      {ex.telegram_id && <span>Telegram: {ex.telegram_id}</span>}
-                      {ex.auth_user_id && <span>User: {ex.auth_user_id}</span>}
-                      <span>ID: {ex.id}</span>
+                      {ex.telegram_id && <span>Telegram ID: {ex.telegram_id}</span>}
+                      {ex.auth_user_id && <span>User ID: {ex.auth_user_id}</span>}
+                      {ex.user_email && <span>Email: {ex.user_email}</span>}
+                      <span>Exchange ID: {ex.id}</span>
                       {ex.status && (
                         <span className={ex.status === 'error' ? 'text-red-400 opacity-80' : 'text-emerald-400 opacity-80'}>
                           {ex.status.toUpperCase()}
@@ -298,42 +311,143 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
                     </div>
 
                     {/* Routing breakdown */}
-                    {ex.model_chain && (
-                      <div className="flex items-center gap-2 text-[10px] font-mono">
-                        <span className="text-bone-60 opacity-30 uppercase tracking-widest text-[8px]">Route</span>
-                        {(() => {
-                          const c = parseChain(ex.model_chain)
-                          if (!c) return <span className="text-bone-60 opacity-50">{ex.model_chain}</span>
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn(
-                                "px-1.5 py-0.5 rounded text-[9px]",
-                                c.classifier === 'keyword' || c.classifier === 'fallback'
-                                  ? 'bg-accent/10 text-accent/70'
-                                  : 'bg-white/5 text-bone-60 opacity-60'
-                              )}>
-                                {c.classifier || '?'}
-                              </span>
-                              <ArrowRight className="w-3 h-3 text-bone-60 opacity-30" />
-                              <span className="px-1.5 py-0.5 rounded bg-white/5 text-bone-60 opacity-80">{c.routed}</span>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    )}
+                    {(() => {
+                      const getProviderFromModelId = (modelId: string): string => {
+                        const m = (modelId || '').toLowerCase()
+                        if (m.includes('gemini') || m.includes('gemma')) return 'GEMINI'
+                        if (m.includes('llama') || m.includes('mixtral') || m.includes('gemma-2-9b') || m.includes('deepseek')) return 'GROQ'
+                        if (m.includes('flux') || m.includes('sd-') || m.includes('stable-diffusion') || m.includes('pollinations')) return 'POLLINATIONS'
+                        if (m.includes('huggingface') || m.includes('hf')) return 'HUGGINGFACE'
+                        if (m.includes('cf') || m.includes('cloudflare')) return 'CLOUDFLARE'
+                        if (m.includes('tavily')) return 'TAVILY'
+                        return 'GEMINI'
+                      }
 
-                    {/* Messages */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-bone-60 opacity-30 mb-1">User</div>
-                        <p className="text-[11px] text-bone-60 leading-relaxed whitespace-pre-wrap break-words">
-                          {ex.user_prompt || '(no prompt)'}
+                      const rawParts = ex.model_chain ? ex.model_chain.split(' → ') : []
+                      const chainParts = rawParts.map(part => {
+                        if (part.includes('|')) return part.split('|')[0]
+                        return part
+                      })
+
+                      let classifyTrace: any[] = []
+                      let routingTrace: any[] = []
+
+                      if (ex.model_chain) {
+                        if (rawParts.length >= 2) {
+                          const classifier = rawParts[0]
+                          const category = rawParts[1]
+                          classifyTrace = [{ model: classifier, key: getProviderFromModelId(classifier), success: true }]
+                          routingTrace = rawParts.slice(2).map((part: string, i: number, arr: string[]) => {
+                            if (part.includes('|')) {
+                              const [m, k, successStr] = part.split('|')
+                              return {
+                                model: m,
+                                category,
+                                key: k,
+                                success: successStr === 'true'
+                              }
+                            }
+                            return {
+                              model: part,
+                              category,
+                              key: getProviderFromModelId(part),
+                              success: i === arr.length - 1
+                            }
+                          })
+                        }
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          {/* ROUTE CHAIN */}
+                          <div>
+                            <h5 className="text-[10px] font-bold text-bone-40 uppercase tracking-widest mb-2">
+                              ROUTING CHAIN
+                            </h5>
+                            <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+                              {chainParts.length > 0 ? (
+                                chainParts.map((part, i) => (
+                                  <React.Fragment key={i}>
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-small h-[22px] flex items-center justify-center border border-white/5 bg-white/[0.03] text-bone-20 text-[10px]",
+                                      part.toUpperCase().includes('_') ? "text-muted-foreground/60" : "text-bone-100"
+                                    )}>
+                                      {part}
+                                    </span>
+                                    {i < chainParts.length - 1 && (
+                                      <span className="text-bone-40 opacity-40">→</span>
+                                    )}
+                                  </React.Fragment>
+                                ))
+                              ) : (
+                                <p className="text-[10px] text-bone-20 font-mono">No routing chain found</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* API KEYS USED */}
+                          <div>
+                            <h5 className="text-[10px] font-bold text-bone-40 uppercase tracking-widest mb-2">
+                              API KEYS USED
+                            </h5>
+                            <div className="space-y-2">
+                              {/* Classify Row */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-bone-40 w-16 shrink-0">classify</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {classifyTrace.map((c, i) => (
+                                    <span key={i} className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded-small h-[22px] flex items-center justify-center gap-1 border", 
+                                      c.success ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+                                    )}>
+                                      {(() => {
+                                        let baseKey = c.key === 'DEFAULT' ? getProviderFromModelId(c.model) : (c.key || getProviderFromModelId(c.model))
+                                        if (!/\d+$/.test(baseKey)) baseKey = `${baseKey} 1`
+                                        return baseKey
+                                      })()} {c.success ? '✓' : '✗'}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Routing Row */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-bone-40 w-16 shrink-0">routing</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {routingTrace.map((r, i) => (
+                                    <span key={i} className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded-small h-[22px] flex items-center justify-center gap-1 border", 
+                                      r.success ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+                                    )}>
+                                      {(() => {
+                                        let baseKey = r.key === 'DEFAULT' ? getProviderFromModelId(r.model) : (r.key || getProviderFromModelId(r.model))
+                                        if (!/\d+$/.test(baseKey)) baseKey = `${baseKey} 1`
+                                        return baseKey
+                                      })()} {r.success ? '✓' : '✗'}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* USER REQUEST vs MODEL RESPONSE side-by-side */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-[var(--bone-4)] rounded-xl p-3">
+                        <h5 className="text-[10px] font-bold text-bone-40 uppercase tracking-widest mb-1.5">
+                          USER REQUEST
+                        </h5>
+                        <p className="text-xs text-foreground/80 font-mono break-words leading-relaxed select-text">
+                          {ex.user_prompt || '(content unavailable)'}
                         </p>
                       </div>
-                      <div>
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-accent opacity-50 mb-1">Model</div>
-                        <p className="text-[11px] text-bone-80 leading-relaxed whitespace-pre-wrap break-words">
-                          {ex.model_response || '(empty)'}
+                      <div className="bg-[var(--bone-4)] rounded-xl p-3">
+                        <h5 className="text-[10px] font-bold text-bone-40 uppercase tracking-widest mb-1.5">
+                          MODEL RESPONSE
+                        </h5>
+                        <p className="text-xs text-foreground/80 font-sans break-words leading-relaxed select-text">
+                          {ex.model_response || '(response unavailable)'}
                         </p>
                       </div>
                     </div>
@@ -369,36 +483,6 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function FilterChips({
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  options: { value: string; label: string }[]
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            "px-2.5 py-1 rounded-medium text-[9px] font-bold uppercase tracking-widest transition-all border",
-            value === opt.value
-              ? "bg-accent/10 border-accent/30 text-accent"
-              : "bg-panel border-white/5 text-bone-60 opacity-40 hover:opacity-100"
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
     </div>
   )
 }

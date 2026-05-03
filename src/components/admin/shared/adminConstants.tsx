@@ -17,9 +17,11 @@ export const CATEGORY_ICONS: Record<FlowIntentCategory, React.ReactNode> = {
 
 
 export const PROVIDER_COLORS: Record<string, string> = {
-  gemini:     'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  groq:       'text-orange-400 bg-orange-500/10 border-orange-500/20',
-  openrouter: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-  local:      'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  flowr:      'text-accent bg-[var(--bone-6)] border-white/5',
+  gemini:          'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  groq:            'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  openrouter:      'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  local:           'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  ollama:          'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
+  'ollama(my pc)': 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
+  flowr:           'text-accent bg-[var(--bone-6)] border-white/5',
 };

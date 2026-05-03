@@ -18,47 +18,117 @@ export interface ImprovementPlan {
   status: 'pending' | 'accepted' | 'rejected' | 'edited'
   edit_notes: string | null
   created_at: string
+  signal?: string
+  source?: 'feedback analysis' | 'routine run'
+  trigger?: 'manual' | 'auto'
 }
 
 export async function getLatestPlans(): Promise<ImprovementPlan[]> {
-  const { data: session } = await supabase
-    .from('bot_analysis_sessions')
-    .select('id')
-    .eq('status', 'complete')
-    .order('started_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  try {
+    const { data: session, error: sessionErr } = await supabase
+      .from('bot_analysis_sessions')
+      .select('id, triggered_by')
+      .eq('status', 'complete')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-  if (!session) return []
+    if (sessionErr || !session) return []
 
-  const { data, error } = await supabase
-    .from('bot_improvement_plans')
-    .select('id, session_id, topic, title, reasoning, plan, status, edit_notes, created_at')
-    .eq('session_id', session.id)
-    .order('created_at')
-  if (error) return []
-  return (data ?? []) as ImprovementPlan[]
+    const { data, error } = await supabase
+      .from('bot_improvement_plans')
+      .select('id, session_id, topic, title, reasoning, plan, status, edit_notes, created_at, signal')
+      .eq('session_id', session.id)
+      .order('created_at')
+
+    if (error) {
+      const fallbackRes = await supabase
+        .from('bot_improvement_plans')
+        .select('id, session_id, topic, title, reasoning, plan, status, edit_notes, created_at')
+        .eq('session_id', session.id)
+        .order('created_at')
+      if (fallbackRes.error) return []
+
+      const source: 'feedback analysis' | 'routine run' =
+        session.triggered_by === 'feedback_selection' ? 'feedback analysis' : 'routine run'
+      const trigger: 'manual' | 'auto' =
+        session.triggered_by === 'schedule' ? 'auto' : 'manual'
+
+      return (fallbackRes.data ?? []).map((p: any) => ({
+        ...p,
+        source,
+        trigger,
+      })) as ImprovementPlan[]
+    }
+
+    const source: 'feedback analysis' | 'routine run' =
+      session.triggered_by === 'feedback_selection' ? 'feedback analysis' : 'routine run'
+    const trigger: 'manual' | 'auto' =
+      session.triggered_by === 'schedule' ? 'auto' : 'manual'
+
+    return (data ?? []).map((p: any) => ({
+      ...p,
+      source,
+      trigger,
+    })) as ImprovementPlan[]
+  } catch (err) {
+    console.error('[getLatestPlans] error:', err)
+    return []
+  }
 }
 
+
 const TOPIC_TO_BRAIN_CATEGORY: Record<string, BrainCategory> = {
-  'Answer Style':   'patterns',
-  'Writing Style':  'rules',
-  'Tone':           'personality',
-  'Format':         'patterns',
-  'Accuracy':       'rules',
-  'Mistakes':       'mistakes',
-  'Personality':    'personality',
-  'Rules':          'rules',
-  'Patterns':       'patterns',
+  'Answer Style':        'tone',
+  'Writing Style':       'rules',
+  'Tone':                'tone',
+  'Format':              'tone',
+  'Accuracy':            'rules',
+  'Mistakes':            'red_flags',
+  'Personality':         'personality',
+  'Rules':               'rules',
+  'Patterns':            'tone',
+  'Facts':               'facts',
+  'Knowledge':           'facts',
+  'Guardrails':          'red_flags',
+  'Response Structure':  'tone',
+  'User Experience':     'tone',
+  'Brand Identity':      'personality',
+  'Interaction Quality': 'tone',
+  'Response Architecture': 'tone',
 }
 
 function topicToCategory(topic: string): BrainCategory {
   return TOPIC_TO_BRAIN_CATEGORY[topic] ?? 'rules'
 }
 
-export async function acceptPlan(plan: ImprovementPlan): Promise<void> {
-  const category = topicToCategory(plan.topic)
-  await addBrainEntry(category, plan.title, plan.plan)
+export async function acceptPlan(plan: ImprovementPlan, overrideCategory?: string): Promise<void> {
+  const category = (overrideCategory || topicToCategory(plan.topic)) as BrainCategory
+  let finalPrompt = plan.plan
+  let mode = 'new'
+  let entryIdToUpdate: string | undefined
+
+  try {
+    const parsed = JSON.parse(plan.plan)
+    if (parsed && typeof parsed === 'object' && 'final_prompt' in parsed) {
+      finalPrompt = parsed.final_prompt
+      mode = parsed.mode || 'new'
+      entryIdToUpdate = parsed.entry_id
+    }
+  } catch (err) {
+    // raw plan string fallback
+  }
+
+  if (mode === 'update' && entryIdToUpdate) {
+    const { error: updateEntryErr } = await supabase
+      .from('bot_brain_entries')
+      .update({ content: finalPrompt, category })
+      .eq('id', entryIdToUpdate)
+    if (updateEntryErr) throw updateEntryErr
+  } else {
+    await addBrainEntry(category, plan.title, finalPrompt)
+  }
+
   const { error } = await supabase
     .from('bot_improvement_plans')
     .update({ status: 'accepted' })
@@ -75,6 +145,16 @@ export async function rejectPlan(planId: string, title: string): Promise<void> {
     .eq('id', planId)
   if (error) throw error
   await logAdminAction('plan_rejected', `Rejected plan: ${title}`, { planId })
+  revalidatePath('/admin/bot/routine')
+}
+
+export async function deletePlan(planId: string, title: string): Promise<void> {
+  const { error } = await supabase
+    .from('bot_improvement_plans')
+    .delete()
+    .eq('id', planId)
+  if (error) throw error
+  await logAdminAction('plan_deleted', `Deleted plan completely: ${title}`, { planId })
   revalidatePath('/admin/bot/routine')
 }
 
@@ -123,7 +203,7 @@ Example: {"topic":"Answer Style","title":"Context-aware response length","reason
       edit_notes: editNotes,
     })
     .eq('id', planId)
-    .select('id, session_id, topic, title, reasoning, plan, status, edit_notes, created_at')
+    .select('id, session_id, topic, title, reasoning, plan, status, edit_notes, created_at, signal')
     .single()
 
   if (updateErr || !updated) throw updateErr ?? new Error('Update failed')

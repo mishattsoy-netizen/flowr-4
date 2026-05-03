@@ -281,8 +281,8 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
           <BlockRenderer
             block={block}
             index={0}
-            onUpdate={(id, updates) => updateCanvasBlock(id, updates)}
-            onDelete={(id) => deleteCanvasBlock(id)}
+            onUpdate={(id: string, updates: any) => updateCanvasBlock(id, updates)}
+            onDelete={(id: string) => deleteCanvasBlock(id)}
             onInsertAfter={() => { }}
             onSlash={() => { }}
             onOpenMenu={() => { }}

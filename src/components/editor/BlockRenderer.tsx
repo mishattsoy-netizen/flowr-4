@@ -29,6 +29,7 @@ interface BlockViewProps {
   attributes?: any;
   setNodeRef?: (el: HTMLElement | null) => void;
   style?: React.CSSProperties;
+  onDragStart?: (id: string, e: React.DragEvent) => void;
 }
 
 function BlockView({
@@ -46,6 +47,7 @@ function BlockView({
   isSelected = false,
   isInsideColumn = false,
   isDragging = false,
+  onDragStart,
   listeners,
   attributes,
   setNodeRef,
@@ -194,9 +196,9 @@ function BlockView({
           <div className="border border-white/10 rounded-[var(--radius-medium)] overflow-hidden bg-white/[0.02]">
             <table className="w-full border-collapse">
               <tbody>
-                {tableData.map((row, ri) => (
+                {tableData.map((row: string[], ri: number) => (
                   <tr key={ri} className="group/row">
-                    {row.map((cell, ci) => (
+                    {row.map((cell: string, ci: number) => (
                       <td
                         key={ci}
                         contentEditable
@@ -207,7 +209,7 @@ function BlockView({
                           ri === tableData.length - 1 && "border-b-0"
                         )}
                         onBlur={(e) => {
-                          const newData = [...tableData.map(r => [...r])];
+                          const newData = [...tableData.map((r: string[]) => [...r])];
                           newData[ri][ci] = (e.target as HTMLElement).textContent ?? '';
                           onUpdate(block.id, { tableData: newData });
                         }}
@@ -224,7 +226,7 @@ function BlockView({
                 const cols = tableData[0]?.length ?? 3;
                 onUpdate(block.id, { tableData: [...tableData, Array(cols).fill('')] });
               }} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Row</button>
-              <button onClick={() => onUpdate(block.id, { tableData: tableData.map(row => [...row, '']) })} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Column</button>
+              <button onClick={() => onUpdate(block.id, { tableData: tableData.map((row: string[]) => [...row, '']) })} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Column</button>
             </div>
           </div>
         </div>
@@ -330,7 +332,7 @@ function BlockView({
       >
         <BlockControls variant="column" blockId={block.id} menuOpen={menuOpen} onInsertAfter={onInsertAfter} onOpenMenu={onOpenMenu} onDragStart={onDragStart} listeners={listeners} attributes={attributes} />
         <div className={clsx("flex flex-col gap-2 relative z-10", isDragging && "opacity-0")}>
-          {(block.children || []).map((subBlock, sIdx) => (
+          {(block.children || []).map((subBlock: EditorBlock, sIdx: number) => (
             <BlockRenderer key={subBlock.id} block={subBlock} index={sIdx} onUpdate={onUpdate} onDelete={onDelete} onInsertAfter={onInsertAfter} onSlash={onSlash} onOpenMenu={onOpenMenu} onFocus={onFocus} isInsideColumn={true} onDragStart={onDragStart} />
           ))}
         </div>
@@ -349,7 +351,7 @@ function BlockView({
         <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
         <div className={clsx("flex gap-4 w-full h-full relative z-10 group", isDragging && "opacity-0")}>
           <div className="flex gap-4 w-full h-full">
-            {(block.children || []).map((colBlock, cIdx) => (
+            {(block.children || []).map((colBlock: EditorBlock, cIdx: number) => (
               <div key={colBlock.id} className="relative flex-1 basis-0 min-w-0 flex flex-col">
                 <BlockRenderer block={colBlock} index={cIdx} onUpdate={onUpdate} onDelete={onDelete} onInsertAfter={onInsertAfter} onSlash={onSlash} onOpenMenu={onOpenMenu} onFocus={onFocus} isInsideColumn={true} onDragStart={onDragStart} />
               </div>
@@ -788,9 +790,9 @@ export function BlockRenderer({
           <div className="border border-white/10 rounded-[var(--radius-medium)] overflow-hidden bg-white/[0.02]">
             <table className="w-full border-collapse">
               <tbody>
-                {tableData.map((row, ri) => (
+                {tableData.map((row: string[], ri: number) => (
                   <tr key={ri} className="group/row">
-                    {row.map((cell, ci) => (
+                    {row.map((cell: string, ci: number) => (
                       <td
                         key={ci}
                         contentEditable
@@ -801,7 +803,7 @@ export function BlockRenderer({
                           ri === tableData.length - 1 && "border-b-0"
                         )}
                         onBlur={(e) => {
-                          const newData = [...tableData.map(r => [...r])];
+                          const newData = [...tableData.map((r: string[]) => [...r])];
                           newData[ri][ci] = (e.target as HTMLElement).textContent ?? '';
                           onUpdate(block.id, { tableData: newData });
                         }}
@@ -818,7 +820,7 @@ export function BlockRenderer({
                 const cols = tableData[0]?.length ?? 3;
                 onUpdate(block.id, { tableData: [...tableData, Array(cols).fill('')] });
               }} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Row</button>
-              <button onClick={() => onUpdate(block.id, { tableData: tableData.map(row => [...row, '']) })} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Column</button>
+              <button onClick={() => onUpdate(block.id, { tableData: tableData.map((row: string[]) => [...row, '']) })} className="flex-1 py-2 text-[10px]  font-bold  text-muted-foreground/40 hover:text-foreground hover:bg-white/5">+ Add Column</button>
             </div>
           </div>
         </div>
@@ -927,7 +929,7 @@ export function BlockRenderer({
       >
         <BlockControls variant="column" blockId={block.id} menuOpen={menuOpen} onInsertAfter={onInsertAfter} onOpenMenu={onOpenMenu} onDragStart={onDragStart} listeners={listeners} attributes={attributes} />
         <div className={clsx("flex flex-col gap-2 relative z-10", isDragging && "opacity-60")}>
-          {(block.children || []).map((subBlock, sIdx) => (
+          {(block.children || []).map((subBlock: EditorBlock, sIdx: number) => (
             <BlockRenderer key={subBlock.id} block={subBlock} index={sIdx} onUpdate={onUpdate} onDelete={onDelete} onInsertAfter={onInsertAfter} onSlash={onSlash} onOpenMenu={onOpenMenu} onFocus={onFocus} isInsideColumn={true} onDragStart={onDragStart} />
           ))}
         </div>
@@ -946,7 +948,7 @@ export function BlockRenderer({
         <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
         <div className={clsx("flex gap-4 w-full h-full relative z-10 group", isDragging && "opacity-60")}>
           <div className="flex gap-4 w-full h-full">
-            {(block.children || []).map((colBlock, cIdx) => (
+            {(block.children || []).map((colBlock: EditorBlock, cIdx: number) => (
               <div key={colBlock.id} className="relative flex-1 basis-0 min-w-0 flex flex-col">
                 <BlockRenderer block={colBlock} index={cIdx} onUpdate={onUpdate} onDelete={onDelete} onInsertAfter={onInsertAfter} onSlash={onSlash} onOpenMenu={onOpenMenu} onFocus={onFocus} isInsideColumn={true} onDragStart={onDragStart} />
               </div>

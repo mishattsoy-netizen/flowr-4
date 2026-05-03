@@ -3,13 +3,15 @@ import VaultProviderWidget from '@/components/admin/VaultProviderWidget'
 import CloudflareVaultWidget from '@/components/admin/CloudflareVaultWidget'
 
 const CLOUDFLARE_KEY_IDS = ['CLOUDFLARE_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']
-const KNOWN_PROVIDERS = ['gemini', 'groq', 'openrouter']
+const KNOWN_PROVIDERS = ['gemini', 'groq', 'openrouter', 'tavily', 'huggingface']
 
 function detectProvider(keyId: string): string {
   const id = keyId.toLowerCase()
   if (id.includes('openrouter')) return 'openrouter'
   if (id.includes('gemini'))     return 'gemini'
   if (id.includes('groq'))       return 'groq'
+  if (id.includes('tavily'))     return 'tavily'
+  if (id.includes('huggingface') || id.includes('hugging_face') || id.includes('hf')) return 'huggingface'
   return 'general'
 }
 

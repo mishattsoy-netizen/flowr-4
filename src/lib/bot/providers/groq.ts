@@ -38,7 +38,8 @@ export async function runGroq(
     content: h.parts?.[0]?.text || ''
   }))
 
-  for (const key of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
     try {
       let messages: any[] = [
         ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
@@ -61,7 +62,7 @@ export async function runGroq(
             messages,
             tools: (context?.useTools && !modelId.includes('vision')) ? tools : undefined,
             tool_choice: context?.useTools ? 'auto' : undefined,
-            temperature: 0.7
+            temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7
           })
         })
 
@@ -102,6 +103,7 @@ export async function runGroq(
           // Continue loop to get final answer or more tool calls
         } else {
           // No more tool calls, return final content
+          if (context) context.usedKeyIndex = context.usedKeyIndex || i + 1
           return message.content || null
         }
       }

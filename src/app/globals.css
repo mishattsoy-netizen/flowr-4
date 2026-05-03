@@ -38,8 +38,8 @@
 }
 
 :root {
-  --color-background: #1a1a1a;
-  --color-panel: #272725;
+  --color-background: #141413;
+  --color-panel: #262624;
   --bone-5: rgba(233, 233, 226, 0.05);
   --bone-2: rgba(233, 233, 226, 0.02);
   --bone-3: rgba(233, 233, 226, 0.03);
@@ -59,8 +59,8 @@
   --icon-active: var(--bone-60);
   --dim-foreground: var(--bone-60);
   --foreground: var(--bone-100);
-  --accent: var(--bone-100);
-  /* Semantic accent is Bone */
+  --accent: #eea047;
+  /* Orange accent color */
   --on-accent: #242423;
   /* Neutral color for items on bone-fill */
   --color-danger: #ff6060;
@@ -68,7 +68,7 @@
   --radius-regular: 12px;
   --radius-medium: 8px;
   --radius-8: 8px;
-  --radius-small: 5px;
+  --radius-small: 6px;
   --: 0;
   color-scheme: dark;
 }
@@ -155,7 +155,6 @@ html[data-interface-size="big"] {
   @apply duration-200;
 
   &:hover {
-    @apply bg-white/[0.02] -translate-y-0.5 border-white/10;
     box-shadow: none;
   }
 }
@@ -267,7 +266,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-task {
-  @apply flex items-center justify-center gap-2 bg-[#E09952] text-[var(--bone-100)] px-3 h-7 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
+  @apply flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--bone-100)] px-3 h-7 rounded-[var(--radius-medium)] font-bold text-xs tracking-wide;
 
   &:hover {
     @apply opacity-90;

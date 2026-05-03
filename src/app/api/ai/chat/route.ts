@@ -3,6 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 import { runChain } from '@/lib/bot/chainRouter'
 import { supabaseAdmin, isSupabaseEnabled } from '@/lib/supabase'
 import { logWebInteraction, logModelWebMessage } from '@/lib/bot/analytics'
+import { classifyIntentWithModel } from '@/lib/bot/classifier'
+import { getRouterChain } from '@/lib/router-config'
+import { getWebConversationMemory } from '@/lib/bot/memory'
+import { getCompiledPrompt } from '@/lib/bot/compilePrompt'
+import { streamOllama } from '@/lib/bot/providers/ollama'
 
 const DEFAULT_DAILY_LIMIT = 50
 
@@ -69,10 +74,92 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const { category: rawCategory } = await classifyIntentWithModel(prompt, aiApiKey, classificationModelId)
+    let category = rawCategory
+    if (agentEnabled === true && (category === 'FAST_SIMPLE' || category === 'MEDIUM_THINKING')) {
+      category = 'TOOL_CALLING'
+    }
+    const { chain, system_prompt, temperature } = await getRouterChain(category)
+    let activeModelConfig = chain.find(m => m.is_enabled)
+    let isOllama = false
+
+    if (buffer) {
+      const { chain: visionChain } = await getRouterChain('VISION')
+      const visionModel = visionChain.find(m => m.is_enabled)
+      if (visionModel && (visionModel.provider.toLowerCase() === 'ollama' || visionModel.provider.toLowerCase() === 'local' || visionModel.provider.toLowerCase() === 'ollama(my pc)')) {
+        activeModelConfig = visionModel
+        isOllama = true
+      }
+    } else if (activeModelConfig && (activeModelConfig.provider.toLowerCase() === 'ollama' || activeModelConfig.provider.toLowerCase() === 'local' || activeModelConfig.provider.toLowerCase() === 'ollama(my pc)')) {
+      isOllama = true
+    }
+
+    if (isOllama && activeModelConfig) {
+      const globalPrompt = await getCompiledPrompt()
+      let fullSystemPrompt = system_prompt || ''
+      if (globalPrompt) {
+        fullSystemPrompt = globalPrompt + '\n\n' + fullSystemPrompt
+      }
+      fullSystemPrompt = "CRITICAL: Provide ONLY the final answer. NEVER output internal reasoning, analysis, planning, or drafting. Do not use headers like '*Neutrality:*', '*Final version plan:*', or '*Self-Correction:*'. Jump directly to the response.\n" +
+                      "When you use a tool or perform a search, always synthesize and summarize the tool results into a natural, complete, and helpful answer to the user's question. Do NOT output raw tool results verbatim.\n\n" + fullSystemPrompt;
+
+      const history = await getWebConversationMemory(userId)
+      const stream = await streamOllama(activeModelConfig.id, prompt, fullSystemPrompt, history, temperature)
+
+      if (stream) {
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+
+        const transformedStream = new ReadableStream({
+          async start(controller) {
+            const reader = stream.getReader()
+            try {
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                const chunk = decoder.decode(value)
+                const lines = chunk.split('\n')
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim()
+                    if (data === '[DONE]') {
+                      controller.enqueue(encoder.encode(`data: [DONE]\n\n`))
+                      break
+                    }
+                    try {
+                      const parsed = JSON.parse(data)
+                      const contentChunk = parsed.choices?.[0]?.delta?.content || ''
+                      if (contentChunk) {
+                        const sseLine = JSON.stringify({
+                          content: contentChunk,
+                          model: activeModelConfig.id,
+                        })
+                        controller.enqueue(encoder.encode(`data: ${sseLine}\n\n`))
+                      }
+                    } catch (e) {
+                      // ignore parse errors
+                    }
+                  }
+                }
+              }
+            } finally {
+              controller.close()
+              reader.releaseLock()
+            }
+          }
+        })
+
+        return new NextResponse(transformedStream, {
+          headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+        })
+      }
+    }
+
     const result = await runChain(
       prompt,
       buffer ? Buffer.from(buffer, 'base64') : undefined,
-      { userId, platform: 'app', aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, agentEnabled: agentEnabled === true }
+      { userId, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, agentEnabled: agentEnabled === true, temperature }
     )
 
     let content = result.content
@@ -91,8 +178,15 @@ export async function POST(req: NextRequest) {
       : (typeof content === 'string' ? content : '[image]')
     const modelChain = result.model_chain
     const usageType = result.usage_type || 'chat'
-    logWebInteraction(logUserId, prompt, 'user', usageType as any, 'success', modelChain, requestId).catch(() => {})
-    const messageLogId = await logModelWebMessage(logUserId, loggedContent, usageType as any, result.status || 'success', modelChain, requestId).catch(() => null)
+    
+    const contextMessages = {
+      classify: result.classification_trace,
+      routing: result.routing_trace
+    }
+
+    logWebInteraction(logUserId, prompt, 'user', usageType as any, 'success', modelChain, requestId, contextMessages).catch(() => {})
+    const messageLogId = await logModelWebMessage(logUserId, loggedContent, usageType as any, result.status || 'success', modelChain, requestId, contextMessages).catch(() => null)
+    console.log('[Chat API POST] messageLogId returned from logModelWebMessage:', messageLogId)
 
     return NextResponse.json({
       content,
@@ -100,6 +194,9 @@ export async function POST(req: NextRequest) {
       usage_type: result.usage_type,
       model: result.model,
       log_id: messageLogId ?? undefined,
+      classification_trace: result.classification_trace,
+      routing_trace: result.routing_trace,
+      model_chain: modelChain
     })
   } catch (error: any) {
     console.error('[AI API Error]', error);

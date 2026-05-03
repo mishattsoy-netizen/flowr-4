@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from 'react'
 import { Star, Trash2, Plus, Check, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { updateModel, deleteModel, addModel } from '@/app/admin/models/actions'
+import { saveRegistryPreset, loadRegistryPreset, listRegistryPresets } from '@/app/admin/bot/registry/actions'
 import { cn } from '@/lib/utils'
 
 const MODALITY_OPTIONS = ['text', 'image', 'audio', 'video']
@@ -14,6 +15,9 @@ const PROVIDER_COLORS: Record<string, string> = {
   huggingface: 'text-yellow-400 border-yellow-400/20 bg-yellow-400/10',
   vault: 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10',
   pollinations: 'text-pink-400 border-pink-400/20 bg-pink-400/10',
+  local: 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10',
+  ollama: 'text-zinc-400 border-zinc-400/20 bg-zinc-400/10',
+  'ollama(my pc)': 'text-zinc-400 border-zinc-400/20 bg-zinc-400/10',
 }
 
 const MODALITY_COLORS: Record<string, string> = {
@@ -141,11 +145,20 @@ function EditableRow({
         />
       </td>
       <td className="px-4 py-3">
-        <input
+        <select
           value={draft.provider}
           onChange={(e) => setDraft((d) => ({ ...d, provider: e.target.value }))}
-          className="bg-transparent border-none rounded-[5px] px-2 py-1 text-[12px] text-foreground w-28 focus:outline-none"
-        />
+          className="bg-background border border-white/10 text-foreground text-[12px] px-2 py-1 h-8 rounded-[5px] focus:outline-none w-28 select-none cursor-pointer hover:border-white/20 transition-all font-sans tracking-wide"
+        >
+          <option value="google">google</option>
+          <option value="groq">groq</option>
+          <option value="cloudflare">cloudflare</option>
+          <option value="huggingface">huggingface</option>
+          <option value="vault">vault</option>
+          <option value="pollinations">pollinations</option>
+          <option value="ollama">ollama</option>
+          <option value="local">local</option>
+        </select>
       </td>
       <td className="px-4 py-3">
         <ModalityBadges modalities={draft.input_modalities} editable onToggle={toggleInput} />
@@ -242,11 +255,20 @@ function AddRow({ onAdd }: { onAdd: (m: ModelRow) => void }) {
         />
       </td>
       <td className="px-4 py-3">
-        <input
+        <select
           value={draft.provider}
           onChange={(e) => setDraft((d) => ({ ...d, provider: e.target.value }))}
-          className="bg-transparent border-none rounded-[5px] px-2 py-1 text-[12px] text-foreground w-28 focus:outline-none"
-        />
+          className="bg-background border border-white/10 text-foreground text-[12px] px-2 py-1 h-8 rounded-[5px] focus:outline-none w-28 select-none cursor-pointer hover:border-white/20 transition-all font-sans tracking-wide"
+        >
+          <option value="google">google</option>
+          <option value="groq">groq</option>
+          <option value="cloudflare">cloudflare</option>
+          <option value="huggingface">huggingface</option>
+          <option value="vault">vault</option>
+          <option value="pollinations">pollinations</option>
+          <option value="ollama">ollama</option>
+          <option value="local">local</option>
+        </select>
       </td>
       <td className="px-4 py-3">
         <ModalityBadges modalities={draft.input_modalities} editable onToggle={toggleInput} />
@@ -298,6 +320,52 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
   const [sortKey, setSortKey] = useState<SortKey>('is_favorite')
   const [sortAsc, setSortAsc] = useState(false)
 
+  const [presetName, setPresetName] = useState('')
+  const [presetsList, setPresetsList] = useState<any[]>([])
+  const [isSavingPreset, setIsSavingPreset] = useState(false)
+
+  const loadPresets = async () => {
+    try {
+      const list = await listRegistryPresets()
+      setPresetsList(list)
+    } catch (err: any) {
+      console.error(err)
+    }
+  }
+
+  React.useEffect(() => {
+    loadPresets()
+  }, [])
+
+  const handleSavePreset = async () => {
+    if (!presetName.trim()) return
+    setIsSavingPreset(true)
+    try {
+      await saveRegistryPreset(presetName, 'ModelsTable snapshot', models)
+      setPresetName('')
+      await loadPresets()
+      alert('Preset saved successfully!')
+    } catch (err: any) {
+      alert(`Failed to save preset: ${err.message}`)
+    } finally {
+      setIsSavingPreset(false)
+    }
+  }
+
+  const handleLoadPreset = async (presetId: string) => {
+    if (!presetId) return
+    try {
+      const loadedModels = await loadRegistryPreset(presetId)
+      if (loadedModels && Array.isArray(loadedModels)) {
+        setModels(loadedModels)
+        alert('Preset loaded successfully!')
+      }
+    } catch (err: any) {
+      alert(`Failed to load preset: ${err.message}`)
+    }
+  }
+
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortAsc((a) => !a)
@@ -333,6 +401,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
     setEditingId(null)
     startTransition(() =>
       updateModel(id, {
+        id: updates.id,
         provider: updates.provider,
         input_modalities: updates.input_modalities,
         output_modalities: updates.output_modalities,
@@ -361,7 +430,46 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
     ) : null
 
   return (
-    <div className="bg-panel rounded-big overflow-hidden">
+    <div className="bg-panel rounded-big overflow-hidden space-y-4">
+      {/* Preset Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-white/[0.05] bg-white/[0.01]">
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Preset Name..."
+            value={presetName}
+            onChange={(e) => setPresetName(e.target.value)}
+            className="bg-transparent border border-white/10 hover:border-white/20 focus:border-accent rounded-[5px] px-3 py-1 text-[12px] text-foreground focus:outline-none w-48 font-sans h-8 transition-all"
+          />
+          <button
+            onClick={handleSavePreset}
+            disabled={isSavingPreset || !presetName.trim()}
+            className="flex items-center gap-1.5 px-3 py-1 bg-accent text-background rounded-[5px] text-[10px] font-bold uppercase tracking-wider h-8 hover:brightness-110 disabled:opacity-50 transition-all select-none"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {isSavingPreset ? 'Saving...' : 'Save as preset'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 select-none">
+            Load preset:
+          </span>
+          <select
+            onChange={(e) => handleLoadPreset(e.target.value)}
+            defaultValue=""
+            className="bg-background border border-white/10 text-foreground text-[11px] font-bold uppercase tracking-wider px-2 h-8 rounded-[5px] focus:outline-none hover:border-white/20 select-none cursor-pointer"
+          >
+            <option value="" disabled>Select Preset...</option>
+            {presetsList.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="bg-panel rounded-big overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -485,6 +593,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
           Usage resets daily
         </span>
       </div>
+    </div>
     </div>
   )
 }

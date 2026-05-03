@@ -24,13 +24,36 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Delete message logs for this user
-    const { error: logError } = await supabaseAdmin
+    // 1. Get message log IDs that have feedback for this user
+    const { data: feedbackLogs } = await supabaseAdmin
+      .from('message_feedback')
+      .select('message_log_id')
+      .eq('auth_user_id', user.id)
+
+    const feedbackLogIds = (feedbackLogs ?? []).map((f: any) => f.message_log_id).filter(Boolean)
+
+    // 2. Delete message logs for this user except those that have feedback
+    let query = supabaseAdmin
       .from('message_logs')
       .delete()
       .eq('auth_user_id', user.id)
 
+    if (feedbackLogIds.length > 0) {
+      query = query.not('id', 'in', `(${feedbackLogIds.join(',')})`)
+    }
+
+    const { error: logError } = await query
+
     if (logError) throw logError
+
+    try {
+      await supabaseAdmin
+        .from('user_quotas')
+        .update({ memory_cleared_at: new Date().toISOString() })
+        .eq('auth_user_id', user.id)
+    } catch (err) {
+      console.error('[Memory Clear Update Quota Error]', err)
+    }
 
     return NextResponse.json({ success: true, message: 'Conversation memory cleared' })
   } catch (error: any) {

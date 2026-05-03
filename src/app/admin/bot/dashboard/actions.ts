@@ -16,7 +16,7 @@ export interface DashboardStats {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [brainRes, feedbackRes, sessionRes] = await Promise.all([
     supabase.from('bot_brain_entries').select('category'),
-    supabase.from('message_feedback').select('feedback'),
+    supabase.from('message_feedback').select('feedback, context_messages'),
     supabase
       .from('bot_analysis_sessions')
       .select('id, started_at, status')
@@ -26,7 +26,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   ])
 
   const brainEntries = brainRes.data ?? []
-  const feedback = feedbackRes.data ?? []
+  const feedback = (feedbackRes.data ?? []).filter((f: any) => !f.context_messages?.is_locked)
 
   const entriesByCategory: Record<string, number> = {}
   for (const e of brainEntries) {
@@ -42,15 +42,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .eq('session_id', lastSession.id)
     const plans = plansRes.data ?? []
     lastSessionPlans = plans.length
-    lastSessionAccepted = plans.filter(p => p.status === 'accepted').length
-    lastSessionRejected = plans.filter(p => p.status === 'rejected').length
+    lastSessionAccepted = plans.filter((p: any) => p.status === 'accepted').length
+    lastSessionRejected = plans.filter((p: any) => p.status === 'rejected').length
   }
 
   return {
     totalBrainEntries: brainEntries.length,
     entriesByCategory,
-    likedCount: feedback.filter(f => f.feedback === 'like').length,
-    dislikedCount: feedback.filter(f => f.feedback === 'dislike').length,
+    likedCount: feedback.filter((f: any) => f.feedback === 'like').length,
+    dislikedCount: feedback.filter((f: any) => f.feedback === 'dislike').length,
     lastSessionDate: lastSession?.started_at ?? null,
     lastSessionPlans,
     lastSessionAccepted,

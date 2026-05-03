@@ -1,212 +1,83 @@
-import { NextRequest } from 'next/server'
-import { supabaseAdmin as supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { supabaseAdmin as supabase } from '@/lib/supabase'
 import { getProviderKeys } from '@/lib/vault'
 
-export const runtime = 'nodejs'
-
 export async function POST(req: NextRequest) {
-  const { message, history = [] } = await req.json()
+  try {
+    const body = await req.json()
+    const { message, entries } = body
 
-  // Load all brain entries
-  const { data: entries } = await supabase
-    .from('bot_brain_entries')
-    .select('id, category, title, content, source, is_active, created_at')
-    .order('category')
-    .order('created_at', { ascending: true })
-
-  // Load bot settings
-  const { data: settings } = await supabase
-    .from('bot_settings')
-    .select('category, content, is_active')
-    .order('category')
-
-  // Load backend model
-  const { data: promptRow } = await supabase
-    .from('bot_compiled_prompt')
-    .select('backend_model')
-    .eq('id', 1)
-    .single()
-  const backendModel = promptRow?.backend_model ?? 'gemini-2.0-flash'
-
-  // Build context for the AI
-  const entriesByCategory: Record<string, typeof entries> = {}
-  for (const e of entries ?? []) {
-    if (!entriesByCategory[e.category]) entriesByCategory[e.category] = []
-    entriesByCategory[e.category].push(e)
-  }
-
-  const entriesContext = Object.entries(entriesByCategory).map(([cat, items]) => {
-    const lines = (items ?? []).map(e =>
-      `  - [${e.id.slice(0, 8)}] "${e.title}" → ${e.content.substring(0, 80)}`
-    ).join('\n')
-    return `[${cat.toUpperCase()}] (${(items ?? []).length})\n${lines}`
-  }).join('\n')
-
-  const systemPrompt = `You are the Brain Manager. You help optimize bot brain entries.
-
-Entries:
-${entriesContext || '(none)'}
-
-Settings:
-${(settings ?? []).map(s => `[${s.category.toUpperCase()}]: ${s.content?.substring(0, 100)}`).join('\n')}
-
-Categories: rules, red_flags, tone, personality, facts.
-
-## CRITICAL OUTPUT FORMAT
-You MUST wrap your visible answer in [ANSWER] and [/ANSWER] tags.
-Anything outside these tags will be HIDDEN from the user.
-Inside [ANSWER], write a SHORT reasoning summary (2-4 sentences explaining what you found and why), then your suggestions.
-
-If you want to suggest actions, put them INSIDE a [ACTIONS_START]...[ACTIONS_END] block, AFTER the [/ANSWER] tag.
-
-Example response for analysis:
-[ANSWER]
-Found 2 overlapping entries about markdown formatting that should be merged. One personality entry duplicates a global setting. Everything else is well-categorized.
-[/ANSWER]
-[ACTIONS_START]
-[{"type":"merge","entry_id":"abc","merge_with_id":"def","description":"Merge formatting rules","new_title":"Formatting Guide","new_content":"..."}]
-[ACTIONS_END]
-
-Example for a simple question:
-[ANSWER]
-All entries look well-organized. No duplicates or misplacements found.
-[/ANSWER]`
-
-  const providerMatch = backendModel.match(/^([^\/]+)\/(.+)$/)
-  const provider = providerMatch ? providerMatch[1].toLowerCase() : 'google'
-  const actualModel = providerMatch ? providerMatch[2] : backendModel
-
-  const providerKeyName = provider === 'groq' ? 'GROQ' : provider === 'openrouter' ? 'OPENROUTER' : 'GEMINI'
-  const keys = await getProviderKeys(providerKeyName)
-  if (keys.length === 0) {
-    return new Response(JSON.stringify({ error: `No ${providerKeyName} API key` }), { status: 500 })
-  }
-
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
-    async start(controller) {
-      function send(data: any) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
-      }
-
-      try {
-        let fullText = ''
-
-        if (provider === 'google') {
-          const genAI = new GoogleGenerativeAI(keys[0])
-          const model = genAI.getGenerativeModel({ model: actualModel, generationConfig: { maxOutputTokens: 2048, temperature: 0.4 } })
-
-          const conversationHistory = history.map((h: any) => ({
-            role: h.role === 'user' ? 'user' : 'model',
-            parts: [{ text: h.content }],
-          }))
-
-          const chat = model.startChat({
-            history: [
-              { role: 'user', parts: [{ text: systemPrompt }] },
-              { role: 'model', parts: [{ text: 'Ready.' }] },
-              ...conversationHistory,
-            ],
-          })
-
-          const result = await chat.sendMessageStream(message)
-          for await (const chunk of result.stream) {
-            const text = chunk.text()
-            if (text) {
-              fullText += text
-              send({ type: 'text', content: text })
-            }
-          }
-        } else if (provider === 'groq' || provider === 'openrouter') {
-          const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions'
-          const headers: Record<string, string> = {
-            'Authorization': `Bearer ${keys[0]}`,
-            'Content-Type': 'application/json'
-          }
-          if (provider === 'openrouter') {
-            headers['HTTP-Referer'] = 'https://flowr.ai'
-            headers['X-Title'] = 'Flowr AI'
-          }
-
-          const messages = [
-            { role: 'system', content: systemPrompt },
-            { role: 'assistant', content: 'Ready.' },
-            ...history.map((h: any) => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content })),
-            { role: 'user', content: message }
-          ]
-
-          const res = await fetch(baseUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              model: actualModel,
-              messages,
-              stream: true,
-              temperature: 0.4,
-              max_tokens: 2048
-            })
-          })
-
-          if (!res.ok) {
-            const errText = await res.text()
-            throw new Error(`API Error ${res.status}: ${errText}`)
-          }
-
-          const reader = res.body!.getReader()
-          const decoder = new TextDecoder()
-          let buffer = ''
-
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-            for (const line of lines) {
-              const cleanLine = line.trim()
-              if (!cleanLine || cleanLine === 'data: [DONE]') continue
-              if (cleanLine.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(cleanLine.slice(6))
-                  const content = data.choices?.[0]?.delta?.content
-                  if (content) {
-                    fullText += content
-                    send({ type: 'text', content })
-                  }
-                } catch (e) { }
-              }
-            }
-          }
-        } else {
-          throw new Error(`Unsupported provider: ${provider}`)
-        }
-
-        // Extract actions block
-        const actionsMatch = fullText.match(/\[ACTIONS_START\]\s*([\s\S]*?)\s*\[ACTIONS_END\]/)
-        if (actionsMatch) {
-          try {
-            const actions = JSON.parse(actionsMatch[1])
-            send({ type: 'actions', actions })
-          } catch {
-            // Silently fail if JSON is invalid
-          }
-        }
-
-        send({ type: 'done' })
-      } catch (err: any) {
-        send({ type: 'error', message: err.message?.substring(0, 200) ?? 'Unknown error' })
-      }
-
-      controller.close()
+    if (!message) {
+      return NextResponse.json({ error: 'Message required' }, { status: 400 })
     }
-  })
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  })
+    // Load settings prompts/directives
+    const { data: settings } = await supabase
+      .from('bot_settings')
+      .select('category, content')
+
+    const settingsSummary = (settings || [])
+      .map((s: any) => `[${s.category}]: ${s.content}`)
+      .join('\n')
+
+    const entriesSummary = (entries || [])
+      .map((e: any) => `ID: ${e.id}\nCategory: ${e.category}\nTitle: ${e.title}\nContent: ${e.content}`)
+      .join('\n---\n')
+
+    const systemPrompt = `You are the Brain AI Manager for Flowr AI.
+Your purpose is to help the user manage brain entries in a professional, organized manner. 
+You can only read brain entries and settings prompts.
+
+The user can ask you to do various things, such as:
+- Analyze all entries if there are any that can be merged/combined, updated, expanded, rewritten, etc.
+- Sort entries into categories (rules, red_flags, tone, personality, facts)
+- Expand an entry
+- Add context/info to an entry
+- Combine/merge multiple entries into one
+- Make entries more precise
+- Identify unnecessary or redundant entries to delete
+
+CURRENT SETTINGS PROMPTS:
+${settingsSummary || '(None)'}
+
+CURRENT BRAIN ENTRIES:
+${entriesSummary || '(None yet)'}
+
+You must carefully evaluate the user's message and current brain entries, then respond with a reasoning summary and specific recommended actions in valid JSON format.
+
+Your output MUST be a valid JSON object with the following structure:
+{
+  "reasoning": "A 2-3 sentence summary of your analysis and findings.",
+  "actions": [
+    {
+      "type": "create" | "update" | "delete",
+      "entryId": "Entry ID if editing/deleting",
+      "category": "rules | red_flags | tone | personality | facts",
+      "title": "Title for the new/updated entry",
+      "content": "Full, precise final rule string for the brain entry (guideline, instruction, fact, etc.). Use the precise prompt guideline rule style: You must..., Do not..., You should..., etc."
+    }
+  ]
+}
+
+DO NOT include markdown code fences or any conversational wrapper in the output. The response must be exactly a single JSON object.`
+
+    const keys = await getProviderKeys('GEMINI')
+    const apiKey = process.env.GEMINI_API_KEY || (keys && keys.length > 0 ? keys[0] : null)
+    if (!apiKey) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 })
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const result = await model.generateContent(systemPrompt + '\n\n' + message)
+    const raw = result.response.text().trim()
+
+    // Strip out possible AI markdown code fence wrappers
+    const stripped = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    return NextResponse.json(JSON.parse(stripped))
+  } catch (error: any) {
+    console.error('[Brain AI Manager API Error]:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

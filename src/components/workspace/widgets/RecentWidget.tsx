@@ -22,6 +22,7 @@ export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter 
   const entities = useStore(s => s.entities);
   const workspaces = useStore(s => s.workspaces);
   const setActiveEntityId = useStore(s => s.setActiveEntityId);
+  const openModal = useStore(s => s.openModal);
   const filter: Filter = data?.filter ?? 'all';
 
   const recentEntities = useMemo(() =>
@@ -72,9 +73,18 @@ export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter 
             </button>
           );
         }) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-50">
-            <Clock className="w-8 h-8 text-[var(--bone-20)]" />
-            <p className="text-[11px] text-muted-foreground">No recent pages.</p>
+          <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
+            <Clock strokeWidth={1} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <div className="text-center max-w-[320px]">
+              <p className="text-base font-semibold text-bone-100 opacity-40">No recent activities</p>
+              <p className="text-xs text-bone-40 opacity-25 mt-1 leading-snug text-balance">Pages you create or edit will show up here for quick access.</p>
+            </div>
+            <button
+              onClick={() => openModal({ kind: 'newItem' })}
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+            >
+              + New Item
+            </button>
           </div>
         )}
       </div>

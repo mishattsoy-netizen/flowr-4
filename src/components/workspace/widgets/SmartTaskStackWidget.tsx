@@ -6,9 +6,9 @@ import clsx from 'clsx';
 import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X } from 'lucide-react';
 
 const ALL_TABS = [
-  { id: 'today',    label: 'Today',       icon: Clock,        color: 'text-accent' },
-  { id: 'upcoming', label: 'Upcoming',    icon: Calendar,     color: 'text-blue-400' },
-  { id: 'overdue',  label: 'Overdue',     icon: AlertCircle,  color: 'text-red-400' },
+  { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
+  { id: 'upcoming', label: 'Upcoming', icon: Calendar, color: 'text-blue-400' },
+  { id: 'overdue', label: 'Overdue', icon: AlertCircle, color: 'text-red-400' },
   { id: 'progress', label: 'In Progress', icon: CheckCircle2, color: 'text-amber-400' },
 ] as const;
 
@@ -126,13 +126,13 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
 
         {/* Tab switcher */}
         {visibleTabs.length > 0 ? (
-          <div className="relative flex items-center p-0.5 bg-background rounded-[8px] no-drag overflow-hidden w-fit">
+          <div className="relative flex items-center p-[3px] bg-background rounded-[8px] no-drag overflow-hidden w-fit">
             {/* Sliding pill */}
             <div
               className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
               style={{
                 left: `calc(3px + ${activeIndex * 80}px)`,
-                width: '74px',
+                width: '80px',
               }}
             />
             {visibleTabs.map(tab => (
@@ -158,12 +158,40 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
                 )}
               </div>
             ))}
+            {/* Plus button to add tabs - visible in edit mode */}
+            {isEditing && hiddenTabDefs.length > 0 && (
+              <div className="relative z-10 w-8 flex items-center justify-center border-l border-[var(--bone-10)] ml-0.5">
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); setShowAddMenu(v => !v); }}
+                  className="w-full flex items-center justify-center py-1 transition-colors duration-200 text-muted-foreground hover:text-foreground"
+                  title="Add tab"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                {showAddMenu && (
+                  <div className="absolute left-0 top-8 z-50 bg-background border border-border rounded-xl shadow-lg p-1.5 min-w-[140px] space-y-0.5">
+                    {hiddenTabDefs.map(tab => (
+                      <button
+                        key={tab.id}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); showTab(tab.id); }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)] transition-colors"
+                      >
+                        <tab.icon className={clsx("w-3 h-3", tab.color)} />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <span className="text-xs text-muted-foreground italic">No tabs visible</span>
         )}
 
-        {/* Right side: count badge + add-tab button (edit mode) or add-task button */}
+        {/* Right side: count badge + add-task button */}
         <div className="flex items-center gap-1.5 shrink-0">
           {displayTasks.length > 0 && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bone-6)] border border-[var(--bone-3)]">
@@ -174,43 +202,13 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
             </div>
           )}
 
-          {isEditing && hiddenTabDefs.length > 0 && (
-            <div className="relative">
-              <button
-                onPointerDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); setShowAddMenu(v => !v); }}
-                className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
-                title="Add tab"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              {showAddMenu && (
-                <div className="absolute right-0 top-8 z-50 bg-background border border-border rounded-xl shadow-lg p-1.5 min-w-[140px] space-y-0.5">
-                  {hiddenTabDefs.map(tab => (
-                    <button
-                      key={tab.id}
-                      onPointerDown={e => e.stopPropagation()}
-                      onClick={e => { e.stopPropagation(); showTab(tab.id); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)] transition-colors"
-                    >
-                      <tab.icon className={clsx("w-3 h-3", tab.color)} />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {!isEditing && (
-            <button
-              onClick={() => setAdding(a => !a)}
-              className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
-              title="Add task"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            onClick={() => setAdding(a => !a)}
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
+            title="Add task"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -231,9 +229,18 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
             ))}
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-2 opacity-50">
-            <CheckCircle2 className="w-8 h-8 text-[var(--bone-20)]" />
-            <p className="text-xs text-muted-foreground font-medium">All caught up in {activeTabDef.label}!</p>
+          <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
+            <CheckCircle2 strokeWidth={1} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <div className="text-center max-w-[320px]">
+              <p className="text-base font-semibold text-bone-100 opacity-40">All caught up!</p>
+              <p className="text-xs text-bone-40 opacity-25 mt-1 leading-snug text-balance">No tasks to display in {activeTabDef.label}. Enjoy your day!</p>
+            </div>
+            <button
+              onClick={() => setAdding(true)}
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+            >
+              + New Task
+            </button>
           </div>
         )}
 

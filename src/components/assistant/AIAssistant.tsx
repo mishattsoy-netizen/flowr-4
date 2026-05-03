@@ -467,7 +467,7 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
           {aiMessages.length === 0 && !isAILoading && (
             <div className="flex-1 flex flex-col justify-end text-center pb-5 min-h-0">
               <div className="flex items-center justify-center gap-6">
-                <StarIcon className="w-8 h-8" style={{ color: '#E09952', fill: '#E09952' }} />
+                <StarIcon className="w-8 h-8" style={{ color: 'var(--accent)', fill: 'var(--accent)' }} />
                 <p className="text-[26px] font-medium text-bone-40 leading-tight tracking-tight font-[family-name:var(--font-display)]">
                   How can I help you today?
                 </p>

@@ -320,10 +320,58 @@ export const useStore = create<AppState>()(
             return;
           }
 
+          const isStream = res.headers.get('Content-Type')?.includes('text/event-stream');
+          if (isStream) {
+            const reader = res.body?.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedContent = '';
+
+            if (reader) {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') break;
+                    try {
+                      const parsed = JSON.parse(data);
+                      if (parsed.content) {
+                        accumulatedContent += parsed.content;
+                        set((s) => ({
+                          aiMessages: s.aiMessages.map((m) =>
+                            m.id === placeholderMessage.id
+                              ? { ...m, content: accumulatedContent, model: parsed.model || m.model }
+                              : m
+                          ),
+                        }));
+                      }
+                    } catch (e) {
+                      // ignore parse errors
+                    }
+                  }
+                }
+              }
+            }
+            set({ isAILoading: false });
+            return;
+          }
+
           const data = await res.json();
           set(s => ({
             aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
-              ? { ...m, content: data.content, model: data.model, logId: data.log_id ?? undefined }
+              ? {
+                  ...m,
+                  content: data.content,
+                  model: data.model,
+                  logId: data.log_id ?? undefined,
+                  model_chain: data.model_chain,
+                  classification_trace: data.classification_trace,
+                  routing_trace: data.routing_trace
+                }
               : m
             ),
             isAILoading: false,

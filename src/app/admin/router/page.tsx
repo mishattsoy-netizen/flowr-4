@@ -24,11 +24,11 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
       <div className="mb-2">
         <h1 className="text-4xl font-display text-foreground mb-1">Router Orchestration</h1>
         <p className="text-muted-foreground text-sm font-medium">
-          {platform === 'app' ? 'Web app' : 'Telegram bot'} — multi-agent switching matrix.
+          Multi-agent switching matrix — unified chain for all clients.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {routers.map((router: any) => {
           const Icon = CATEGORY_ICONS[router.category] || Cpu
           return (

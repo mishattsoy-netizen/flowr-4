@@ -1,0 +1,64 @@
+'use server'
+
+import { supabaseAdmin as supabase } from '@/lib/supabase'
+import { logAdminAction } from '@/lib/admin/logAction'
+import { revalidatePath } from 'next/cache'
+
+import { DEFAULT_CLASSIFICATION_PROMPT, DEFAULT_KEYWORDS } from './defaults'
+
+export async function getClassifierConfig(): Promise<{ prompt: string; keywords: Record<string, string[]> }> {
+  try {
+    const { data: promptBlock } = await supabase
+      .from('bot_settings')
+      .select('content')
+      .eq('category', 'classifier_prompt')
+      .maybeSingle()
+
+    const { data: keywordsBlock } = await supabase
+      .from('bot_settings')
+      .select('content')
+      .eq('category', 'classifier_keywords')
+      .maybeSingle()
+
+    let prompt = promptBlock?.content || DEFAULT_CLASSIFICATION_PROMPT
+    let keywords = DEFAULT_KEYWORDS
+
+    if (keywordsBlock?.content) {
+      try {
+        keywords = JSON.parse(keywordsBlock.content)
+      } catch {
+        keywords = DEFAULT_KEYWORDS
+      }
+    }
+
+    return { prompt, keywords }
+  } catch (err) {
+    console.error('getClassifierConfig error:', err)
+    return { prompt: DEFAULT_CLASSIFICATION_PROMPT, keywords: DEFAULT_KEYWORDS }
+  }
+}
+
+export async function saveClassifierConfig(prompt: string, keywords: Record<string, string[]>): Promise<void> {
+  const { error: err1 } = await supabase
+    .from('bot_settings')
+    .upsert({
+      category: 'classifier_prompt',
+      content: prompt,
+      updated_at: new Date().toISOString()
+    })
+
+  if (err1) throw err1
+
+  const { error: err2 } = await supabase
+    .from('bot_settings')
+    .upsert({
+      category: 'classifier_keywords',
+      content: JSON.stringify(keywords),
+      updated_at: new Date().toISOString()
+    })
+
+  if (err2) throw err2
+
+  await logAdminAction('settings_saved', 'Saved custom classifier prompt and keywords', { prompt })
+  revalidatePath('/admin/bot/classifier')
+}

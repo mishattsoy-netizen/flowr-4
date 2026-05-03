@@ -14,3 +14,14 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ logs: data ?? [] })
 }
+
+export async function DELETE(req: NextRequest) {
+  const { error } = await supabase
+    .from('admin_activity_log')
+    .delete()
+    .not('id', 'is', null)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true, message: 'Activity logs cleared' })
+}
+

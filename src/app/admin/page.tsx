@@ -60,7 +60,7 @@ export default async function AdminOverview() {
 function MetricCard({ title, value, change, icon: Icon, accent = false }: any) {
   return (
     <div className={cn(
-      "bg-panel rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200 hover:bg-[var(--bone-6)]",
+      "bg-panel rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200",
       accent ? "bg-accent/5 border-accent/20" : ""
     )}>
       <div className="flex items-center justify-between mb-4">
@@ -80,7 +80,7 @@ function MetricCard({ title, value, change, icon: Icon, accent = false }: any) {
 
 function EventLog({ message, time }: { message: string, time: string }) {
   return (
-    <div className="flex items-center justify-between text-[13px] font-medium p-2.5 -mx-1.5 rounded-lg hover:bg-hover group cursor-pointer transition-all duration-200">
+    <div className="flex items-center justify-between text-[13px] font-medium p-2.5 -mx-1.5 rounded-lg group cursor-pointer transition-all duration-200">
       <span className="text-muted-foreground group-hover:text-foreground">{message}</span>
       <span className="text-muted-foreground opacity-20 font-mono text-[10px] group-hover:opacity-40 transition-colors">{time}</span>
     </div>

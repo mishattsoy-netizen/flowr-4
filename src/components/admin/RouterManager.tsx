@@ -15,10 +15,16 @@ import {
   Wand2,
   Image,
   Mic,
-  Brain
+  Brain,
+  Layers,
+  X,
+  Save,
+  Edit2
 } from 'lucide-react'
-import { updateRouterChain } from '@/app/admin/router/actions'
+import { updateRouterChain, getFallbackModes, setFallbackMode, getRouterTemperatures, setRouterTemperature } from '@/app/admin/router/actions'
+import { saveChainPreset, loadChainPreset, listChainPresets } from '@/app/admin/bot/registry/actions'
 import { cn } from '@/lib/utils'
+import ModelDropdown from './ModelDropdown'
 
 interface RegistryModel {
   id: string
@@ -31,7 +37,10 @@ const PROVIDER_COLORS: Record<string, string> = {
   groq: 'text-orange-400',
   openrouter: 'text-purple-400',
   ollama: 'text-cyan-400',
-  vault: 'text-emerald-400'
+  vault: 'text-emerald-400',
+  pollinations: 'text-pink-400',
+  huggingface: 'text-yellow-400',
+  cloudflare: 'text-amber-400',
 }
 
 const PROVIDER_DOTS: Record<string, string> = {
@@ -39,13 +48,88 @@ const PROVIDER_DOTS: Record<string, string> = {
   groq: 'bg-orange-400',
   openrouter: 'bg-purple-400',
   ollama: 'bg-cyan-400',
-  vault: 'bg-emerald-400'
+  vault: 'bg-emerald-400',
+  pollinations: 'bg-pink-400',
+  huggingface: 'bg-yellow-400',
+  cloudflare: 'bg-amber-400',
 }
 
 interface ModelConfig {
   id: string
   provider: string
   is_enabled: boolean
+}
+
+function ProviderSelector({
+  value,
+  providers,
+  onChange,
+  isEnabled
+}: {
+  value: string
+  providers: string[]
+  onChange: (val: string) => void
+  isEnabled: boolean
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const dotColor = PROVIDER_DOTS[value.toLowerCase()] || 'bg-bone-60'
+
+  return (
+    <div className="relative shrink-0 flex items-center justify-center select-none" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        title={value}
+        className={cn(
+          "flex items-center justify-center w-6 h-6 rounded-sm transition-all duration-0 hover:bg-white/5 focus:outline-none",
+          !isEnabled && "opacity-40"
+        )}
+      >
+        <div className={cn(
+          "w-2 h-2 rounded-full shrink-0 transition-all duration-0",
+          isEnabled ? dotColor : "bg-bone-60"
+        )} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-1 bg-panel border border-white/10 rounded-medium shadow-2xl z-50 min-w-[120px] max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200 py-1 flex flex-col gap-0.5">
+          {providers.map((p) => {
+            const pDot = PROVIDER_DOTS[p] || 'bg-bone-60'
+            const pColor = PROVIDER_COLORS[p] || 'text-bone-60'
+            return (
+              <button
+                type="button"
+                key={p}
+                onClick={() => {
+                  onChange(p)
+                  setIsOpen(false)
+                }}
+                className={cn(
+                  "w-full flex items-center justify-start gap-2.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-0 select-none hover:bg-white/5",
+                  value === p ? "bg-white/[0.08] text-foreground" : "text-bone-60 hover:text-foreground"
+                )}
+              >
+                <div className={cn("w-2 h-2 rounded-full shrink-0", pDot)} />
+                <span className={cn("capitalize text-[10.5px] tracking-wide font-bold", pColor)}>{p}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ModelSelector({
@@ -68,9 +152,6 @@ function ModelSelector({
     .map(m => ({ id: m.id, rpd: m.max_rpd !== null ? m.max_rpd.toLocaleString() : '∞' }))
   const filtered = models.filter(m => m.id.toLowerCase().includes(search.toLowerCase()))
 
-  const currentModel = models.find(m => m.id === value)
-
-  // Sync search with value when not open
   useEffect(() => {
     if (!isOpen) setSearch(value)
   }, [value, isOpen])
@@ -113,17 +194,11 @@ function ModelSelector({
           placeholder="Model node ID..."
         />
         
-        {!isOpen && currentModel && (
-          <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded-sm bg-background border border-white/5 text-bone-60 tracking-tight opacity-40 group-hover:opacity-100">
-            {currentModel.rpd} RPD
-          </span>
-        )}
-        
-        <ChevronDown className="shrink-0 w-3 h-3 text-bone-60 opacity-20 group-hover:opacity-100" />
-      </div>
+         <ChevronDown className="shrink-0 w-3 h-3 text-bone-60 opacity-20 group-hover:opacity-100" />
+       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-1.5 bg-panel border border-white/10 rounded-medium shadow-2xl z-50 max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200 py-1">
+        <div className="absolute top-full left-0 w-full mt-1.5 bg-panel border border-white/10 rounded-medium shadow-2xl z-50 max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-0 py-1">
           {search && !models.some(m => m.id === search) && (
             <button
               onClick={() => {
@@ -194,6 +269,82 @@ export default function RouterManager({
   const [models, setModels] = useState<ModelConfig[]>(chain.model_list)
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [isPresetOpen, setIsPresetOpen] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [presetsList, setPresetsList] = useState<any[]>([])
+  const [isSavingPreset, setIsSavingPreset] = useState(false)
+  const [fallbackMode, setFallbackModeState] = useState<'model_first' | 'api_key_first'>('model_first')
+  const [temperature, setTemperature] = useState<number>(0.7)
+
+  useEffect(() => {
+    const loadModesAndTemps = async () => {
+      if (!category) return
+      const [modes, temps] = await Promise.all([getFallbackModes(), getRouterTemperatures()])
+      if (modes[category]) {
+        setFallbackModeState(modes[category])
+      }
+      if (typeof temps[category] === 'number') {
+        setTemperature(temps[category])
+      }
+    }
+    loadModesAndTemps()
+  }, [category])
+
+  const handleToggleMode = async () => {
+    if (!category) return
+    const nextMode = fallbackMode === 'model_first' ? 'api_key_first' : 'model_first'
+    setFallbackModeState(nextMode)
+    await setFallbackMode(category, nextMode)
+  }
+
+  const handleTempChange = async (val: number) => {
+    setTemperature(val)
+    if (!category) return
+    await setRouterTemperature(category, val)
+  }
+
+  const loadPresets = async () => {
+    if (!category) return
+    try {
+      const list = await listChainPresets(category)
+      setPresetsList(list)
+    } catch (err: any) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    loadPresets()
+  }, [category])
+
+  const handleSavePreset = async () => {
+    if (!presetName.trim() || !category) return
+    setIsSavingPreset(true)
+    try {
+      await saveChainPreset(presetName, category, models)
+      setPresetName('')
+      await loadPresets()
+      alert('Chain preset saved successfully!')
+    } catch (err: any) {
+      alert(`Failed to save chain preset: ${err.message}`)
+    } finally {
+      setIsSavingPreset(false)
+    }
+  }
+
+  const handleLoadPreset = async (presetId: string) => {
+    if (!presetId) return
+    try {
+      const loadedModelList = await loadChainPreset(presetId)
+      if (loadedModelList && Array.isArray(loadedModelList)) {
+        setModels(loadedModelList)
+        setHasChanges(true)
+        alert('Chain preset loaded successfully!')
+      }
+    } catch (err: any) {
+      alert(`Failed to load chain preset: ${err.message}`)
+    }
+  }
 
   const move = (index: number, direction: 'up' | 'down') => {
     const newModels = [...models]
@@ -257,107 +408,186 @@ export default function RouterManager({
 
   return (
     <div className={cn(
-      "bg-panel rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative",
+      "bg-panel rounded-big px-3 pb-2 pt-3 h-full flex flex-col relative",
       hasChanges ? "ring-1 ring-accent/20" : ""
     )}>
-      {/* Integrated Header */}
-      {title && (
-        <div className="px-2 py-2 mb-1 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {category && CATEGORY_ICONS[category] && (
-              <div className="text-accent opacity-50">
-                {React.createElement(CATEGORY_ICONS[category], { className: "w-3 h-3", strokeWidth: 2.5 })}
-              </div>
-            )}
-            <h3 className="text-[11px] font-ui-label font-bold text-muted-foreground tracking-widest uppercase opacity-40">
-              {title}
-            </h3>
+      {/* Preset Manager Popup */}
+      {isPresetOpen && (
+        <div className="absolute top-12 right-4 w-72 bg-panel/95 backdrop-blur-xl border border-white/10 rounded-big shadow-2xl z-50 animate-in zoom-in-95 fade-in duration-0 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground/80">Chain Presets</h4>
+            <button 
+              onClick={() => setIsPresetOpen(false)}
+              className="p-1 rounded-sm hover:bg-white/5 text-muted-foreground/40 hover:text-foreground transition-all duration-0"
+              title="Preset Manager"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 p-2 bg-white/[0.02] rounded-medium border border-white/5">
+              <input
+                type="text"
+                placeholder="New preset name..."
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                className="bg-background border border-white/5 rounded-sm px-2 py-1 text-[11px] text-foreground focus:outline-none w-full h-7 transition-all duration-0"
+              />
+              <button
+                onClick={handleSavePreset}
+                disabled={isSavingPreset || !presetName.trim()}
+                className="flex items-center justify-center gap-1 w-full h-7 bg-accent text-background rounded-sm text-[9px] font-bold uppercase tracking-wider hover:brightness-110 disabled:opacity-50 transition-all duration-0"
+              >
+                <Save className="w-2.5 h-2.5" /> Save Preset
+              </button>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1">
+              {presetsList.length > 0 ? (
+                presetsList.map((p) => (
+                  <div 
+                    key={p.id} 
+                    className="group flex items-center justify-between p-2 rounded-sm hover:bg-white/5 border border-transparent hover:border-white/5 transition-all duration-0"
+                  >
+                    <span className="text-[11px] font-medium text-bone-60 truncate mr-2">{p.name}</span>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-0">
+                      <button 
+                        onClick={() => handleLoadPreset(p.id)}
+                        className="p-1 text-accent hover:text-accent-foreground transition-colors duration-0"
+                        title="Load"
+                      >
+                        <Plus className="w-3 h-3 rotate-45" />
+                      </button>
+                      <button 
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors duration-0"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-[10px] text-muted-foreground/40 italic">No presets saved</div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        {models.map((model, index) => (
-          <div key={`${model.id}-${index}`} className="group flex items-center gap-3 px-3 py-2 rounded-medium hover:bg-[var(--bone-6)] transition-all">
-            {/* Left: Model & Provider Pair */}
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              <div className={cn("flex-1 min-w-0 flex items-center gap-2", !model.is_enabled && "opacity-25 grayscale")}>
-                <ModelSelector
-                  value={model.id}
-                  provider={model.provider}
-                  registryModels={availableModels}
-                  onChange={(val) => updateLocalModel(index, 'id', val)}
-                />
+      {title && (
+        <div className="px-3 py-2 mb-2 flex items-center justify-between group/header">
+          <div className="flex items-center gap-2">
+            {category && CATEGORY_ICONS[category] && (
+              <div className="text-muted-foreground/40">
+                {React.createElement(CATEGORY_ICONS[category], { className: "w-3 h-3", strokeWidth: 2.5 })}
               </div>
-              
-              <div className="flex items-center gap-2 shrink-0">
-                <div className={cn("w-px h-3", model.is_enabled ? (PROVIDER_COLORS[model.provider.toLowerCase()] || 'bg-white/5') : 'bg-white/5', "opacity-20")} />
-                <div className="relative flex items-center gap-1.5">
-                  <div className={cn("w-1 h-1 rounded-full shrink-0", model.is_enabled ? (PROVIDER_DOTS[model.provider.toLowerCase()] || 'bg-bone-60') : 'bg-bone-60', "opacity-40")} />
-                  <select 
-                    value={model.provider.toLowerCase()}
-                    onChange={(e) => updateLocalModel(index, 'provider', e.target.value)}
-                    className={cn(
-                      "bg-transparent border-none p-0 focus:ring-0 text-[10px] font-bold tracking-tight cursor-pointer appearance-none capitalize transition-all",
-                      model.is_enabled ? (PROVIDER_COLORS[model.provider.toLowerCase()] || 'text-bone-60') : 'text-bone-60',
-                      "opacity-40 group-hover:opacity-100"
-                    )}
-                  >
-                    {providers.map(p => (
-                      <option key={p} value={p} className="bg-panel text-bone-100 capitalize">{p}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center bg-background/50 rounded-small border border-white/5 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => move(index, 'up')}
-                  disabled={index === 0}
-                  className="text-bone-60 hover:text-accent disabled:opacity-20 p-1 transition-colors"
-                >
-                  <ArrowUp className="w-2.5 h-2.5" />
-                </button>
-                <div className="w-px h-3 bg-white/5" />
-                <button 
-                  onClick={() => move(index, 'down')}
-                  disabled={index === models.length - 1}
-                  className="text-bone-60 hover:text-accent disabled:opacity-20 p-1 transition-colors"
-                >
-                  <ArrowDown className="w-2.5 h-2.5" />
-                </button>
-              </div>
-
-              <button 
-                onClick={() => toggle(index)}
-                className={cn(
-                  "p-1.5 rounded-medium border transition-all",
-                  model.is_enabled 
-                    ? "bg-accent/10 border-accent/20 text-accent" 
-                    : "bg-background border-white/5 text-bone-60 opacity-20"
-                )}
-              >
-                <Power className="w-3 h-3" />
-              </button>
-              
-              <button 
-                onClick={() => deleteModel(index)}
-                className="p-1.5 rounded-medium bg-background border border-white/5 text-bone-60 opacity-0 group-hover:opacity-100 hover:text-rose-500 hover:border-rose-500/20 transition-all"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
+            )}
+            <h3 className="text-[10px] font-ui-label font-bold text-muted-foreground tracking-widest uppercase opacity-60 group-hover/header:opacity-100 transition-opacity">
+              {title}
+            </h3>
           </div>
-        ))}
-      </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleMode}
+              className={cn(
+                "flex items-center gap-1.5 px-2 py-0.5 rounded-medium border transition-all duration-0 text-[9px] font-bold tracking-wide uppercase",
+                fallbackMode === 'api_key_first' 
+                  ? "bg-accent/10 border-accent/20 text-accent" 
+                  : "bg-white/5 border-white/5 text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.08]"
+              )}
+              title={fallbackMode === 'api_key_first' ? 'Try alternative API keys first' : 'Try next model first'}
+            >
+              <span className="w-1 h-1 rounded-full bg-current" />
+              {fallbackMode === 'api_key_first' ? 'Alt Keys First' : 'Models First'}
+            </button>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-medium border bg-white/5 border-white/5 text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.08] text-[9px] font-bold uppercase tracking-wide">
+              <span>Temp</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                value={temperature}
+                onChange={(e) => handleTempChange(parseFloat(e.target.value) || 0)}
+                className="w-10 bg-transparent border-none p-0 focus:ring-0 text-[9px] font-mono text-center font-bold text-accent select-none outline-none"
+              />
+            </div>
+            <button 
+              onClick={() => setIsPresetOpen(true)}
+              className="p-1 rounded-sm hover:bg-white/5 text-muted-foreground/40 hover:text-foreground transition-all"
+              title="Preset Manager"
+            >
+              <Layers className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="mt-2 px-2 py-2 flex justify-between items-center border-t border-white/[0.03]">
+      <div className="flex flex-col gap-1 pb-3">
+         {models.map((model, index) => (
+           <div key={`${model.id}-${index}`} className="group flex items-center gap-3 px-2 py-0.5 rounded-medium hover:bg-white/[0.02] transition-all duration-0 relative">
+             {/* Col 1: Model ID */}
+             <div className="w-[200px] shrink-0 flex items-center">
+               <ModelDropdown
+                 value={model.id}
+                 models={availableModels}
+                 onChange={(val) => updateLocalModel(index, 'id', val)}
+                 providerFilter={model.provider}
+               />
+             </div>
+             
+             <div className="flex items-center gap-2.5 ml-auto">
+               {/* Col 2: RPD */}
+               <div className="flex items-center gap-1 shrink-0 text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors duration-0 w-16 justify-end">
+                 <span className="text-[9px] font-mono font-medium">
+                   {(() => {
+                     const matchingModel = availableModels.find(m => m.id === model.id)
+                     return matchingModel && matchingModel.max_rpd !== null ? matchingModel.max_rpd.toLocaleString() : '∞'
+                   })()}
+                 </span>
+                 <span className="text-[8px] font-bold uppercase tracking-tighter opacity-60">RPD</span>
+               </div>
+
+               {/* Col 3: Provider Selector (Dot only) */}
+               <ProviderSelector
+                 value={model.provider}
+                 providers={providers}
+                 onChange={(val) => updateLocalModel(index, 'provider', val)}
+                 isEnabled={model.is_enabled}
+               />
+   
+               {/* Col 4: Power */}
+               <div className="flex items-center gap-1.5 shrink-0">
+                 <button 
+                   onClick={() => toggle(index)}
+                   className={cn(
+                     "p-1 rounded-full border transition-all duration-0",
+                     model.is_enabled 
+                       ? "bg-transparent border-accent/40 text-accent" 
+                       : "bg-background border-white/5 text-bone-60 opacity-20 hover:opacity-40"
+                   )}
+                 >
+                   <Power className="w-3 h-3" />
+                 </button>
+                 
+                 <button 
+                   onClick={() => deleteModel(index)}
+                   className="p-1 rounded-full bg-background border border-white/5 text-bone-60 opacity-0 group-hover:opacity-100 hover:text-rose-500 hover:border-rose-500/20 transition-all duration-0"
+                 >
+                   <Trash2 className="w-3 h-3" />
+                 </button>
+               </div>
+             </div>
+           </div>
+         ))}
+      </div>
+ 
+      <div className="mt-auto px-3 py-1 flex justify-between items-center border-t border-white/[0.03]">
         <button 
           onClick={addModel}
-          className="text-[9px] flex items-center gap-2 text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] font-bold tracking-[0.02em] px-3 py-1.5 rounded-medium uppercase transition-all"
+          className="text-[10px] flex items-center gap-2 text-muted-foreground/40 hover:text-foreground hover:bg-white/5 font-bold tracking-widest px-3 py-1.5 rounded-medium uppercase transition-all duration-0"
         >
           <Plus className="w-3 h-3" /> Add node registry
         </button>
@@ -365,18 +595,21 @@ export default function RouterManager({
         {hasChanges && (
           <div className="flex items-center gap-4 animate-in slide-in-from-right-2 duration-300">
             <button 
-              onClick={() => setModels(chain.model_list)}
-              className="text-[10px] font-bold tracking-[0.05em] text-bone-60 hover:text-rose-500 uppercase"
+              onClick={() => {
+                setModels(chain.model_list)
+                setHasChanges(false)
+              }}
+              className="text-[10px] font-bold tracking-widest text-muted-foreground/40 hover:text-rose-500 uppercase transition-all duration-0"
             >
-              Reset
+              Cancel
             </button>
-               <button 
-                 onClick={handleSave}
-                 disabled={isSaving}
-                 className="bg-accent text-background px-4 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold tracking-wide hover:brightness-110 transition-all uppercase"
-               >
-                 {isSaving ? 'Syncing...' : 'Commit changes'}
-               </button>
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-accent text-background px-3 py-1.5 rounded-medium text-[10px] font-bold tracking-widest hover:brightness-110 transition-all duration-0 uppercase"
+            >
+              {isSaving ? 'Syncing...' : 'Commit changes'}
+            </button>
           </div>
         )}
       </div>

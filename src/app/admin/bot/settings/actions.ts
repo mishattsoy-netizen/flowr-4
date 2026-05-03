@@ -85,3 +85,40 @@ export async function getGlobalEnabled(): Promise<boolean> {
     .single()
   return data?.global_enabled ?? true
 }
+
+export async function getOllamaEnabled(): Promise<boolean> {
+  const { data } = await supabase
+    .from('bot_compiled_prompt')
+    .select('ollama_enabled')
+    .eq('id', 1)
+    .single()
+  return data?.ollama_enabled ?? false
+}
+
+export async function setOllamaEnabled(enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('bot_compiled_prompt')
+    .update({ ollama_enabled: enabled })
+    .eq('id', 1)
+  if (error) throw error
+  revalidatePath('/admin/bot/settings')
+}
+
+export async function getBackendModel(): Promise<string> {
+  const { data } = await supabase
+    .from('bot_compiled_prompt')
+    .select('backend_model')
+    .eq('id', 1)
+    .single()
+  return data?.backend_model ?? 'gemma-4-31b-it'
+}
+
+export async function setBackendModel(model: string): Promise<void> {
+  const { error } = await supabase
+    .from('bot_compiled_prompt')
+    .update({ backend_model: model })
+    .eq('id', 1)
+  if (error) throw error
+  revalidatePath('/admin/bot/settings')
+}
+

@@ -73,7 +73,7 @@ export async function getMessageExchanges(options: {
     .range(offset, offset + limit - 1)
 
   if (authColExists) {
-    if (platform === 'app') modelQ = modelQ.not('auth_user_id', 'is', null)
+    if (platform === 'app') modelQ = modelQ.is('telegram_id', null)
     if (platform === 'telegram') modelQ = modelQ.not('telegram_id', 'is', null)
   } else if (platform === 'telegram') {
     modelQ = modelQ.not('telegram_id', 'is', null)
@@ -81,6 +81,7 @@ export async function getMessageExchanges(options: {
   if (usage_type && usage_type !== 'all') modelQ = modelQ.eq('usage_type', usage_type)
 
   const { data: modelRows, error: modelErr, count } = await modelQ
+  console.log('[getMessageExchanges] fetched modelRows:', modelRows?.length, modelErr)
   if (modelErr) {
     console.error('[Logs] Model query failed:', modelErr.message)
     return { exchanges: [], total: 0 }
@@ -210,7 +211,7 @@ export async function getMessageLogs(options: {
     .range(offset, offset + limit - 1)
 
   if (authColExists) {
-    if (platform === 'app') query = query.not('auth_user_id', 'is', null)
+    if (platform === 'app') query = query.is('telegram_id', null)
     if (platform === 'telegram') query = query.not('telegram_id', 'is', null)
   } else if (platform === 'telegram') {
     query = query.not('telegram_id', 'is', null)

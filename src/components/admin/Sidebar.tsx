@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -17,19 +17,7 @@ const LogoSimple = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const BOT_SUB_PATHS = [
-  '/admin/bot/settings',
-  '/admin/bot/brain',
-  '/admin/bot/dashboard',
-  '/admin/bot/routine',
-  '/admin/bot/feedback',
-]
-
 export default function Sidebar() {
-  const pathname = usePathname()
-  const isBotActive = BOT_SUB_PATHS.some(p => pathname.startsWith(p))
-  const [botExpanded, setBotExpanded] = useState(isBotActive)
-
   return (
     <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-border">
       <div className="flex items-center justify-between px-4 py-5 border-b border-[var(--bone-6)] transition-all duration-0">
@@ -48,48 +36,16 @@ export default function Sidebar() {
           <NavLink href="/admin/vault" icon={Shield}>Secure Vault</NavLink>
           <NavLink href="/admin/presets" icon={Zap}>Usage Presets</NavLink>
           <NavLink href="/admin/models" icon={Database}>Model Registry</NavLink>
-        </PlatformSection>
-
-        <PlatformSection title="App Orchestration">
-          <NavLink href="/admin/app/router" icon={Cpu}>Router Matrix</NavLink>
-          <NavLink href="/admin/app/prompts" icon={Terminal}>Prompts Node</NavLink>
-        </PlatformSection>
-
-        <PlatformSection title="Telegram Node">
-          <NavLink href="/admin/telegram/router" icon={Bot}>Router Matrix</NavLink>
-          <NavLink href="/admin/telegram/prompts" icon={MessageSquareText}>Prompts Node</NavLink>
+          <NavLink href="/admin/router" icon={Cpu}>Router Matrix</NavLink>
         </PlatformSection>
 
         <PlatformSection title="Bot Intelligence">
-          {/* Expandable Bot Manager group */}
-          <button
-            onClick={() => setBotExpanded(v => !v)}
-            className={cn(
-              "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px]",
-              isBotActive
-                ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide"
-                : "text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
-            )}
-          >
-            <div className="w-7 shrink-0 flex items-center justify-center">
-              <Bot className={cn("w-3.5 h-3.5", isBotActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")} strokeWidth={2} />
-            </div>
-            <span className="ml-0 flex-1 text-left tracking-wide">Bot Manager</span>
-            {botExpanded
-              ? <ChevronDown className="w-3 h-3 text-[var(--bone-40)]" strokeWidth={2} />
-              : <ChevronRight className="w-3 h-3 text-[var(--bone-40)]" strokeWidth={2} />
-            }
-          </button>
-
-          {botExpanded && (
-            <div className="flex flex-col gap-[2px] pl-4 ml-1 border-l border-[var(--bone-10)]">
-              <NavLink href="/admin/bot/settings" icon={Settings}>Settings</NavLink>
-              <NavLink href="/admin/bot/brain" icon={Brain}>Brain</NavLink>
-              <NavLink href="/admin/bot/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
-              <NavLink href="/admin/bot/routine" icon={RotateCcw}>Routine</NavLink>
-              <NavLink href="/admin/bot/feedback" icon={MessageCircle}>Feedback</NavLink>
-            </div>
-          )}
+          <NavLink href="/admin/bot/settings" icon={Settings}>Settings</NavLink>
+          <NavLink href="/admin/bot/brain" icon={Brain}>Brain</NavLink>
+          <NavLink href="/admin/bot/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
+          <NavLink href="/admin/bot/routine" icon={RotateCcw}>Routine</NavLink>
+          <NavLink href="/admin/bot/feedback" icon={MessageCircle}>Feedback</NavLink>
+          <NavLink href="/admin/bot/classifier" icon={Zap}>Classifier</NavLink>
         </PlatformSection>
       </nav>
 

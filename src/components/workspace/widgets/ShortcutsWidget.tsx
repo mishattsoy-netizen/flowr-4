@@ -162,9 +162,18 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
             })}
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-2 opacity-40">
-            <Layout className="w-8 h-8 text-muted-foreground/20" />
-            <p className="text-[11px] text-muted-foreground font-medium text-center">No shortcuts yet</p>
+          <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
+            <Layout strokeWidth={1} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <div className="text-center max-w-[320px]">
+              <p className="text-base font-semibold text-bone-100 opacity-40">Get started with Shortcuts</p>
+              <p className="text-xs text-bone-40 opacity-25 mt-1 leading-snug text-balance">Add quick links to your favorite apps, sites, and documents.</p>
+            </div>
+            <button
+              onClick={() => setIsAdding(true)}
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+            >
+              <Plus strokeWidth={1.5} className="w-3.5 h-3.5" /> Add Shortcut
+            </button>
           </div>
         )}
       </div>

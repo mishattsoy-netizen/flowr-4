@@ -7,6 +7,7 @@ export type AdminActionType =
   | 'plan_accepted'
   | 'plan_rejected'
   | 'plan_edited'
+  | 'plan_deleted'
   | 'routine_ran'
   | 'prompt_synced'
   | 'router_changed'
