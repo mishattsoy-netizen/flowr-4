@@ -246,12 +246,36 @@ After all implementation is complete, generate a `mode-prompts.txt` file contain
 
 **Base reference:** The current compiled prompt (`compiled prompt.txt`) serves as the foundation — specifically the Default mode should feel like a natural evolution of the existing prompt. Think and Pro modes diverge from Default in reasoning depth, precision, and output style.
 
-**Mode prompt character profiles:**
-- **Default** — Fast, warm, universal. Handles anything. Balanced quality vs speed. Based closely on the current compiled prompt tone.
-- **Think** — Slower, more deliberate. Prioritizes accuracy, depth, and user satisfaction over speed. Better for essays, analysis, research, complex explanations. Medium and complex thinking chains used more frequently.
-- **Pro** — Maximum precision. Best possible output. For coding, math, planning, business work, professional analysis, strategies, brainstorming. No fluff, full reasoning, structured output.
+**Base reference:** The current compiled prompt (`compiled prompt.txt`) is the foundation for Default mode. Think and Pro diverge deliberately.
 
-Each mode's classifier prompt should instruct the classifier to weight classification differently — e.g. Pro mode should route more aggressively to COMPLEX_THINKING, Think mode to MEDIUM/COMPLEX_THINKING, Default keeps current balanced routing.
+**Universal formatting rule (all modes):** When a response is informative or longer than usual, use structured formatting — headers, bullets, bold key terms, tables where relevant. Short/casual messages always get short/casual replies regardless of mode.
+
+**Mode prompt character profiles:**
+
+**Default mode**
+- Fast, warm, universal. Handles anything with balanced quality vs speed.
+- Tone and personality directly based on the current compiled prompt.
+- Casual messages → casual replies. Complex questions → thorough but tight.
+- Classifier: balanced routing, current behavior preserved. FAST_SIMPLE for greetings/simple questions, MEDIUM_THINKING for moderate tasks, COMPLEX_THINKING for clearly hard problems.
+
+**Think mode**
+- Deliberate, precise, thorough. Prioritizes accuracy and user satisfaction over speed.
+- Best for: essays, research, analysis, explanations, important decisions, anything where quality matters more than quickness.
+- Still responds casually and briefly to casual/simple messages — depth is applied where the task demands it, not universally.
+- Retains warmth and personality. Not cold or robotic.
+- Longer responses are expected and acceptable when the task warrants it.
+- Formatting is more structured than Default — uses sections, bullets, and hierarchy for complex answers.
+- Classifier: aggressively routes to MEDIUM_THINKING and COMPLEX_THINKING. Only clearly trivial messages (greetings, one-word questions) go to FAST_SIMPLE. Ambiguous cases default to MEDIUM_THINKING rather than FAST_SIMPLE.
+
+**Pro mode**
+- Maximum precision. Best possible output on every non-trivial task.
+- Best for: coding, math, planning, strategy, professional/business work, optimization, brainstorming, analysis.
+- Language/knowledge tasks (writing, research) are also handled with high quality — Pro means best output across all domains, not just technical ones.
+- Still warm and has personality — just more focused, structured, and exact. No fluff, no filler.
+- Responses are thorough, well-reasoned, and structured. Shows full reasoning where relevant.
+- Casual messages still get brief, warm replies — Pro mode doesn't make small talk stiff.
+- Formatting is always structured for anything beyond a simple reply — clear sections, precise language, code blocks, tables where they add clarity.
+- Classifier: routes almost everything to COMPLEX_THINKING except obvious greetings and trivially simple factual questions. MEDIUM_THINKING used for moderately complex tasks. FAST_SIMPLE reserved only for pure social exchanges and single-fact lookups.
 
 ---
 
