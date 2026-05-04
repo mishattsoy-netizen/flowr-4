@@ -5,6 +5,8 @@ import {
   deleteEntityFromDB,
   upsertTask,
   deleteTaskFromDB,
+  clearAllDataFromCloud,
+  upsertWorkspace
 } from '@/lib/sync';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 
@@ -17,6 +19,7 @@ export type {
   PriorityModel, ProjectQuota, FlowIntentCategory, FlowRouterModel,
   FlowRouterCategory, FlowRouterConfig, CloudModel, AIRequestLog, AppState,
   WorkspaceType, Workspace, SidebarSectionId, SidebarSectionSettings, SortMode,
+  BotMode,
 } from './store.types';
 
 // Re-export helpers needed by external consumers
@@ -25,7 +28,7 @@ export { generateId, robustParseJSON, blocksToMarkdown } from './store.helpers';
 // Internal type imports (used within this file's store implementation)
 import type {
   Entity, EditorBlock, AIMessage,
-  AppState, Workspace, WidgetConfig, AppTask,
+  AppState, Workspace, WidgetConfig, AppTask, BotMode,
 } from './store.types';
 
 
@@ -93,6 +96,25 @@ export const useStore = create<AppState>()(
         },
       ],
       activeWorkspaceId: 'ws-personal',
+      lastSaved: null,
+      cloudSyncEnabled: false,
+
+      setCloudSyncEnabled: (enabled) => {
+        set({ cloudSyncEnabled: enabled });
+        if (enabled) {
+          // Sync everything to cloud immediately
+          const { entities, tasks } = get();
+          entities.forEach(e => upsertEntity(e));
+          tasks.forEach(t => upsertTask(t));
+          set({ lastSaved: Date.now() });
+        } else {
+          // Destructive: Clear cloud data when switching to local-only
+          clearAllDataFromCloud();
+        }
+      },
+      setLastSaved: (time) => set({ lastSaved: time }),
+
+      setEntities: (entities) => set({ entities }),
 
 
       activeEntityId: 'dashboard',
@@ -139,6 +161,9 @@ export const useStore = create<AppState>()(
       hiddenEntityIds: [],
       isCommandPaletteOpen: false,
       selectedSidebarIds: [],
+      aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000 },
+      activeMode: 'default' as BotMode,
+      activeIntentTag: null,
 
       // ─── Actions ─────────────────────────────────────────
       setDashboardLayout: (layout) => set({ dashboardLayout: layout }),
@@ -222,8 +247,29 @@ export const useStore = create<AppState>()(
       },
       toggleAIAssistant: () => set((state) => ({ isAIAssistantOpen: !state.isAIAssistantOpen })),
       setAIAssistantOpen: (open) => set({ isAIAssistantOpen: open }),
+      setAISessionContext: (context) => set({ aiSessionContext: context }),
+      
+      fetchAISessionContext: async (chatId) => {
+        try {
+          const { data, error } = await supabase
+            .from('bot_session_states')
+            .select('distilled_summary, token_usage_total, context_limit')
+            .eq('chat_id', chatId)
+            .maybeSingle();
+          if (error) throw error;
+          if (data) {
+            set({ aiSessionContext: data });
+          } else {
+            set({ aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000 } });
+          }
+        } catch (err) {
+          console.error('Failed to fetch session context:', err);
+        }
+      },
+
       clearAIChat: async () => {
-        set({ aiMessages: [] });
+        const { activeEntityId } = get();
+        set({ aiMessages: [], aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000 }, activeMode: 'default', activeIntentTag: null });
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
           if (isSupabaseEnabled) {
@@ -232,9 +278,41 @@ export const useStore = create<AppState>()(
               headers['Authorization'] = `Bearer ${session.access_token}`;
             }
           }
-          await fetch('/api/ai/memory/clear', { method: 'POST', headers });
+          await fetch('/api/ai/memory/clear', { 
+            method: 'POST', 
+            headers,
+            body: JSON.stringify({ activeEntityId }) 
+          });
+          
+          // Also clear from bot_session_states table via Supabase client
+          if (activeEntityId) {
+            await supabase.from('bot_session_states').delete().eq('chat_id', activeEntityId);
+          }
         } catch (err) {
           console.error('Failed to clear server-side memory:', err);
+        }
+      },
+
+      compactAIChat: async () => {
+        const { activeEntityId, fetchAISessionContext } = get();
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (isSupabaseEnabled) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+          }
+          const res = await fetch('/api/ai/memory/compact', { 
+            method: 'POST', 
+            headers,
+            body: JSON.stringify({ activeEntityId }) 
+          });
+          if (res.ok) {
+            await fetchAISessionContext(activeEntityId || 'global');
+          }
+        } catch (err) {
+          console.error('Failed to compact session memory:', err);
         }
       },
       setAIHistory: (messages) => set({ aiMessages: messages }),
@@ -256,6 +334,8 @@ export const useStore = create<AppState>()(
         localStorage.setItem('flowr_ai_classification_model', id);
         set({ aiClassificationModelId: id });
       },
+      setActiveMode: (mode) => set({ activeMode: mode }),
+      setActiveIntentTag: (tag) => set({ activeIntentTag: tag }),
 
       sendAIMessage: async (content, agentEnabled = false, attachments = []) => {
         const { aiMessages } = get();
@@ -304,7 +384,9 @@ export const useStore = create<AppState>()(
               activeEntityId: get().activeEntityId,
               aiApiKey: get().aiApiKey,
               activeWorkspaceId: get().activeWorkspaceId,
-              classificationModelId: get().aiClassificationModelId
+              classificationModelId: get().aiClassificationModelId,
+              mode: get().activeMode,
+              intentTag: get().activeIntentTag ?? null,
             }),
           });
 
@@ -364,14 +446,15 @@ export const useStore = create<AppState>()(
           set(s => ({
             aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
               ? {
-                  ...m,
-                  content: data.content,
-                  model: data.model,
-                  logId: data.log_id ?? undefined,
-                  model_chain: data.model_chain,
-                  classification_trace: data.classification_trace,
-                  routing_trace: data.routing_trace
-                }
+                ...m,
+                content: data.content,
+                model: data.model,
+                logId: data.log_id ?? undefined,
+                model_chain: data.model_chain,
+                classification_trace: data.classification_trace,
+                routing_trace: data.routing_trace,
+                citations: data.citations
+              }
               : m
             ),
             isAILoading: false,
@@ -527,7 +610,7 @@ export const useStore = create<AppState>()(
           lastModified: entity.lastModified || Date.now()
         } as Entity;
         set((state) => ({ entities: [...state.entities, finalEntity] }));
-        upsertEntity(finalEntity);
+        if (get().cloudSyncEnabled) upsertEntity(finalEntity);
       },
 
       deleteEntity: (id) => {
@@ -560,7 +643,7 @@ export const useStore = create<AppState>()(
           })
         }));
         const updated = get().entities.find(e => e.id === id);
-        if (updated) upsertEntity(updated);
+        if (updated && get().cloudSyncEnabled) upsertEntity(updated);
       },
 
       reorderEntities: (orderedIds) => {
@@ -574,9 +657,15 @@ export const useStore = create<AppState>()(
       },
 
       renameEntity: (id, newTitle) => {
-        set((state) => ({ entities: state.entities.map(e => e.id === id ? { ...e, title: newTitle, lastModified: Date.now() } : e), editingEntity: null }));
+        set((state) => ({
+          entities: state.entities.map(e => e.id === id ? { ...e, title: newTitle, lastModified: Date.now() } : e),
+          workspaces: state.workspaces.map(w => w.id === id ? { ...w, name: newTitle } : w),
+          editingEntity: null
+        }));
         const updated = get().entities.find(e => e.id === id);
-        if (updated) upsertEntity(updated);
+        if (updated && get().cloudSyncEnabled) upsertEntity(updated);
+        const updatedWs = get().workspaces.find(w => w.id === id);
+        if (updatedWs && get().cloudSyncEnabled) upsertWorkspace(updatedWs);
       },
 
       duplicateEntity: (id: string) => {
@@ -593,13 +682,19 @@ export const useStore = create<AppState>()(
         };
         duplicateRecursive(rootEntity, rootEntity.parentId);
         set((state) => ({ entities: [...state.entities, ...newEntities] }));
-        newEntities.forEach(e => upsertEntity(e));
+        if (get().cloudSyncEnabled) newEntities.forEach(e => upsertEntity(e));
       },
 
       setEntityIcon: (id, icon) => {
-        set((state) => ({ entities: state.entities.map(e => e.id === id ? { ...e, icon, lastModified: Date.now() } : e) }));
+        set((state) => ({
+          entities: state.entities.map(e => e.id === id ? { ...e, icon, lastModified: Date.now() } : e),
+          workspaces: state.workspaces.map(w => w.id === id ? { ...w, icon } : w)
+        }));
         const updated = get().entities.find(e => e.id === id);
-        if (updated) upsertEntity(updated);
+        if (updated && get().cloudSyncEnabled) upsertEntity(updated);
+        // Also sync workspace if needed
+        const updatedWs = get().workspaces.find(w => w.id === id);
+        if (updatedWs && get().cloudSyncEnabled) upsertWorkspace(updatedWs);
       },
 
       setEditingEntityId: (id, source) => set({ editingEntity: id && source ? { id, source } : null }),
@@ -637,12 +732,21 @@ export const useStore = create<AppState>()(
         const id = generateId();
         const divider = { id, title: '', type: 'divider' as const, parentId, lastModified: Date.now(), sortOrder: 9999 };
         set(s => ({ entities: [...s.entities, divider] }));
-        upsertEntity(divider);
+        if (get().cloudSyncEnabled) upsertEntity(divider);
       },
       updateEntityContent: (id, content) => {
-        set((state) => ({ entities: state.entities.map(e => e.id === id ? { ...e, content, lastModified: Date.now() } : e) }));
+        const now = Date.now();
+        set((state) => ({
+          entities: state.entities.map(e => e.id === id ? { ...e, content, lastModified: now } : e),
+          lastSaved: now
+        }));
+
+        const { cloudSyncEnabled } = get();
         const updated = get().entities.find(e => e.id === id);
-        if (updated) upsertEntity(updated);
+
+        if (updated && cloudSyncEnabled) {
+          upsertEntity(updated);
+        }
       },
 
       addTagToEntity: (id, tag) => set((state) => ({
@@ -723,7 +827,7 @@ export const useStore = create<AppState>()(
           )
         }));
         const updated = get().entities.find(e => e.id === entityId);
-        if (updated) upsertEntity(updated);
+        if (updated && get().cloudSyncEnabled) upsertEntity(updated);
       },
 
       sortEntities: (criteria) => set((s) => ({ entities: [...s.entities].sort((a, b) => criteria === 'title' ? a.title.localeCompare(b.title) : (b.lastModified || 0) - (a.lastModified || 0)) })),
@@ -923,17 +1027,13 @@ export const useStore = create<AppState>()(
             }
           },
           setItem: (name: string, value: unknown) => {
-            if (debounceTimer) clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-              debounceTimer = null;
-              try {
-                localStorage.setItem(name, JSON.stringify(value));
-              } catch (e) {
-                if (e instanceof Error && e.name === 'QuotaExceededError') {
-                  console.warn('[Flowr Store] Storage quota exceeded. State update was not persisted to disk.');
-                }
+            try {
+              localStorage.setItem(name, JSON.stringify(value));
+            } catch (e) {
+              if (e instanceof Error && e.name === 'QuotaExceededError') {
+                console.warn('[Flowr Store] Storage quota exceeded. State update was not persisted to disk.');
               }
-            }, 1000);
+            }
           },
           removeItem: (name: string) => localStorage.removeItem(name),
         };
