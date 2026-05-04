@@ -7,11 +7,13 @@
 
 ## Overview
 
-Three features are being added to the Flowr bot system:
+Five features are being added to the Flowr bot system:
 
 1. **Three bot modes** (Default / Think / Pro) — each with its own prompt identity, selectable per-message in chat
 2. **Global Settings page** — consolidates global bot controls (Ollama, prompt injection, backend model, context, compaction)
 3. **Advanced compaction chain** — 2-step draft+refine summarization with primary+fallback models per step
+4. **New router chains** — dedicated Coding chain, split Web Search into Grounding chain and Deep Research chain
+5. **Smart intent tags** — tool pills attached to messages that the bot honors when relevant and ignores when clearly mismatched
 
 ---
 
@@ -176,9 +178,72 @@ When settings are saved on a mode page, only that mode's compiled prompt is rebu
 
 ---
 
-## 6. Out of Scope
+## 7. New Router Chains
+
+### 7.1 Coding Chain (`CODING`)
+A new classification category added to the classifier. Triggered by:
+- User attaching the `/code` intent tag to a message
+- Classifier detecting a coding question or code content in the message (auto-detection as fallback when no tag is set)
+
+Router chain uses models best suited for code generation and debugging (configured in Router Matrix admin page like all other chains). No special provider logic — standard fallback chain behavior.
+
+### 7.2 Web Search — Grounding Chain (`WEB_SEARCH`)
+Replaces the current single `WEB_SEARCH` chain. Triggered by:
+- `/search` tool tag
+- Classifier routing to `WEB_SEARCH` (default web search behavior, unchanged)
+- Any query the classifier detects involves maps, locations, or Google Maps data
+
+Chain order:
+1. **Gemini with Google Search + Maps grounding** (primary)
+2. **DuckDuckGo** (fallback)
+
+Maps queries always use this chain — even if the user has `/research` tag active, a detected maps intent overrides to grounding chain.
+
+### 7.3 Deep Research Chain (`DEEP_RESEARCH`)
+New classification category. Triggered exclusively by:
+- User attaching the `/research` "Deep Research" tool tag
+
+Chain order:
+1. **Pollinations Perplexity model** (primary)
+2. **Tavily Search** (secondary)
+3. **DuckDuckGo** (fallback)
+
+Does not support Google Maps grounding. If a maps query is detected while `/research` tag is active, the bot silently switches to the Grounding chain instead.
+
+---
+
+## 8. Smart Intent Tags
+
+### 8.1 How tags work
+When a user selects a tool from the `/` command menu, it attaches as a pill/tag to the current message input (visible in the input bar). On send, the tag is included in the API request alongside the message text.
+
+Tags directly map to chains/actions:
+| Tag | Triggers |
+|-----|----------|
+| `/image` | Image generation chain (existing) |
+| `/search` | Grounding chain |
+| `/research` | Deep Research chain |
+| `/code` | Coding chain |
+| `/note`, `/canvas`, `/split`, `/task` | Tool actions (existing) |
+
+### 8.2 Smart tag override logic
+Before routing, the classifier evaluates whether the attached tag is consistent with the message content:
+
+- **Tag honored** — message content aligns with the tag (e.g., `/image` + "draw a sunset", `/code` + "write a Python function")
+- **Tag ignored** — message content clearly contradicts the tag (e.g., `/image` left attached while asking "what is the capital of France?", `/code` tag with a casual greeting)
+- **Maps override** — `/research` tag + detected maps/location intent → silently switch to Grounding chain, ignore Deep Research tag
+
+The override decision is made by the classifier using a short consistency check prompt. If uncertain, the tag is honored (user intent takes precedence over classifier confidence).
+
+### 8.3 Tag persistence
+Tags are cleared after each message is sent. The user must re-attach a tag for the next message if needed. This matches the existing behavior shown in the UI screenshots.
+
+---
+
+## 9. Out of Scope
 
 - Per-mode router chain config (router stays shared)
 - Per-mode brain entries (brain stays shared)
 - More than 3 modes
 - Mode-specific context limits (one global limit)
+- Multiple simultaneous tags (one tag per message)
