@@ -13,10 +13,12 @@ interface CanvasBlockProps {
   viewport: { x: number; y: number; scale: number };
   onConnectStart?: (side: string, x: number, y: number) => void;
   isSelected?: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, addToSelection: boolean) => void;
+  onCommit?: () => void;
+  snapWithObjects?: (x: number, y: number, w: number, h: number, excludeId: string) => { x: number; y: number };
 }
 
-export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSelected, onSelect }: CanvasBlockProps) {
+export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSelected, onSelect, onCommit, snapWithObjects }: CanvasBlockProps) {
   const blocks = useStore(s => s.blocks);
   const updateCanvasBlock = useStore(s => s.updateCanvasBlock);
   const deleteCanvasBlock = useStore(s => s.deleteCanvasBlock);
@@ -31,6 +33,8 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
   const [isEditing, setIsEditing] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const finalPosRef = useRef({ x: block.x || 0, y: block.y || 0 });
+  const finalSizeRef = useRef({ w: block.width || 280, h: block.height || 150 });
 
   // Sync from store when not interacting
   useEffect(() => {
@@ -73,7 +77,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
     
     // Always select on pointer down if not clicking an input
     if (!isInput) {
-      onSelect?.(block.id);
+      onSelect?.(block.id, e.shiftKey);
     }
 
     const canMove = activeTool === 'move' || activeTool === 'select' || isGrip || isEdge;
@@ -124,6 +128,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
         });
       }
 
+      onCommit?.();
       setIsOverSection(null);
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
@@ -136,7 +141,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
   // --- RESIZE ---
   const handleResizeStart = useCallback((handle: HandlePosition, e: React.PointerEvent) => {
     setIsResizing(true);
-    onSelect?.(block.id);
+    onSelect?.(block.id, false);
 
     const startX = e.clientX;
     const startY = e.clientY;
@@ -165,26 +170,29 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
       if (newW < 60) { newW = 60; newX = startPos.x + startSize.w - 60; }
       if (newH < 40) { newH = 40; newY = startPos.y + startSize.h - 40; }
 
+      finalPosRef.current = { x: newX, y: newY };
+      finalSizeRef.current = { w: newW, h: newH };
       setPosition({ x: newX, y: newY });
       setSize({ width: newW, height: newH });
     };
 
     const handlePointerUp = () => {
       setIsResizing(false);
-      // Commit to store
+      // Commit to store using refs to avoid stale closure
       updateCanvasBlock(block.id, {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height,
+        x: finalPosRef.current.x,
+        y: finalPosRef.current.y,
+        width: finalSizeRef.current.w,
+        height: finalSizeRef.current.h,
       });
+      onCommit?.();
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
 
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
-  }, [block, viewport.scale, updateCanvasBlock, onSelect, position, size]);
+  }, [block, viewport.scale, updateCanvasBlock, onSelect, onCommit]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -246,7 +254,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
       )}
 
       {/* Connection Points */}
-      {activeTool === 'connect' && connectionPoints.map(side => (
+      {(activeTool === 'arrow' || activeTool === 'line') && connectionPoints.map(side => (
         <div
           key={side}
           className={clsx(
@@ -286,7 +294,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
             onInsertAfter={() => { }}
             onSlash={() => { }}
             onOpenMenu={() => { }}
-            onFocus={() => onSelect?.(block.id)}
+            onFocus={() => onSelect?.(block.id, false)}
           />
         </div>
       ) : block.type === 'section' ? (
@@ -307,7 +315,7 @@ export function CanvasBlock({ block, activeTool, viewport, onConnectStart, isSel
             value={block.content}
             onChange={(e) => updateCanvasBlock(block.id, { content: e.target.value })}
             placeholder="Discuss or tag @someone..."
-            onFocus={() => { setIsEditing(true); onSelect?.(block.id); }}
+            onFocus={() => { setIsEditing(true); onSelect?.(block.id, false); }}
             onBlur={() => setIsEditing(false)}
           />
         </div>
