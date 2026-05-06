@@ -8,7 +8,7 @@ import { isModelFailed, markModelFailed } from './chainRouter'
 
 function trackModelUsage(modelId: string, provider: string) {
   supabaseAdmin.rpc('increment_model_usage', { p_model_id: modelId, p_provider: provider })
-    .then(({ error }: { error: any }) => { if (error) logger.warn(`Usage track failed [${modelId}]: ${error.message}`) })
+    .then(({ error }: { error: any }) => { if (error) logger.warn(`Usage track failed [${modelId}]: ${error?.message ?? String(error)}`) })
 }
 
 export interface ClassifyTrace {
@@ -84,8 +84,14 @@ export async function classifyIntentWithModel(
         .maybeSingle(),
     ])
 
+    if (keywordsEnabledResult.error) logger.warn(`Classifier: failed to load keywords_enabled flag: ${keywordsEnabledResult.error.message}`)
     if (keywordsEnabledResult.data) keywordsEnabled = keywordsEnabledResult.data.is_active
 
+    if (promptResult.error) {
+      const errMsg = `Classifier: DB error loading prompt for mode "${mode}": ${promptResult.error.message}`
+      logger.error(errMsg)
+      return { category: null, classifierModel: 'Error', trace: [], error: errMsg }
+    }
     activePrompt = promptResult.data?.content ?? null
     if (!activePrompt) {
       const errMsg = `Classifier prompt missing for mode "${mode}" — configure it in Admin > Bot > Classifier`
@@ -93,7 +99,9 @@ export async function classifyIntentWithModel(
       return { category: null, classifierModel: 'Error', trace: [], error: errMsg }
     }
 
-    if (keywordsResult.data?.content) {
+    if (keywordsResult.error) {
+      logger.warn(`Classifier: DB error loading keywords for mode "${mode}": ${keywordsResult.error.message} — skipping keyword step`)
+    } else if (keywordsResult.data?.content) {
       try { keywordsObj = JSON.parse(keywordsResult.data.content) } catch {
         logger.warn(`Classifier keywords JSON parse failed for mode "${mode}" — skipping keyword step`)
       }
