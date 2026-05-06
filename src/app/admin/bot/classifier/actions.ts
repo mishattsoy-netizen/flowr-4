@@ -21,6 +21,9 @@ export async function getClassifierConfig(mode: BotMode = 'default'): Promise<{ 
       .maybeSingle(),
   ])
 
+  if (promptResult.error) throw new Error(`DB error loading classifier prompt: ${promptResult.error.message}`)
+  if (keywordsResult.error) throw new Error(`DB error loading classifier keywords: ${keywordsResult.error.message}`)
+
   const prompt = promptResult.data?.content ?? null
 
   let keywords: Record<string, string[]> | null = null

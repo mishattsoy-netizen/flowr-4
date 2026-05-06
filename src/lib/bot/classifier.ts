@@ -31,11 +31,11 @@ const VALID_CATEGORIES: IntentCategory[] = [
 ]
 
 const TAG_CATEGORY_MAP: Record<string, IntentCategory> = {
-  '/search':   'WEB_SEARCH',
+  '/search': 'WEB_SEARCH',
   '/research': 'DEEP_RESEARCH',
-  '/code':     'CODING',
-  '/image':    'IMAGE_GEN',
-  '/tool':     'TOOL_CALLING',
+  '/code': 'CODING',
+  '/image': 'IMAGE_GEN',
+  '/tool': 'TOOL_CALLING',
 }
 
 export async function classifyIntent(message: string, aiApiKey?: string, modelId?: string): Promise<IntentCategory | null> {
