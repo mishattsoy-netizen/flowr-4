@@ -64,7 +64,7 @@ export interface ChainResponse {
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null }
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null; replyContext?: any }
 ): Promise<ChainResponse> {
   let history: any[] = []
   if (context?.chatId) {
@@ -110,20 +110,16 @@ export async function runChain(
     // Look up VISION chain from DB — configure models via Router admin
     let { chain: visionChain } = await getRouterChain('VISION')
 
-    let activePrompt = prompt;
-    if (!activePrompt && activeBuffer) {
-      if (history.length > 0) {
-        activePrompt = "The user sent an image without a prompt. Analyze the conversation history and this image to understand what the user likely wants. If there is a clear task (e.g., 'extract text', 'describe this', 'summarize'), perform it. If the intent is unclear, describe the image and ask how you can help.";
-      } else {
-        activePrompt = "Analyze this image and decide how to answer by yourself. Describe it and ask how I can help.";
-      }
+    const activePrompt = prompt || null
+    if (!activePrompt) {
+      logger.error('Vision request received with no prompt — configure a fallback in your VISION chain system_prompt')
     }
 
     for (const modelConfig of visionChain) {
       if (!modelConfig.is_enabled) continue
       try {
         logger.info(`Routing vision to: ${modelConfig.id} (${modelConfig.provider})`)
-        const visionRes = await runGoogle(modelConfig.id, activePrompt, dateContext + "\n\nYou are a vision assistant.", activeBuffer, context as any, history)
+        const visionRes = await runGoogle(modelConfig.id, activePrompt ?? '', dateContext + "\n\n" + (globalPrompt || ''), activeBuffer, context as any, history)
         if (visionRes) {
           trackModelUsage(modelConfig.id, modelConfig.provider)
           return { type: 'text', content: visionRes, usage_type: 'vision', model: modelConfig.id, model_chain: `vision → ${modelConfig.id}`, status: 'success' }
@@ -134,26 +130,27 @@ export async function runChain(
     }
 
     if (visionChain.length === 0) {
-      logger.warn('No VISION chain configured in DB. Add models via Router admin.')
-      return { type: 'text', content: "Vision chain is empty. Configure models in the VISION router.", usage_type: 'vision', model_chain: 'vision → (none)', status: 'error' }
+      logger.error('VISION chain is empty — add models via Admin > Router > VISION')
     }
-    
-    return { type: 'text', content: "Vision failed. The configured models are either unreachable or do not support these images. Check your Router config and model IDs.", usage_type: 'vision', model_chain: 'vision → (none)', status: 'error' }
+
+    return { type: 'text', content: "⚡ *System Overload*", usage_type: 'vision', model_chain: 'vision → (none)', status: 'error' }
   }
 
   // 2. Standard Routing Flow
-  const { category: rawCategory, classifierModel, trace: classificationTrace } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, context?.mode ?? 'default', context?.intentTag ?? null)
+  const { category: rawCategory, classifierModel, trace: classificationTrace, error: classifyError } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, context?.mode ?? 'default', context?.intentTag ?? null)
+
+  if (!rawCategory) {
+    logger.error(`Classification failed: ${classifyError ?? 'unknown reason'}`)
+    return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat', model_chain: 'classifier → (failed)', status: 'error' }
+  }
+
   let category = rawCategory
   const routingTrace: RoutingTrace[] = []
 
   let { chain, system_prompt, temperature } = await getRouterChain(category)
 
-  // 3. Ensure System Prompt for Tool Calling
-  if (!system_prompt && category === 'TOOL_CALLING') {
-    system_prompt = "You are a workspace assistant. You can list, create, update, and delete notes/folders. When a user asks to modify a note by title, use list_notes first to find its ID. Always confirm actions."
-  }
-  if (!system_prompt && category === 'IMAGE_GEN') {
-    system_prompt = "You are a creative artist. Generate high-quality images based on user prompts."
+  if (!system_prompt && (category === 'TOOL_CALLING' || category === 'IMAGE_GEN')) {
+    logger.error(`No system_prompt configured for "${category}" chain — set it in Admin > Router > ${category}`)
   }
 
   // Inject current date context to help bot understand knowledge cutoff and current time
@@ -169,9 +166,9 @@ export async function runChain(
     system_prompt = globalPrompt + "\n\n" + (system_prompt || "")
   }
 
-  // Global constraint to prevent leaking internal reasoning/analysis
-  system_prompt = "CRITICAL: Provide ONLY the final answer. NEVER output internal reasoning, analysis, planning, or drafting. Do not use headers like '*Neutrality:*', '*Final version plan:*', or '*Self-Correction:*'. Jump directly to the response.\n" +
-                  "When you use a tool or perform a search, always synthesize and summarize the tool results into a natural, complete, and helpful answer to the user's question. Do NOT output raw tool results verbatim.\n\n" + (system_prompt || "");
+  if (context?.replyContext?.attentionBlock) {
+    system_prompt = context.replyContext.attentionBlock + "\n\n" + (system_prompt || "")
+  }
 
   let finalUsageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat'
   if (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH') finalUsageType = 'search'
