@@ -1,0 +1,58 @@
+import { useState, useCallback, useRef } from 'react';
+import type { EditorBlock } from '@/data/store';
+
+export interface SelectionRect {
+  x: number; y: number; width: number; height: number;
+}
+
+export function useCanvasMultiSelect(blocks: EditorBlock[]) {
+  const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  const startSelection = useCallback((canvasX: number, canvasY: number) => {
+    startRef.current = { x: canvasX, y: canvasY };
+    setSelectionRect({ x: canvasX, y: canvasY, width: 0, height: 0 });
+    setSelectedIds(new Set());
+  }, []);
+
+  const updateSelection = useCallback((canvasX: number, canvasY: number) => {
+    if (!startRef.current) return;
+    const sx = startRef.current.x, sy = startRef.current.y;
+    const rect: SelectionRect = {
+      x: Math.min(sx, canvasX),
+      y: Math.min(sy, canvasY),
+      width: Math.abs(canvasX - sx),
+      height: Math.abs(canvasY - sy),
+    };
+    setSelectionRect(rect);
+
+    const intersecting = new Set<string>();
+    for (const b of blocks) {
+      if (b.type === 'connection') continue;
+      const bx = b.x ?? 0, by = b.y ?? 0, bw = b.width ?? 100, bh = b.height ?? 40;
+      if (
+        bx < rect.x + rect.width &&
+        bx + bw > rect.x &&
+        by < rect.y + rect.height &&
+        by + bh > rect.y
+      ) {
+        intersecting.add(b.id);
+      }
+    }
+    setSelectedIds(intersecting);
+  }, [blocks]);
+
+  const endSelection = useCallback(() => {
+    startRef.current = null;
+    setSelectionRect(null);
+    // selectedIds remains — caller reads it to set the final selection
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionRect(null);
+  }, []);
+
+  return { selectionRect, selectedIds, startSelection, updateSelection, endSelection, clearSelection };
+}
