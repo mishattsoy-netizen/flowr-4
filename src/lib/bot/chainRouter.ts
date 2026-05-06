@@ -1,5 +1,6 @@
 import { classifyIntentWithModel } from './classifier'
 import { getRouterChain, getFallbackModes } from '../router-config'
+import type { BotMode } from '@/data/store.types'
 import { getProviderKeys } from '../vault'
 import { logger } from '../logger'
 import { runGoogle } from './providers/google'
@@ -8,11 +9,13 @@ import { runHuggingFace, runHuggingFaceText } from './providers/huggingface'
 import { runWebSearchChain } from './providers/tavily'
 import { runDuckDuckGoSearchChain } from './providers/duckduckgo'
 import { runCloudflare } from './providers/cloudflare'
-import { runPollinations } from './providers/pollinations'
+import { runPollinations, runPollinationsText } from './providers/pollinations'
+import { runOpenRouter } from './providers/openrouter'
 import { runOllama } from './providers/ollama'
 import { getConversationMemory, getWebConversationMemory } from './memory'
 import { supabaseAdmin } from '../supabase'
 import { getCompiledPrompt } from './compilePrompt'
+import { getSessionState, updateSessionState, estimateTokens, summarizeSession } from './context'
 
 function trackModelUsage(modelId: string, provider: string) {
   supabaseAdmin.rpc('increment_model_usage', { p_model_id: modelId, p_provider: provider })
@@ -35,12 +38,13 @@ export interface ChainResponse {
   status?: 'success' | 'error'
   classification_trace?: any[]
   routing_trace?: RoutingTrace[]
+  citations?: string[]
 }
 
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; agentEnabled?: boolean; temperature?: number }
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; agentEnabled?: boolean; temperature?: number; mode?: BotMode; intentTag?: string | null }
 ): Promise<ChainResponse> {
   let history: any[] = []
   if (context?.chatId) {
@@ -48,6 +52,19 @@ export async function runChain(
   } else if (context?.userId && context.userId !== 'anonymous') {
     history = await getWebConversationMemory(context.userId)
   }
+
+  // Inject current date context to help bot understand knowledge cutoff and current time
+  const now = new Date()
+  const dateContext = `[CURRENT CONTEXT]\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\n`
+
+  // 0. Prefetch independent config in parallel
+  const sessionId = context?.chatId?.toString() || context?.activeEntityId || 'global'
+  const [sessionState, globalPrompt, fallbackModes] = await Promise.all([
+    getSessionState(sessionId),
+    getCompiledPrompt(context?.mode ?? 'default'),
+    getFallbackModes(),
+  ])
+  const currentSummary = sessionState?.distilled_summary || null
 
   // 1. Specialized Vision Flow (Buffer or URL)
   let activeBuffer = inputBuffer
@@ -86,7 +103,7 @@ export async function runChain(
       if (!modelConfig.is_enabled) continue
       try {
         logger.info(`Routing vision to: ${modelConfig.id} (${modelConfig.provider})`)
-        const visionRes = await runGoogle(modelConfig.id, activePrompt, undefined, activeBuffer, context as any, history)
+        const visionRes = await runGoogle(modelConfig.id, activePrompt, dateContext + "\n\nYou are a vision assistant.", activeBuffer, context as any, history)
         if (visionRes) {
           trackModelUsage(modelConfig.id, modelConfig.provider)
           return { type: 'text', content: visionRes, usage_type: 'vision', model: modelConfig.id, model_chain: `vision → ${modelConfig.id}`, status: 'success' }
@@ -101,7 +118,7 @@ export async function runChain(
   }
 
   // 2. Standard Routing Flow
-  const { category: rawCategory, classifierModel, trace: classificationTrace } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId)
+  const { category: rawCategory, classifierModel, trace: classificationTrace } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, context?.mode ?? 'default', context?.intentTag ?? null)
   let category = rawCategory
   const routingTrace: RoutingTrace[] = []
 
@@ -120,8 +137,15 @@ export async function runChain(
     system_prompt = "You are a creative artist. Generate high-quality images based on user prompts."
   }
 
+  // Inject current date context to help bot understand knowledge cutoff and current time
+  system_prompt = dateContext + "\n\n" + (system_prompt || "")
+
+  // Inject distilled session summary if available
+  if (currentSummary) {
+    system_prompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + system_prompt
+  }
+
   // Inject global compiled prompt (settings + brain entries) as prefix
-  const globalPrompt = await getCompiledPrompt()
   if (globalPrompt) {
     system_prompt = globalPrompt + "\n\n" + (system_prompt || "")
   }
@@ -131,21 +155,36 @@ export async function runChain(
                   "When you use a tool or perform a search, always synthesize and summarize the tool results into a natural, complete, and helpful answer to the user's question. Do NOT output raw tool results verbatim.\n\n" + (system_prompt || "");
 
   let finalUsageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat'
-  if (category === 'WEB_SEARCH') finalUsageType = 'search'
+  if (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH') finalUsageType = 'search'
   if (category === 'TOOL_CALLING') finalUsageType = 'tool'
   if (category === 'IMAGE_GEN') finalUsageType = 'image'
 
-  const fallbackModes = await getFallbackModes()
   const fallbackMode = fallbackModes[category] || 'model_first'
   const triedKeysCount: Record<string, number> = {}
+
+  // Prefetch vault keys for all unique providers in this chain
+  const uniqueProviderKeys = [...new Set(
+    chain
+      .filter(m => m.is_enabled)
+      .map(m => {
+        if (m.id.includes('tavily')) return 'TAVILY'
+        return m.provider === 'google' ? 'GEMINI' : m.provider.toUpperCase()
+      })
+  )]
+  const prefetchedKeys = Object.fromEntries(
+    await Promise.all(
+      uniqueProviderKeys.map(async k => [k, await getProviderKeys(k)] as [string, string[]])
+    )
+  )
 
   for (const modelConfig of chain) {
     if (!modelConfig.is_enabled) continue
 
-    const key = modelConfig.provider === 'google' ? 'GEMINI' : modelConfig.provider.toUpperCase()
+    let key = modelConfig.provider === 'google' ? 'GEMINI' : modelConfig.provider.toUpperCase()
+    if (modelConfig.id.includes('tavily')) key = 'TAVILY'
     let providerKeys: string[] = []
 
-    providerKeys = await getProviderKeys(key)
+    providerKeys = prefetchedKeys[key] ?? []
 
     if (providerKeys.length === 0) {
       providerKeys = [context?.aiApiKey || '']
@@ -193,7 +232,14 @@ export async function runChain(
               if (modelConfig.id === 'duckduckgo-search') response = await runDuckDuckGoSearchChain(prompt, routeContext)
               break
             case 'pollinations':
-              response = await runPollinations(prompt)
+              if (category === 'IMAGE_GEN') {
+                response = await runPollinations(prompt, modelConfig.id)
+              } else {
+                response = await runPollinationsText(modelConfig.id, prompt, system_prompt, history, activeKey || providerKeys[0])
+              }
+              break
+            case 'openrouter':
+              response = await runOpenRouter(modelConfig.id, prompt, system_prompt, history, activeKey || providerKeys[0])
               break
             case 'local':
             case 'ollama':
@@ -203,7 +249,15 @@ export async function runChain(
           }
 
           if (response) {
-            if (category === 'IMAGE_GEN' && typeof response === 'string') {
+            let finalContent = response
+            let citations: string[] | undefined = undefined
+
+            if (typeof response === 'object' && !Buffer.isBuffer(response) && 'content' in response) {
+              finalContent = (response as any).content
+              citations = (response as any).citations
+            }
+
+            if (category === 'IMAGE_GEN' && typeof finalContent === 'string') {
               logger.info(`Model ${modelConfig.id} returned text for IMAGE_GEN. Skipping to next fallback.`)
               const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} 1`
               routingTrace.push({ model: modelConfig.id, category, key: displayKey, success: false })
@@ -221,15 +275,32 @@ export async function runChain(
             routingTrace.forEach(r => chainParts.push(`${r.model}|${r.key}|${r.success ? 'true' : 'false'}`))
             const detailedModelChain = chainParts.join(' → ')
 
+            // BACKGROUND: Update token usage and check for summarization trigger
+            if (typeof finalContent === 'string' && (context?.chatId || context?.activeEntityId)) {
+              const sessionId = (context?.chatId || context?.activeEntityId || 'global').toString()
+              const newTokens = estimateTokens(prompt + finalContent + (system_prompt || ''))
+              const totalUsage = (sessionState?.token_usage_total || 0) + newTokens
+              const limit = sessionState?.context_limit ?? 32000
+              const threshold = sessionState?.compaction_threshold ?? 0.8
+
+              if (totalUsage > limit * threshold) {
+                logger.info(`Context limit (${Math.round(threshold * 100)}%) reached for ${sessionId}. Triggering summarization...`)
+                summarizeSession(sessionId, history, currentSummary)
+              } else {
+                updateSessionState(sessionId, { token_usage_total: totalUsage })
+              }
+            }
+
             return {
               type: category === 'IMAGE_GEN' ? 'photo' : 'text',
-              content: response as any,
+              content: finalContent as any,
               usage_type: finalUsageType,
               model: modelConfig.id,
               model_chain: detailedModelChain,
               status: 'success',
               classification_trace: classificationTrace,
-              routing_trace: routingTrace
+              routing_trace: routingTrace,
+              citations
             }
           } else {
             triedKeysCount[key] = k + 1
