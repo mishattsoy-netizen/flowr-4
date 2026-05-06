@@ -93,7 +93,7 @@ export async function classifyIntentWithModel(
         .from('bot_settings')
         .select('content')
         .eq('category', 'classifier_keywords')
-        .eq('mode', mode)
+        .eq('mode', 'default')
         .maybeSingle(),
     ])
 

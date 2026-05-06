@@ -46,7 +46,7 @@ export async function saveClassifierConfig(prompt: string, keywords: Record<stri
   const { error: err2 } = await supabase
     .from('bot_settings')
     .upsert(
-      { category: 'classifier_keywords', content: JSON.stringify(keywords), mode, updated_at: new Date().toISOString() },
+      { category: 'classifier_keywords', content: JSON.stringify(keywords), mode: 'default', updated_at: new Date().toISOString() },
       { onConflict: 'category,mode' }
     )
   if (err2) throw err2
