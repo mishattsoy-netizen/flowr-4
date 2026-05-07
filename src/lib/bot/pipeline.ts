@@ -125,7 +125,7 @@ export async function executePipeline(
     onStatus(step)
 
     const accumulatedSoFar = formatAccumulatedContext(completedSteps)
-    const internalPrompt = await getInternalPrompt(chainType)
+    const internalPrompt = await getInternalPrompt(chainType, context?.mode ?? 'default')
 
     const stepPrompt = accumulatedSoFar
       ? `${originalPrompt}\n\n${accumulatedSoFar}\n\n[YOUR GOAL FOR THIS STEP]\n${goal}`

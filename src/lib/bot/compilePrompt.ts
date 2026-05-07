@@ -94,7 +94,7 @@ const DEFAULT_INTERNAL_PROMPTS: Record<string, string> = {
   IMAGE_GEN: `You are the IMAGE_GEN step in a multi-step pipeline.\nYour image has been generated. Pass the concept forward as JSON.\nOutput exactly: {"type":"image_generated","prompt_used":"<prompt>","concept":"<brief concept description>"}`,
 }
 
-export async function getInternalPrompt(chainType: string): Promise<string> {
+export async function getInternalPrompt(chainType: string, mode: BotMode = 'default'): Promise<string> {
   const { data } = await supabase
     .from('settings')
     .select('value')
@@ -118,7 +118,7 @@ export async function getInternalPrompt(chainType: string): Promise<string> {
     .from('bot_settings')
     .select('content')
     .eq('category', 'restrictions')
-    .eq('mode', 'default')
+    .eq('mode', mode)
     .maybeSingle()
 
   if (restrictionsResult.data?.content) {
