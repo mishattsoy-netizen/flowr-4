@@ -1,4 +1,5 @@
 import { classifyIntentWithModel } from './classifier'
+import { runAdvisor } from './advisor'
 import { getRouterChain, getFallbackModes, IntentCategory } from '../router-config'
 import type { BotMode } from '@/data/store.types'
 import { getProviderKeys } from '../vault'
@@ -64,12 +65,13 @@ export interface ChainResponse {
   citations?: string[]
   tokens_used?: number
   pipeline_steps?: PipelineStep[]
+  advisor_questions?: string
 }
 
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null; replyContext?: any; thinkingEnabled?: boolean; onStatus?: StatusCallback }
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null; replyContext?: any; thinkingEnabled?: boolean; advisorEnabled?: boolean; onStatus?: StatusCallback }
 ): Promise<ChainResponse> {
   let history: any[] = []
   if (context?.chatId) {
@@ -91,6 +93,28 @@ export async function runChain(
     getPipelineSettings(),
   ])
   const currentSummary = sessionState?.distilled_summary || null
+
+  // Advisor pre-flight — runs before classification if enabled and no image attached
+  if (context?.advisorEnabled && !inputBuffer) {
+    const availableTools = ['web_search', 'deep_research', 'image_gen', 'tool_calling']
+    const advisorResult = await runAdvisor(
+      prompt,
+      context?.mode ?? 'default',
+      context?.thinkingEnabled ?? false,
+      availableTools,
+      context
+    )
+    if (advisorResult.shouldAsk && advisorResult.questions) {
+      return {
+        type: 'text',
+        content: advisorResult.questions,
+        usage_type: 'chat',
+        model_chain: 'advisor → (awaiting user response)',
+        status: 'success',
+        advisor_questions: advisorResult.questions,
+      }
+    }
+  }
 
   // 1. Specialized Vision Flow (Buffer or URL)
   let activeBuffer = inputBuffer
