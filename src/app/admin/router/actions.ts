@@ -33,6 +33,22 @@ export async function updateRouterChain(id: string, modelList: any[]) {
   revalidatePath('/admin/telegram/router')
   return { success: true }
 }
+
+export async function updateRouterSystemPrompt(id: string, systemPrompt: string) {
+  const { error } = await supabase
+    .from('router_chains')
+    .update({
+      system_prompt: systemPrompt,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+
+  if (error) throw error
+  logAdminAction('router_changed', `Updated system prompt for chain ${id}`, { id })
+  revalidatePath('/admin/app/router')
+  revalidatePath('/admin/telegram/router')
+  return { success: true }
+}
 export async function createRouterChain(platform: 'app' | 'telegram', category: string) {
   const { error } = await supabase
     .from('router_chains')
@@ -107,3 +123,35 @@ export async function setRouterTemperature(category: string, temp: number) {
   return { success: true }
 }
 
+export async function getInternalPrompts(): Promise<Record<string, string>> {
+  const { data } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'pipeline_internal_prompts')
+    .maybeSingle()
+  return (data?.value as Record<string, string>) ?? {}
+}
+
+export async function saveInternalPrompt(chainType: string, prompt: string) {
+  const current = await getInternalPrompts()
+  current[chainType] = prompt
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key: 'pipeline_internal_prompts', value: current, updated_at: new Date().toISOString() })
+  if (error) throw error
+  revalidatePath('/admin/app/router')
+  revalidatePath('/admin/telegram/router')
+  return { success: true }
+}
+
+export async function resetInternalPrompt(chainType: string) {
+  const current = await getInternalPrompts()
+  delete current[chainType]
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key: 'pipeline_internal_prompts', value: current, updated_at: new Date().toISOString() })
+  if (error) throw error
+  revalidatePath('/admin/app/router')
+  revalidatePath('/admin/telegram/router')
+  return { success: true }
+}

@@ -68,7 +68,6 @@ export async function recompilePrompt(mode: BotMode = 'default'): Promise<void> 
 export async function recompileAllModes(): Promise<void> {
   await Promise.all([
     recompilePrompt('default'),
-    recompilePrompt('think'),
     recompilePrompt('pro'),
   ])
 }
@@ -83,4 +82,54 @@ export async function getCompiledPrompt(mode: BotMode = 'default'): Promise<stri
   if (error || !data) return ''
   if (!data.global_enabled) return ''
   return data.content ?? ''
+}
+
+const DEFAULT_INTERNAL_PROMPTS: Record<string, string> = {
+  VISION: `You are the VISION step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nExtract and describe all visual content, text, and relevant details from the image.\nWrite structured data output, not conversational prose.`,
+  WEB_SEARCH: `You are the WEB_SEARCH step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nReturn structured findings: key facts, source URLs, queries run, gaps/unanswered parts.\nWrite structured data output, not conversational prose.`,
+  DEEP_RESEARCH: `You are the DEEP_RESEARCH step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nReturn multi-source synthesis: key findings by topic, confidence level, conflicting data flagged.\nWrite structured data output, not conversational prose.`,
+  CODING: `You are the CODING step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nReturn code blocks with a brief summary of what was written and any caveats.\nWrite structured data output, not conversational prose.`,
+  COMPLEX_THINKING: `You are the ANALYSIS step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nReturn analysis summary: conclusions, key insights, recommended approach.\nWrite structured data output, not conversational prose.`,
+  TOOL_CALLING: `You are the TOOL_CALLING step in a multi-step pipeline.\nYour output will be consumed by the next chain — NOT shown to the user.\nReturn action result: what was done, confirmation or error.\nWrite structured data output, not conversational prose.`,
+  IMAGE_GEN: `You are the IMAGE_GEN step in a multi-step pipeline.\nYour image has been generated. Pass the concept forward as JSON.\nOutput exactly: {"type":"image_generated","prompt_used":"<prompt>","concept":"<brief concept description>"}`,
+}
+
+export async function getInternalPrompt(chainType: string): Promise<string> {
+  const { data } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'pipeline_internal_prompts')
+    .maybeSingle()
+
+  const customPrompts = (data?.value as Record<string, string>) ?? {}
+  const rolePrompt = customPrompts[chainType] ?? DEFAULT_INTERNAL_PROMPTS[chainType] ?? `You are the ${chainType} step in a multi-step pipeline. Write structured output for the next chain.`
+
+  const brainResult = await supabase
+    .from('bot_brain_entries')
+    .select('category, title, content')
+    .eq('is_active', true)
+    .in('category', ['rules', 'red_flags', 'facts'])
+    .order('created_at', { ascending: true })
+
+  const brainEntries = brainResult.data ?? []
+  const parts: string[] = [rolePrompt]
+
+  const restrictionsResult = await supabase
+    .from('bot_settings')
+    .select('content')
+    .eq('category', 'restrictions')
+    .eq('mode', 'default')
+    .maybeSingle()
+
+  if (restrictionsResult.data?.content) {
+    parts.push(`[RESTRICTIONS]\n${restrictionsResult.data.content.trim()}`)
+  }
+
+  const factsEntries = brainEntries.filter((e: { category: string; title: string; content: string }) => e.category === 'facts')
+  if (factsEntries.length > 0) {
+    const lines = factsEntries.map((e: { category: string; title: string; content: string }) => `- ${e.title}: ${e.content}`).join('\n')
+    parts.push(`[BRAIN: FACTS & KNOWLEDGE]\n${lines}`)
+  }
+
+  return parts.join('\n\n')
 }
