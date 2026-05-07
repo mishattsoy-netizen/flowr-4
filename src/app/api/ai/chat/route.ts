@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     user = data.user
   }
 
-  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext, thinkingEnabled } = await req.json()
+  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext, thinkingEnabled, advisorEnabled } = await req.json()
   const activeMode = (mode === 'pro') ? mode : 'default'
 
   if (!prompt && !buffer) {
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     const result = await runChain(
       prompt,
       buffer ? Buffer.from(buffer, 'base64') : undefined,
-      { userId, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, temperature, mode: activeMode, intentTag: intentTag ?? null, replyContext, thinkingEnabled: thinkingEnabled === true }
+      { userId, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, temperature, mode: activeMode, intentTag: intentTag ?? null, replyContext, thinkingEnabled: thinkingEnabled === true, advisorEnabled: advisorEnabled === true }
     )
 
     let content = result.content
@@ -204,7 +204,9 @@ export async function POST(req: NextRequest) {
       routing_trace: result.routing_trace,
       model_chain: modelChain,
       citations: result.citations,
-      tokens_used: result.tokens_used
+      tokens_used: result.tokens_used,
+      pipeline_steps: result.pipeline_steps,
+      advisor_questions: result.advisor_questions,
     })
   } catch (error: any) {
     console.error('[AI API Error]', error);
