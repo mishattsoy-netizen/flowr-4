@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
     user = data.user
   }
 
-  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext } = await req.json()
-  const activeMode = (mode === 'think' || mode === 'pro') ? mode : 'default'
+  const { prompt, buffer, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext, thinkingEnabled } = await req.json()
+  const activeMode = (mode === 'pro') ? mode : 'default'
 
   if (!prompt && !buffer) {
     return NextResponse.json({ error: 'prompt or image is required', model: 'system' }, { status: 400 })
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     const result = await runChain(
       prompt,
       buffer ? Buffer.from(buffer, 'base64') : undefined,
-      { userId, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, temperature, mode: activeMode, intentTag: intentTag ?? null, replyContext }
+      { userId, aiApiKey, activeEntityId, activeWorkspaceId, classificationModelId, temperature, mode: activeMode, intentTag: intentTag ?? null, replyContext, thinkingEnabled: thinkingEnabled === true }
     )
 
     let content = result.content

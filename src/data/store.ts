@@ -164,6 +164,8 @@ export const useStore = create<AppState>()(
       aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 },
       activeMode: 'default' as BotMode,
       activeIntentTag: null,
+      activeReplyMessage: null,
+      thinkingEnabled: false,
 
       // ─── Actions ─────────────────────────────────────────
       setDashboardLayout: (layout) => set({ dashboardLayout: layout }),
@@ -325,10 +327,41 @@ export const useStore = create<AppState>()(
         set({ aiClassificationModelId: id });
       },
       setActiveMode: (mode) => set({ activeMode: mode }),
+      setThinkingEnabled: (enabled) => set({ thinkingEnabled: enabled }),
       setActiveIntentTag: (tag) => set({ activeIntentTag: tag }),
+      setReplyMessage: (msg) => set({ activeReplyMessage: msg }),
 
       sendAIMessage: async (content, attachments = []) => {
-        const { aiMessages } = get();
+        const { aiMessages, activeReplyMessage } = get();
+
+        let replyContext: any = null;
+        if (activeReplyMessage) {
+          const idx = aiMessages.findIndex(m => m.id === activeReplyMessage.id);
+          if (idx !== -1) {
+            const contextMsgs: AIMessage[] = [];
+            // One previous message
+            if (idx > 0) contextMsgs.push(aiMessages[idx - 1]);
+            // The replied message itself
+            contextMsgs.push(aiMessages[idx]);
+            // One next message
+            if (idx < aiMessages.length - 1) contextMsgs.push(aiMessages[idx + 1]);
+
+            // Construct [SPECIAL ATTENTION] block
+            const attentionBlock = `[SPECIAL ATTENTION]\nThe user is replying/referring to a specific message in the conversation. Focus your attention and answer primarily in relation to these relevant context messages:\n` +
+              contextMsgs.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: "${m.content || '[Attachment]'}"`).join('\n') + '\n';
+
+            // Last 3 turns (6 messages)
+            const lastTurns = aiMessages.slice(-6);
+            const historyBlock = `[CONVERSATION HISTORY]\n` +
+              lastTurns.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: "${m.content || '[Attachment]'}"`).join('\n') + '\n';
+
+            replyContext = {
+              repliedMessage: activeReplyMessage,
+              attentionBlock,
+              historyBlock,
+            };
+          }
+        }
 
         const userMessage: AIMessage = {
           id: generateId(),
@@ -345,7 +378,11 @@ export const useStore = create<AppState>()(
           timestamp: Date.now(),
         };
 
-        set({ aiMessages: [...aiMessages, userMessage, placeholderMessage], isAILoading: true });
+        set({
+          aiMessages: [...aiMessages, userMessage, placeholderMessage],
+          activeReplyMessage: null,
+          isAILoading: true,
+        });
 
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -376,6 +413,8 @@ export const useStore = create<AppState>()(
               classificationModelId: get().aiClassificationModelId,
               mode: get().activeMode,
               intentTag: get().activeIntentTag ?? null,
+              replyContext,
+              thinkingEnabled: get().thinkingEnabled,
             }),
           });
 

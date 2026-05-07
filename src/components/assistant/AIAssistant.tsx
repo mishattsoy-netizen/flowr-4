@@ -4,7 +4,7 @@ import { useStore } from '@/data/store';
 import type { AIAttachment, EditorBlock } from '@/data/store';
 import { generateId } from '@/data/store';
 import type { BotMode } from '@/data/store.types';
-import { X, Send, Trash2, Key, PanelRight, PanelLeft, Plus, ChevronUp, Image as ImageIcon, Paperclip, Square, Mic, Settings2, Slash, Globe, FileText, CheckSquare, Cloud, Coins, TrendingUp, Eraser, Command, ArrowRight, Frame, Layers, Zap, AtSign, SquareSlash, Telescope, Terminal } from 'lucide-react';
+import { X, Send, Trash2, Key, PanelRight, PanelLeft, Plus, ChevronUp, Image as ImageIcon, Paperclip, Square, Mic, Settings2, Slash, Globe, FileText, CheckSquare, Cloud, Coins, TrendingUp, Eraser, Command, ArrowRight, Frame, Layers, Zap, AtSign, SquareSlash, Telescope, Terminal, Brain } from 'lucide-react';
 import { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { StarIcon } from './components/StarIcon';
@@ -68,6 +68,10 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
   const setActiveMode = useStore(state => state.setActiveMode)
   const activeIntentTag = useStore(state => state.activeIntentTag)
   const setActiveIntentTag = useStore(state => state.setActiveIntentTag)
+  const activeReplyMessage = useStore(state => state.activeReplyMessage)
+  const setReplyMessage = useStore(state => state.setReplyMessage)
+  const thinkingEnabled = useStore(state => state.thinkingEnabled)
+  const setThinkingEnabled = useStore(state => state.setThinkingEnabled)
   const [showModeMenu, setShowModeMenu] = useState(false)
 
   const [input, setInput] = useState("");
@@ -102,7 +106,6 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
 
   const MODE_OPTIONS: { key: BotMode; label: string; description: string }[] = [
     { key: 'default', label: 'Default', description: 'Fast, universal' },
-    { key: 'think',   label: 'Think',   description: 'Deep, accurate' },
     { key: 'pro',     label: 'Pro',     description: 'Max precision' },
   ]
 
@@ -540,18 +543,20 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
             </div>
           )}
           {aiMessages.filter(m => m.role === 'user' || m.role === 'assistant').map((msg, idx, filtered) => (
-            <ChatMessage
-              key={msg.id || `msg-${idx}`}
-              msg={msg}
-              isAILoading={idx === filtered.length - 1 ? isAILoading : false}
-              isLast={idx === filtered.length - 1}
-              scrollToBottom={scrollToBottom}
-              handleAddImageToWorkspace={handleAddImageToWorkspace}
-              onRegenerate={() => {
-                const lastUserMsg = [...filtered.slice(0, idx + 1)].reverse().find(m => m.role === 'user');
-                if (lastUserMsg) handleSend(lastUserMsg.content, lastUserMsg.attachments);
-              }}
-            />
+            <div key={msg.id || `msg-${idx}`} id={`msg-row-${msg.id}`} className="w-full">
+              <ChatMessage
+                msg={msg}
+                isAILoading={idx === filtered.length - 1 ? isAILoading : false}
+                isLast={idx === filtered.length - 1}
+                scrollToBottom={scrollToBottom}
+                handleAddImageToWorkspace={handleAddImageToWorkspace}
+                onRegenerate={() => {
+                  const lastUserMsg = [...filtered.slice(0, idx + 1)].reverse().find(m => m.role === 'user');
+                  if (lastUserMsg) handleSend(lastUserMsg.content, lastUserMsg.attachments);
+                }}
+                onReply={setReplyMessage}
+              />
+            </div>
           ))}
           <div ref={messagesEndRef} className={clsx("shrink-0", aiMessages.length > 0 ? "h-6" : "h-0")} />
         </div>
@@ -620,6 +625,38 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+            {activeReplyMessage && (
+              <div
+                onClick={() => {
+                  const targetRow = document.getElementById(`msg-row-${activeReplyMessage.id}`);
+                  if (targetRow) {
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetRow.classList.remove('pulse-highlight');
+                    void targetRow.offsetWidth; // Trigger reflow
+                    targetRow.classList.add('pulse-highlight');
+                  }
+                }}
+                className="flex items-center justify-between bg-white/5 rounded-[10px] px-3 py-1.5 mb-1 border-l-2 border-accent gap-3 animate-fade-in shrink-0 cursor-pointer hover:bg-white/10 transition-colors"
+              >
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.05em] text-accent">
+                    Replying to {activeReplyMessage.role === 'user' ? 'You' : 'AI'}
+                  </span>
+                  <span className="text-[11px] text-[var(--bone-60)] truncate font-medium">
+                    {activeReplyMessage.content?.replace(new RegExp('<think>[\\\\s\\\\S]*?</think>', 'g'), '') || 'Attachment'}
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReplyMessage(null);
+                  }}
+                  className="p-1 rounded-md hover:bg-white/10 text-[var(--bone-40)] hover:text-white transition-colors shrink-0"
+                >
+                  <X strokeWidth={2} className="w-3 h-3" />
+                </button>
               </div>
             )}
             <textarea
@@ -724,8 +761,8 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
                               onClick={() => { setActiveMode(opt.key); setShowModeMenu(false) }}
                               className={clsx(
                                 'w-full flex items-center px-4 py-2.5 rounded-[10px] text-xs transition-all duration-200 text-left group',
-                                activeMode === opt.key 
-                                  ? 'bg-accent/10 text-accent font-bold' 
+                                activeMode === opt.key
+                                  ? 'bg-accent/10 text-accent font-bold'
                                   : 'text-bone-80 hover:bg-white/5 hover:text-bone-100'
                               )}
                             >
@@ -735,6 +772,29 @@ const AIAssistantComponent = ({ isFloating = false }: { isFloating?: boolean }) 
                               </div>
                             </button>
                           ))}
+                        </div>
+                        <div className="border-t border-white/5 mt-1 pt-1 px-2 pb-1">
+                          <button
+                            onClick={() => setThinkingEnabled(!thinkingEnabled)}
+                            className={clsx(
+                              'w-full flex items-center gap-3 px-2 py-2 rounded-[10px] text-xs transition-all duration-200',
+                              thinkingEnabled
+                                ? 'bg-accent/10 text-accent font-bold'
+                                : 'text-bone-60 hover:bg-white/5 hover:text-bone-100'
+                            )}
+                          >
+                            <Brain className="w-3.5 h-3.5" strokeWidth={2} />
+                            <div className="flex flex-col items-start">
+                              <span className="text-[11px] font-bold">Thinking</span>
+                              <span className="text-[10px] opacity-60">{thinkingEnabled ? 'On — reasons before answering' : 'Off'}</span>
+                            </div>
+                            <div className={clsx(
+                              'ml-auto w-7 h-4 rounded-full transition-all duration-200 flex items-center',
+                              thinkingEnabled ? 'bg-accent justify-end' : 'bg-white/10 justify-start'
+                            )}>
+                              <div className="w-3 h-3 rounded-full bg-white mx-0.5" />
+                            </div>
+                          </button>
                         </div>
                       </div>
                     </>
