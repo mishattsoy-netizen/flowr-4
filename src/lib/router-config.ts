@@ -64,3 +64,32 @@ export async function getFallbackModes(): Promise<Record<string, 'model_first' |
   if (error || !data?.value) return {}
   return data.value as Record<string, 'model_first' | 'api_key_first'>
 }
+
+export interface PipelineSettings {
+  orchestratorEnabled: boolean
+  maxPipelineSteps: number
+  imageGenAutoLast: boolean
+  thinkingToggleDefault: boolean
+  thinkingSummaryVisible: 'collapsible' | 'hidden'
+}
+
+export async function getPipelineSettings(): Promise<PipelineSettings> {
+  const { data } = await supabase
+    .from('settings')
+    .select('key, value')
+    .in('key', [
+      'orchestrator_enabled', 'max_pipeline_steps', 'image_gen_auto_last',
+      'thinking_toggle_default', 'thinking_summary_visible'
+    ])
+
+  const map: Record<string, any> = {}
+  for (const row of (data ?? [])) map[row.key] = row.value
+
+  return {
+    orchestratorEnabled: map['orchestrator_enabled'] !== false,
+    maxPipelineSteps: typeof map['max_pipeline_steps'] === 'number' ? map['max_pipeline_steps'] : 7,
+    imageGenAutoLast: map['image_gen_auto_last'] !== false,
+    thinkingToggleDefault: map['thinking_toggle_default'] === true,
+    thinkingSummaryVisible: map['thinking_summary_visible'] ?? 'collapsible',
+  }
+}
