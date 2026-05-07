@@ -33,7 +33,7 @@ export async function runAdvisor(
   availableTools: string[],
   context: any
 ): Promise<AdvisorResult> {
-  const { chain, system_prompt } = await getRouterChain('ADVISOR' as any)
+  const { chain, system_prompt } = await getRouterChain('ADVISOR')
 
   if (chain.length === 0) {
     logger.warn('ADVISOR chain is empty — skipping advisor step. Add models via Admin > Router > ADVISOR.')

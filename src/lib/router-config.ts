@@ -18,6 +18,7 @@ export type IntentCategory =
   | 'VISION'
   | 'CODING'
   | 'DEEP_RESEARCH'
+  | 'ADVISOR'
 
 export type Platform = 'telegram'
 

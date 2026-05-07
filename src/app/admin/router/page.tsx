@@ -2,7 +2,7 @@ import { getRouterChains } from './actions'
 import { getModels } from '@/app/admin/models/actions'
 import RouterManager from '@/components/admin/RouterManager'
 import AddCategoryButton from '@/components/admin/AddCategoryButton'
-import { Cpu, Command, Share2, Zap, Wand2, Image, Mic, Brain, Camera, Code, Microscope } from 'lucide-react'
+import { Cpu, Command, Share2, Zap, Wand2, Image, Mic, Brain, Camera, Code, Microscope, Network, Sparkles } from 'lucide-react'
 
 const CATEGORY_ICONS: Record<string, any> = {
   TOOL_CALLING: Command,
@@ -15,7 +15,10 @@ const CATEGORY_ICONS: Record<string, any> = {
   CLASSIFIER: Brain,
   VISION: Camera,
   CODING: Code,
-  DEEP_RESEARCH: Microscope
+  DEEP_RESEARCH: Microscope,
+  ORCHESTRATOR: Network,
+  THINKING: Sparkles,
+  ADVISOR: Brain
 }
 
 export async function RouterPageContent({ platform }: { platform: 'app' | 'telegram' }) {
@@ -54,6 +57,15 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
         )}
         {!routers.some((r: any) => r.category === 'DEEP_RESEARCH') && (
           <AddCategoryButton platform={platform} category="DEEP_RESEARCH" />
+        )}
+        {!routers.some((r: any) => r.category === 'ORCHESTRATOR') && (
+          <AddCategoryButton platform={platform} category="ORCHESTRATOR" />
+        )}
+        {!routers.some((r: any) => r.category === 'THINKING') && (
+          <AddCategoryButton platform={platform} category="THINKING" />
+        )}
+        {!routers.some((r: any) => r.category === 'ADVISOR') && (
+          <AddCategoryButton platform={platform} category="ADVISOR" />
         )}
       </div>
     </div>
