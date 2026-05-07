@@ -141,6 +141,16 @@ Extracting information from user-provided images.
 Examples: "what's in this photo?", "read the text from this screenshot", "explain this diagram"
 Rule: The user MUST have ATTACHED an image to the message.
 
+=== ROUTING EXAMPLES ===
+"hey" / "how are you?" / "what can you do?" → FAST_SIMPLE
+"what is the capital of France?" → FAST_SIMPLE
+"what is DNS?" → FAST_SIMPLE
+"what is vibe coding?" → FAST_SIMPLE
+"latest AI news — Claude, Gemini, OpenAI" → MEDIUM_THINKING
+"write an essay about world leaders" → MEDIUM_THINKING
+"write a business plan" → COMPLEX_THINKING
+"write an optimization plan for my work" → COMPLEX_THINKING
+
 === DEFAULT MODE ROUTING RULES ===
 
 Priority Overrides (Evaluate these in order before text tiers):
