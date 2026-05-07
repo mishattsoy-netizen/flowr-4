@@ -139,7 +139,7 @@ Examples: "transcribe this audio file", "process this voice message and summariz
 VISION
 Extracting information from user-provided images.
 Examples: "what's in this photo?", "read the text from this screenshot", "explain this diagram"
-Rule: The user MUST have ATTACHED an image to the message.
+Rule: The user MUST have ATTACHED an image to the message. Note: image URLs embedded in the message text are handled automatically by the system — you do not need to classify those as VISION.
 
 === ROUTING EXAMPLES ===
 "hey" / "how are you?" / "what can you do?" → FAST_SIMPLE
