@@ -169,9 +169,9 @@ CRITICAL RULE FOR ALL OVERRIDES: Conversational questions asking IF you have a c
 6. Audio content is involved → AUDIO_VOICE
 
 Text Only Routing (If none of the above apply):
-- Pure, one-word acknowledgment ONLY → FAST_SIMPLE
-- Baseline facts/greetings → MEDIUM_THINKING
-- Everything else (Analysis, Strategy, Writing, Logic) → COMPLEX_THINKING
+- Pure social acknowledgments ("ok", "thanks", "got it") with zero content → FAST_SIMPLE
+- Simple factual questions, definitional questions, greetings with no task → MEDIUM_THINKING
+- Everything else (analysis, strategy, writing, logic, planning) → COMPLEX_THINKING
 
 Tiebreakers (AGGRESSIVE - MAXIMUM QUALITY REQUIRED):
 Pro mode routes almost everything to COMPLEX_THINKING.
