@@ -1,5 +1,5 @@
 import { classifyIntentWithModel } from './classifier'
-import { getRouterChain, getFallbackModes } from '../router-config'
+import { getRouterChain, getFallbackModes, IntentCategory } from '../router-config'
 import type { BotMode } from '@/data/store.types'
 import { getProviderKeys } from '../vault'
 import { logger } from '../logger'
@@ -137,14 +137,16 @@ export async function runChain(
   }
 
   // 2. Standard Routing Flow
-  const { category: rawCategory, classifierModel, trace: classificationTrace, error: classifyError } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, context?.mode ?? 'default', context?.intentTag ?? null)
+  const { category: rawCategory, classifierModel, trace: classificationTrace, error: classifyError } = await classifyIntentWithModel(prompt, context?.aiApiKey, context?.classificationModelId, context?.mode ?? 'default', context?.intentTag ?? null, history, context?.replyContext ?? null)
 
   if (!rawCategory) {
     logger.error(`Classification failed: ${classifyError ?? 'unknown reason'}`)
     return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat', model_chain: 'classifier → (failed)', status: 'error' }
   }
 
-  let category = rawCategory
+  // MULTI_CHAIN is a classifier signal, not a real chain — orchestration handled separately
+  // For now, fall through to FAST_SIMPLE until multi-chain orchestration is wired up
+  let category: IntentCategory = rawCategory === 'MULTI_CHAIN' ? 'FAST_SIMPLE' : rawCategory
   const routingTrace: RoutingTrace[] = []
 
   let { chain, system_prompt, temperature } = await getRouterChain(category)

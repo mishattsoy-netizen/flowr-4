@@ -18,16 +18,16 @@ export interface ClassifyTrace {
 }
 
 export interface ClassifyResult {
-  category: IntentCategory | null
+  category: IntentCategory | 'MULTI_CHAIN' | null
   classifierModel: string
   trace: ClassifyTrace[]
   error?: string
 }
 
-const VALID_CATEGORIES: IntentCategory[] = [
+const VALID_CATEGORIES: (IntentCategory | 'MULTI_CHAIN')[] = [
   'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING',
   'IMAGE_GEN', 'WEB_SEARCH', 'AUDIO_VOICE', 'TOOL_CALLING',
-  'CODING', 'DEEP_RESEARCH',
+  'CODING', 'DEEP_RESEARCH', 'MULTI_CHAIN',
 ]
 
 const TAG_CATEGORY_MAP: Record<string, IntentCategory> = {
@@ -38,7 +38,7 @@ const TAG_CATEGORY_MAP: Record<string, IntentCategory> = {
   '/tool': 'TOOL_CALLING',
 }
 
-export async function classifyIntent(message: string, aiApiKey?: string, modelId?: string): Promise<IntentCategory | null> {
+export async function classifyIntent(message: string, aiApiKey?: string, modelId?: string): Promise<IntentCategory | 'MULTI_CHAIN' | null> {
   const result = await classifyIntentWithModel(message, aiApiKey, modelId)
   return result.category
 }
@@ -48,7 +48,9 @@ export async function classifyIntentWithModel(
   aiApiKey?: string,
   modelId?: string,
   mode: BotMode = 'default',
-  intentTag?: string | null
+  intentTag?: string | null,
+  history: any[] = [],
+  replyContext?: { attentionBlock?: string } | null
 ): Promise<ClassifyResult> {
   const lowerMsg = message.trim().toLowerCase()
 
@@ -128,6 +130,12 @@ export async function classifyIntentWithModel(
     }
   }
 
+  // Last 3 turns (user+model pairs) for context
+  const recentHistory = history.slice(-6)
+
+  // Reply context prefix
+  const replyPrefix = replyContext?.attentionBlock ? replyContext.attentionBlock + '\n\n' : ''
+
   // Model classification
   const { chain } = await getRouterChain('CLASSIFIER')
   let activeChain = chain
@@ -157,21 +165,21 @@ export async function classifyIntentWithModel(
     try {
       let rawResponse: string | null = null
       const traceContext: any = { aiApiKey }
-      const prompt = `${activePrompt}\n"${message}"`
+      const prompt = `${replyPrefix}${activePrompt}\n"${message}"`
 
       const provider = modelConfig.provider.toLowerCase()
       if (provider === 'google') {
-        rawResponse = await runGoogle(modelConfig.id, prompt, undefined, undefined, traceContext)
+        rawResponse = await runGoogle(modelConfig.id, prompt, undefined, undefined, traceContext, recentHistory)
       } else if (provider === 'groq') {
-        rawResponse = await runGroq(modelConfig.id, prompt, undefined, aiApiKey, traceContext)
+        rawResponse = await runGroq(modelConfig.id, prompt, undefined, aiApiKey, traceContext, recentHistory)
       } else if (provider === 'openrouter') {
-        const orRes = await (await import('./providers/openrouter')).runOpenRouter(modelConfig.id, prompt, '', [], aiApiKey)
+        const orRes = await (await import('./providers/openrouter')).runOpenRouter(modelConfig.id, prompt, '', recentHistory, aiApiKey)
         rawResponse = typeof orRes === 'string' ? orRes : null
       } else if (provider === 'ollama' || provider === 'local') {
-        const olRes = await (await import('./providers/ollama')).runOllama(modelConfig.id, prompt, '', [])
+        const olRes = await (await import('./providers/ollama')).runOllama(modelConfig.id, prompt, '', recentHistory)
         rawResponse = typeof olRes === 'string' ? olRes : null
       } else if (provider === 'pollinations') {
-        const polRes = await (await import('./providers/pollinations')).runPollinationsText(modelConfig.id, prompt, '', [])
+        const polRes = await (await import('./providers/pollinations')).runPollinationsText(modelConfig.id, prompt, '', recentHistory)
         rawResponse = typeof polRes === 'string' ? polRes : null
       }
 
