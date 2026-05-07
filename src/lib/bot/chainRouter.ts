@@ -16,6 +16,10 @@ import { getConversationMemory, getWebConversationMemory } from './memory'
 import { supabaseAdmin } from '../supabase'
 import { getCompiledPrompt } from './compilePrompt'
 import { getSessionState, updateSessionState, estimateTokens, summarizeSession } from './context'
+import { planChainSequence } from './orchestrator'
+import { executePipeline, PipelineStep, StatusCallback } from './pipeline'
+import { runThinkChain } from './thinkChain'
+import { getPipelineSettings } from '../router-config'
 
 function trackModelUsage(p_model_id: string, p_provider: string) {
   supabaseAdmin.rpc('increment_model_usage', { p_model_id, p_provider })
@@ -59,12 +63,13 @@ export interface ChainResponse {
   routing_trace?: RoutingTrace[]
   citations?: string[]
   tokens_used?: number
+  pipeline_steps?: PipelineStep[]
 }
 
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer,
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null; replyContext?: any }
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; activeEntityId?: string; activeWorkspaceId?: string; classificationModelId?: string; temperature?: number; mode?: BotMode; intentTag?: string | null; replyContext?: any; thinkingEnabled?: boolean; onStatus?: StatusCallback }
 ): Promise<ChainResponse> {
   let history: any[] = []
   if (context?.chatId) {
@@ -144,9 +149,94 @@ export async function runChain(
     return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat', model_chain: 'classifier → (failed)', status: 'error' }
   }
 
-  // MULTI_CHAIN is a classifier signal, not a real chain — orchestration handled separately
-  // For now, fall through to FAST_SIMPLE until multi-chain orchestration is wired up
-  let category: IntentCategory = rawCategory === 'MULTI_CHAIN' ? 'FAST_SIMPLE' : rawCategory
+  // Resolve pipeline settings and thinking toggle
+  const pipelineSettings = await getPipelineSettings()
+  const thinkingEnabled = context?.thinkingEnabled ?? pipelineSettings.thinkingToggleDefault
+  const onStatus: StatusCallback = context?.onStatus ?? (() => {})
+
+  // MULTI_CHAIN path — orchestrator plans and executes a chain sequence
+  if (rawCategory === 'MULTI_CHAIN' && pipelineSettings.orchestratorEnabled) {
+    onStatus({ chain: 'ORCHESTRATOR', goal: 'Planning chain sequence', status: 'running' })
+
+    const plan = await planChainSequence(
+      prompt,
+      history,
+      context?.replyContext,
+      currentSummary,
+      pipelineSettings.maxPipelineSteps
+    )
+
+    if (plan) {
+      onStatus({ chain: 'ORCHESTRATOR', goal: 'Planning chain sequence', status: 'done' })
+
+      const pipelineResult = await executePipeline(plan, prompt, context, onStatus)
+
+      let finalAccumulated = pipelineResult.accumulatedContext
+      let thinkDirection = ''
+      const thinkSteps: PipelineStep[] = []
+
+      if (thinkingEnabled) {
+        const thinkResult = await runThinkChain(
+          prompt,
+          finalAccumulated,
+          history,
+          currentSummary,
+          context?.replyContext,
+          context,
+          onStatus
+        )
+        thinkDirection = thinkResult.direction
+        if (thinkResult.correctedContext) finalAccumulated = thinkResult.correctedContext
+        thinkSteps.push(...thinkResult.steps)
+      }
+
+      // Final output chain — COMPLEX_THINKING for orchestrated requests
+      let { chain: finalChain, system_prompt: finalSysPrompt } = await getRouterChain('COMPLEX_THINKING')
+
+      finalSysPrompt = dateContext + '\n\n' + (finalSysPrompt || '')
+      if (currentSummary) finalSysPrompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + finalSysPrompt
+      if (globalPrompt) finalSysPrompt = globalPrompt + '\n\n' + finalSysPrompt
+      if (context?.replyContext?.attentionBlock) finalSysPrompt = context.replyContext.attentionBlock + '\n\n' + finalSysPrompt
+      if (finalAccumulated) finalSysPrompt = `[PIPELINE CONTEXT]\n${finalAccumulated}\n\n` + finalSysPrompt
+      if (thinkDirection) finalSysPrompt = `[THINK CHAIN DIRECTION]\n${thinkDirection}\n\n` + finalSysPrompt
+
+      const finalOutputStep: PipelineStep = { chain: 'COMPLEX_THINKING', goal: 'Write final answer', status: 'running' }
+      onStatus(finalOutputStep)
+
+      for (const modelConfig of finalChain) {
+        if (!modelConfig.is_enabled) continue
+        try {
+          const response = await runGoogle(modelConfig.id, prompt, finalSysPrompt, undefined, context as any, history)
+          if (response) {
+            finalOutputStep.status = 'done'
+            onStatus({ ...finalOutputStep })
+
+            const allSteps = [...pipelineResult.steps, ...thinkSteps, finalOutputStep]
+            return {
+              type: pipelineResult.imageBuffer ? 'photo' : 'text',
+              content: pipelineResult.imageBuffer ?? response,
+              usage_type: 'chat',
+              model: modelConfig.id,
+              model_chain: `orchestrator → ${allSteps.map(s => s.chain).join(' → ')}`,
+              status: 'success',
+              classification_trace: classificationTrace,
+              pipeline_steps: allSteps,
+            }
+          }
+        } catch (e: any) {
+          logger.warn(`Final output chain ${modelConfig.id} failed: ${e.message}`)
+        }
+      }
+
+      return { type: 'text', content: '⚡ *System Overload*', usage_type: 'chat', status: 'error', classification_trace: classificationTrace }
+    }
+
+    // Orchestrator failed — fall through to COMPLEX_THINKING
+    logger.error('Orchestrator failed to produce a plan — falling back to COMPLEX_THINKING')
+  }
+
+  // Single-chain path
+  let category: IntentCategory = (rawCategory === 'MULTI_CHAIN') ? 'COMPLEX_THINKING' : rawCategory
   const routingTrace: RoutingTrace[] = []
 
   let { chain, system_prompt, temperature } = await getRouterChain(category)
