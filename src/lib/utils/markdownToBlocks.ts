@@ -28,7 +28,7 @@ export function parseMarkdownToBlocks(markdown: string): EditorBlock[] {
     }
 
     if (line.trim() === '---') {
-      blocks.push({ id: generateId(), type: 'divider' });
+      blocks.push({ id: generateId(), type: 'divider', content: "" });
       continue;
     }
 
@@ -41,7 +41,7 @@ export function parseMarkdownToBlocks(markdown: string): EditorBlock[] {
       }
       continue;
     } else if (currentTable) {
-      blocks.push({ id: generateId(), type: 'table', tableData: currentTable });
+      blocks.push({ id: generateId(), type: 'table', tableData: currentTable, content: "" });
       currentTable = null;
     }
 
@@ -69,7 +69,7 @@ export function parseMarkdownToBlocks(markdown: string): EditorBlock[] {
   }
 
   if (currentTable) {
-    blocks.push({ id: generateId(), type: 'table', tableData: currentTable });
+    blocks.push({ id: generateId(), type: 'table', tableData: currentTable, content: "" });
   }
 
   return blocks.length > 0 ? blocks : [{ id: generateId(), type: 'text', style: 'body', content: '' }];

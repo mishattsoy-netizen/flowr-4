@@ -376,7 +376,7 @@ export async function runChain(
               }
               break
             case 'cloudflare':
-              response = await runCloudflare(modelConfig.id, prompt, activeKey || context?.aiApiKey, system_prompt)
+              response = await runCloudflare(modelConfig.id, prompt, activeKey || context?.aiApiKey)
               break
             case 'vault':
               if (modelConfig.id === 'tavily-search') response = await runWebSearchChain(prompt, routeContext)
