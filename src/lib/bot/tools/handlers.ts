@@ -1,5 +1,7 @@
 import { logger } from '../../logger'
 import { supabaseAdmin } from '../../supabase'
+import { parseMarkdownToBlocks, normalizeBlocks } from '../../editor/markdownBlocks'
+import type { BlockInput } from '../../editor/markdownBlocks'
 
 /**
  * Execution logic for the Flowr Utility Pack.
@@ -37,8 +39,8 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
    * Tavily Search
    */
   async tavily_search({ query }: { query: string }, context?: any) {
-    const { searchWeb } = await import('../providers/tavily')
-    const results = await searchWeb(query, context?.aiApiKey)
+    const { runWebSearchChain } = await import('../providers/tavily')
+    const results = await runWebSearchChain(query, context)
     return { results }
   },
 
@@ -173,13 +175,13 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
   /**
    * Create Note
    */
-  async create_note({ title, content, parentId }: { title: string, content?: string, parentId?: string }, context: any) {
+  async create_note({ title, content, blocks, parentId }: { title: string, content?: string, blocks?: BlockInput[], parentId?: string }, context: any) {
     if (!supabaseAdmin) return { error: 'Supabase not configured' }
     if (!context?.userId) return { error: 'User not identified' }
 
     try {
       let workspaceId = context.activeWorkspaceId
-      
+
       if (context.userId && context.userId !== 'anonymous') {
         const { data: user } = await supabaseAdmin.from('profiles').select('active_workspace_id').eq('id', context.userId).single()
         if (user?.active_workspace_id) workspaceId = user.active_workspace_id
@@ -187,12 +189,25 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
 
       if (!workspaceId) return { error: 'No active workspace identified. Please select a workspace first.' }
 
+      let noteContent: any[]
+      if (blocks && Array.isArray(blocks) && blocks.length > 0) {
+        try {
+          noteContent = normalizeBlocks(blocks as BlockInput[])
+        } catch (e: any) {
+          return { error: `Invalid blocks: ${e.message}` }
+        }
+      } else if (content) {
+        noteContent = parseMarkdownToBlocks(content)
+      } else {
+        noteContent = []
+      }
+
       const id = 'note-' + Date.now().toString()
       const { error } = await supabaseAdmin.from('entities').insert({
         id,
         title,
         type: 'note',
-        content: content ? [{ id: 'b1', type: 'text', content }] : [],
+        content: noteContent,
         parent_id: parentId || null,
         workspace_id: workspaceId,
         last_modified: Date.now()
@@ -209,20 +224,65 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
   /**
    * Update Note
    */
-  async update_note({ id, title, content }: { id: string, title?: string, content?: string }, context: any) {
+  async update_note({ id, title, content, blocks }: { id: string, title?: string, content?: string, blocks?: BlockInput[] }, context: any) {
     if (!supabaseAdmin) return { error: 'Supabase not configured' }
     if (!context?.userId) return { error: 'User not identified' }
 
     try {
       const updates: any = { last_modified: Date.now() }
       if (title) updates.title = title
-      if (content) updates.content = [{ id: 'b1', type: 'text', content }]
+      if (blocks && Array.isArray(blocks) && blocks.length > 0) {
+        try {
+          updates.content = normalizeBlocks(blocks as BlockInput[])
+        } catch (e: any) {
+          return { error: `Invalid blocks: ${e.message}` }
+        }
+      } else if (content) {
+        updates.content = parseMarkdownToBlocks(content)
+      }
 
       const { error } = await supabaseAdmin.from('entities').update(updates).eq('id', id)
       if (error) throw error
       return { success: true, id }
     } catch (e: any) {
       logger.error('Failed to update note:', e.message)
+      return { error: e.message }
+    }
+  },
+
+  /**
+   * Append Blocks to Note
+   */
+  async append_note_blocks({ id, blocks }: { id: string, blocks: BlockInput[] }, context: any) {
+    if (!supabaseAdmin) return { error: 'Supabase not configured' }
+    if (!context?.userId) return { error: 'User not identified' }
+
+    try {
+      let normalized: any[]
+      try {
+        normalized = normalizeBlocks(blocks)
+      } catch (e: any) {
+        return { error: `Invalid blocks: ${e.message}` }
+      }
+
+      const { data: entity, error: fetchError } = await supabaseAdmin
+        .from('entities')
+        .select('content')
+        .eq('id', id)
+        .single()
+
+      if (fetchError || !entity) return { error: 'Note not found' }
+
+      const existing = Array.isArray(entity.content) ? entity.content : []
+      const { error } = await supabaseAdmin
+        .from('entities')
+        .update({ content: [...existing, ...normalized], last_modified: Date.now() })
+        .eq('id', id)
+
+      if (error) throw error
+      return { success: true, id }
+    } catch (e: any) {
+      logger.error('Failed to append note blocks:', e.message)
       return { error: e.message }
     }
   },
