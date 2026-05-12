@@ -6,6 +6,7 @@ import {
 import { Tooltip } from '@/components/layout/Tooltip';
 import clsx from 'clsx';
 import { EditorBlock, BlockStyle, BlockType, Entity, generateId } from '@/data/store';
+import { formatCounter } from '@/lib/editor/markdownBlocks';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '@/data/store';
 import { DatabaseBlock } from './DatabaseBlock';
@@ -32,6 +33,7 @@ interface BlockViewProps {
   setNodeRef?: (el: HTMLElement | null) => void;
   style?: React.CSSProperties;
   onDragStart?: (id: string, e: React.DragEvent) => void;
+  depth?: number;
 }
 
 // Consolidated BlockRenderer logic below.
@@ -54,6 +56,7 @@ export function BlockRenderer({
   isInsideColumn = false,
   onDragStart,
   isDragOverlay = false,
+  depth = 0,
 }: any) {
   const {
     attributes,
@@ -81,6 +84,9 @@ export function BlockRenderer({
 
   const colorStyle = getBlockColorStyle(block);
 
+  const isList = ['bulletList', 'dashedList', 'numberedList'].includes(block.type);
+  const isChecklist = block.type === 'checklist';
+
   const handleInput = useCallback(() => {
     if (contentRef.current) {
       const newContent = contentRef.current.innerHTML;
@@ -103,8 +109,6 @@ export function BlockRenderer({
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (slashMenuOpen && (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) return;
     if (e.key === 'Enter') {
-      const isList = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(block.type);
-      
       if (e.shiftKey) {
         // Shift+Enter = Soft break (standard)
         return; 
@@ -115,6 +119,14 @@ export function BlockRenderer({
       // If enter on an empty list item, convert it to a text block (standard Notion behavior)
       if (isList && !block.content.trim()) {
         onUpdate(block.id, { type: 'text' });
+        return;
+      }
+
+      // If enter on a list item that has children and has content, insert inside (as first child)
+      const isListLike = isList || isChecklist;
+      const hasChildren = !!(block.children && block.children.length > 0);
+      if (isListLike && hasChildren && block.content.trim()) {
+        onInsertAfter(block.id, block.type, false, true);
         return;
       }
 
@@ -134,8 +146,8 @@ export function BlockRenderer({
     }
 
     if (e.key === 'Backspace' && !block.content) {
-      const isList = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(block.type);
-      if (isList) {
+      const isListLikeForBackspace = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(block.type);
+      if (isListLikeForBackspace) {
         e.preventDefault();
         onUpdate(block.id, { type: 'text' });
         return;
@@ -246,8 +258,6 @@ export function BlockRenderer({
     }
   }, []);
 
-  const isList = ['bulletList', 'dashedList', 'numberedList'].includes(block.type);
-  const isChecklist = block.type === 'checklist';
   const isQuote = block.type === 'quote';
   const effectiveStyle = (isList || isChecklist) ? 'body' : block.style;
 
@@ -279,7 +289,7 @@ export function BlockRenderer({
           isSelected && "bg-white/[0.01]",
           isDragging && "opacity-60 bg-sidebar/80 rounded-[var(--radius-medium)]"
         )}>
-          <div className="flex-1 h-px bg-border/50" />
+          <div className="flex-1 h-px bg-[var(--bone-12)]" />
         </div>
       </div>
     );
@@ -323,7 +333,7 @@ export function BlockRenderer({
           isDragging && "opacity-60"
         )}>
           <div className="relative flex flex-col">
-            <div className="border border-white/10 rounded-3xl overflow-hidden bg-white/[0.02]">
+            <div className="border border-[var(--bone-12)] rounded-3xl overflow-hidden bg-white/[0.02]">
               <table className="w-full border-collapse">
                 <tbody>
                   {tableData.map((row: string[], ri: number) => (
@@ -547,7 +557,7 @@ export function BlockRenderer({
             <input
               type="text"
               placeholder="Paste URL here..."
-              className="bg-transparent border-none outline-none text-[11px] w-[180px] text-bone-60 focus:text-bone-90 font-sans"
+              className="bg-transparent border-none outline-none text-[11px] w-[180px] text-bone-70 focus:text-bone-90 font-sans"
               defaultValue={block.linkUrl || ''}
               onBlur={(e) => onUpdate(block.id, { linkUrl: e.target.value })}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -606,9 +616,22 @@ export function BlockRenderer({
 
   // ─── Default (Text, List, Checklist, Quote) ───────────
   const listMarker = () => {
-    if (block.type === 'bulletList') return <div className="w-[5.5px] h-[5.5px] rounded-full bg-[var(--bone-60)] flex-shrink-0" />;
-    if (block.type === 'dashedList') return <div className="w-[8px] h-[1px] bg-[var(--bone-60)] flex-shrink-0" />;
-    if (block.type === 'numberedList') return <span className="text-bone-60/40 text-[18px] font-medium leading-none" style={{ fontFamily: '"Crimson Text"' }}>{(listNumber ?? 1)}.</span>;
+    const d = depth % 3;
+    if (block.type === 'bulletList') {
+      if (d === 0) return <div className="w-[5.5px] h-[5.5px] rounded-full bg-[var(--bone-70)] flex-shrink-0" />;
+      if (d === 1) return <div className="w-[5.5px] h-[5.5px] rounded-sm border border-[var(--bone-70)] flex-shrink-0" />;
+      return <div className="w-[4px] h-[4px] rounded-full bg-[var(--bone-40)] flex-shrink-0" />;
+    }
+    if (block.type === 'dashedList') {
+      if (d === 0) return <div className="w-[8px] h-[1px] bg-[var(--bone-70)] flex-shrink-0" />;
+      if (d === 1) return <div className="w-[6px] h-[1px] bg-[var(--bone-50)] flex-shrink-0" />;
+      return <div className="w-[4px] h-[1px] bg-[var(--bone-30)] flex-shrink-0" />;
+    }
+    if (block.type === 'numberedList') {
+      const counterStyle = d === 0 ? 'arabic' : d === 1 ? 'alpha' : 'roman';
+      const counter = formatCounter(listNumber ?? 1, counterStyle);
+      return <span className="text-bone-70/40 text-[16px] font-normal leading-none" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }}>{counter}.</span>;
+    }
     if (block.type === 'checklist') return (
       <div onClick={() => onUpdate(block.id, { checked: !block.checked })} className={clsx("w-[16px] h-[16px] shrink-0 rounded-[4px] border-[1.5px] flex items-center justify-center transition-all cursor-pointer", block.checked ? "bg-white/20 border-white/40" : "border-white/20 hover:border-white/40")}>
         {block.checked && <Check className="w-[12px] h-[12px] text-bone-100" strokeWidth={3} />}
@@ -631,7 +654,7 @@ export function BlockRenderer({
         isInsideColumn && "rounded-[var(--radius-medium)] break-words min-h-[100px] column-container hover:bg-hover/10",
         isInsideColumn && !block.content && "empty"
       )}
-      style={{ ...style, fontFamily: '"Crimson Text"', letterSpacing: '-0.03em' }}
+      style={{ ...style, fontFamily: '"Literata"', letterSpacing: '-0.01em' }}
       onMouseDown={() => onFocus?.(block.id)}
     >
       <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
@@ -690,7 +713,7 @@ export function BlockRenderer({
                 color: 'var(--bone-30)',
                 textDecoration: 'line-through',
                 textDecorationThickness: '1px',
-                textDecorationColor: 'var(--bone-60)',
+                textDecorationColor: 'var(--bone-70)',
               } : {}),
             }}
             onInput={handleInput}
@@ -712,7 +735,8 @@ export function BlockRenderer({
                 const text = contentRef.current?.textContent || '';
                 navigator.clipboard.writeText(text);
               }}
-              className="absolute top-2.5 right-3 px-2 py-1.5 rounded bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-white/10 transition-all opacity-0 group-hover:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5"
+              className="absolute top-2.5 right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-12)] transition-all opacity-0 group-hover:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5"
+
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
@@ -725,12 +749,12 @@ export function BlockRenderer({
 
 function getStyleClasses(style?: BlockStyle): string {
   switch (style) {
-    case 'title': return 'text-[30px] font-semibold tracking-[-0.03em] font-display leading-snug text-bone-100';
-    case 'heading': return 'text-[26px] font-semibold tracking-[-0.03em] font-display leading-snug text-bone-100';
-    case 'subheading': return 'text-[22px] font-semibold tracking-[-0.03em] font-display text-bone-100 leading-snug';
-    case 'mono': return 'font-mono text-[15px] bg-white/[0.02] border border-white/10 rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[#E6EDF3] w-full';
+    case 'title': return 'text-[28px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
+    case 'heading': return 'text-[24px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
+    case 'subheading': return 'text-[20px] font-semibold tracking-[-0.02em] font-display text-bone-100 leading-snug';
+    case 'mono': return 'font-mono text-[15px] bg-white/[0.02] border border-[var(--bone-12)] rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[#E6EDF3] w-full';
     case 'body':
-    default: return 'text-[18px] font-semibold font-display leading-[1.6] tracking-[-0.03em] text-bone-100';
+    default: return 'text-[16px] font-normal font-display leading-[1.6] tracking-[-0.02em] text-bone-100';
   }
 }
 
