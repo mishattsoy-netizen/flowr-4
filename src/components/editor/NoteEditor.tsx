@@ -25,6 +25,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { looksLikeMarkdown, parseMarkdownToBlocks } from '@/lib/editor/markdownBlocks';
 
 interface NoteEditorProps {
   entity: Entity;
@@ -943,6 +944,31 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     if (target.isContentEditable) {
       e.preventDefault();
       const plainText = e.clipboardData.getData('text/plain');
+
+      if (looksLikeMarkdown(plainText)) {
+        const parsedBlocks = parseMarkdownToBlocks(plainText);
+        if (parsedBlocks.length > 0) {
+          const blockEl = (document.activeElement as HTMLElement)?.closest('[data-block-id]');
+          const focusedId = blockEl?.getAttribute('data-block-id');
+          const focusedBlock = focusedId ? blocks.find(b => b.id === focusedId) : null;
+
+          if (focusedBlock && !focusedBlock.content.trim()) {
+            const idx = blocks.findIndex(b => b.id === focusedId);
+            const newBlocks = [...blocks];
+            newBlocks.splice(idx, 1, ...parsedBlocks);
+            persistBlocks(newBlocks);
+          } else if (focusedId) {
+            const idx = blocks.findIndex(b => b.id === focusedId);
+            const newBlocks = [...blocks];
+            newBlocks.splice(idx + 1, 0, ...parsedBlocks);
+            persistBlocks(newBlocks);
+          } else {
+            persistBlocks([...blocks, ...parsedBlocks]);
+          }
+          return;
+        }
+      }
+
       document.execCommand('insertText', false, plainText);
     }
   }, [blocks, insertAfter, persistBlocks, updateBlock]);
