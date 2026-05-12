@@ -12,7 +12,7 @@ export type BlockInput = {
 export function looksLikeMarkdown(text: string): boolean {
   if (!text.trim()) return false;
   const lines = text.split('\n').filter(l => l.trim().length > 0);
-  const mdLineRe = /^(\s*)(-|\*|\d+\.|[a-z]+\.|[ivxlcdm]+\.|#{1,3} |\[[ x]\] |>)/;
+  const mdLineRe = /^(\s*)(-|\*|\d+\.|#{1,3} |\[[ x]\] |>)/;
   const matches = lines.filter(l => mdLineRe.test(l));
   return matches.length >= 2;
 }
@@ -167,7 +167,10 @@ function htmlToText(html: string): string {
     .replace(/<em>(.*?)<\/em>/g, '*$1*')
     .replace(/<code>(.*?)<\/code>/g, '`$1`')
     .replace(/<a href="([^"]+)">([^<]+)<\/a>/g, '[$2]($1)')
-    .replace(/<[^>]+>/g, '');
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 }
 
 function serializeBlocks(blocks: EditorBlock[], depth: number): string {
