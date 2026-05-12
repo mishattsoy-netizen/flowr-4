@@ -620,12 +620,12 @@ export function BlockRenderer({
     if (block.type === 'bulletList') {
       if (d === 0) return <div className="w-[5.5px] h-[5.5px] rounded-full bg-[var(--bone-70)] flex-shrink-0" />;
       if (d === 1) return <div className="w-[5.5px] h-[5.5px] rounded-sm border border-[var(--bone-70)] flex-shrink-0" />;
-      return <div className="w-[4px] h-[4px] rounded-full bg-[var(--bone-40)] flex-shrink-0" />;
+      return <div className="w-[5.5px] h-[5.5px] bg-[var(--bone-70)] flex-shrink-0" />;
     }
     if (block.type === 'dashedList') {
       if (d === 0) return <div className="w-[8px] h-[1px] bg-[var(--bone-70)] flex-shrink-0" />;
-      if (d === 1) return <div className="w-[6px] h-[1px] bg-[var(--bone-50)] flex-shrink-0" />;
-      return <div className="w-[4px] h-[1px] bg-[var(--bone-30)] flex-shrink-0" />;
+      if (d === 1) return <div className="w-[6px] h-[1px] bg-[var(--bone-70)] flex-shrink-0" />;
+      return <div className="w-[3px] h-[3px] rounded-full bg-[var(--bone-70)] flex-shrink-0" />;
     }
     if (block.type === 'numberedList') {
       const counterStyle = d === 0 ? 'arabic' : d === 1 ? 'alpha' : 'roman';
