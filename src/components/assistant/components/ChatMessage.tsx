@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { parseMarkdownToBlocks } from '@/lib/utils/markdownToBlocks';
 
 const InTableContext = createContext(false);
+const InHeaderContext = createContext(false);
 const InListContext = createContext(false);
 const ListTypeContext = createContext<'ul' | 'ol' | null>(null);
 
@@ -56,7 +57,7 @@ const renderContentWithStyles = (content: any): any => {
       if (!part) continue;
 
       if (ARROW_MAP[part]) {
-        const activeColor = stack.find(s => s.startsWith('text-')) || 'text-[var(--bone-60)]';
+        const activeColor = stack.find(s => s.startsWith('text-')) || 'text-[var(--bone-70)]';
         const isMono = stack.includes('font-mono');
         result.push(
           <span
@@ -82,9 +83,9 @@ const renderContentWithStyles = (content: any): any => {
         const idx = stack.lastIndexOf('text-[var(--bone-30)]');
         if (idx !== -1) stack.splice(idx, 1);
       } else if (part === '[60]') {
-        stack.push('text-[var(--bone-60)]');
+        stack.push('text-[var(--bone-70)]');
       } else if (part === '[/60]') {
-        const idx = stack.lastIndexOf('text-[var(--bone-60)]');
+        const idx = stack.lastIndexOf('text-[var(--bone-70)]');
         if (idx !== -1) stack.splice(idx, 1);
       } else if (part === '[100]') {
         stack.push('text-[var(--bone-100)]');
@@ -102,9 +103,9 @@ const renderContentWithStyles = (content: any): any => {
         const idx = stack.lastIndexOf('text-[var(--bone-30)]');
         if (idx !== -1) stack.splice(idx, 1);
       } else if (part === '[a60]') {
-        stack.push('text-[var(--bone-60)]');
+        stack.push('text-[var(--bone-70)]');
       } else if (part === '[/a60]') {
-        const idx = stack.lastIndexOf('text-[var(--bone-60)]');
+        const idx = stack.lastIndexOf('text-[var(--bone-70)]');
         if (idx !== -1) stack.splice(idx, 1);
       } else {
         if (stack.length > 0) {
@@ -273,8 +274,8 @@ const ApplyNoteCard = ({ content }: { content: string }) => {
             )}
           </button>
         </div>
-        <div className="w-full max-h-[140px] overflow-y-auto bg-black/20 p-3 rounded-[12px] text-[12.5px] font-medium leading-[133%] text-bone-60 font-sans border border-white/5 custom-scrollbar">
-          <pre className="whitespace-pre-wrap font-sans text-bone-80 leading-[133%] font-medium w-full">{content}</pre>
+        <div className="w-full max-h-[140px] overflow-y-auto bg-[var(--color-dark)] p-3 rounded-[12px] text-[12.5px] font-medium leading-[133%] text-bone-100 font-sans border border-white/5 custom-scrollbar">
+          <pre className="whitespace-pre-wrap font-sans text-bone-100 leading-[133%] font-medium w-full">{content}</pre>
         </div>
       </div>
     </div>
@@ -359,7 +360,7 @@ const ApplyCanvasCard = ({ content }: { content: string }) => {
                 </div>
               </div>
             </div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-bone-60">Proposed Canvas Update</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-bone-70">Proposed Canvas Update</p>
           </div>
           <button
             onClick={handleApply}
@@ -383,7 +384,7 @@ const ApplyCanvasCard = ({ content }: { content: string }) => {
             )}
           </button>
         </div>
-        <div className="w-full max-h-[140px] overflow-y-auto bg-black/20 p-3 rounded-[12px] text-[12.5px] font-mono leading-[133%] text-bone-60 border border-white/5 custom-scrollbar">
+        <div className="w-full max-h-[140px] overflow-y-auto bg-[var(--color-dark)] p-3 rounded-[12px] text-[12.5px] font-mono leading-[133%] text-bone-100 border border-white/5 custom-scrollbar">
           <pre className="whitespace-pre-wrap leading-[133%] font-medium w-full">{content}</pre>
         </div>
       </div>
@@ -434,7 +435,7 @@ const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
           rel="noopener noreferrer"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className="inline-flex items-center gap-1.5 px-2 py-1 mt-1 mr-1.5 bg-white/5 hover:bg-white/10 rounded-full text-[11px] font-bold font-sans text-[var(--bone-60)] hover:text-bone-100 no-underline transition-all duration-200 select-none border border-white/5"
+          className="inline-flex items-center gap-1.5 px-2 py-1 mt-1 mr-1.5 bg-white/5 hover:bg-white/10 rounded-full text-[11px] font-bold font-sans text-[var(--bone-70)] hover:text-bone-100 no-underline transition-all duration-200 select-none border border-white/5"
         >
           {faviconUrl && (
             <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 overflow-hidden rounded-[4px]">
@@ -754,10 +755,10 @@ export const ChatMessage = memo(({
           return (
             <div className="mb-0 font-sans font-medium opacity-30 text-[14px] tracking-[0] flex items-center">
               <StatusTyping text={children} />
-              {atEnd && <span className="ai-cursor-inline">█</span>}
             </div>
           );
         }
+
 
         const childrenArray = React.Children.toArray(children);
         const isPureText = childrenArray.every(c => typeof c === 'string');
@@ -778,8 +779,8 @@ export const ChatMessage = memo(({
             const textAfter = contentStr.substring(matchIndex + imgMatch[0].length);
 
             return (
-              <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '18px', letterSpacing: '-0.03em' }}>
-                {textBefore && <span style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '18px', letterSpacing: '-0.03em' }}>{renderContentWithStyles(textBefore)}</span>}
+              <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
+                {textBefore && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textBefore)}</span>}
                 <ChatImage
                   key={cleanSrc.substring(0, 32) + (description?.length || 0)}
                   src={cleanSrc}
@@ -789,7 +790,7 @@ export const ChatMessage = memo(({
                   onHeightChange={scrollToBottom}
                   onAddToWorkspace={() => handleAddImageToWorkspace(cleanSrc)}
                 />
-                {textAfter && <span style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '18px', letterSpacing: '-0.03em' }}>{renderContentWithStyles(textAfter)}</span>}
+                {textAfter && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textAfter)}</span>}
                 {(atEnd && !isEmpty) && <span className="ai-cursor-inline">█</span>}
               </div>
             );
@@ -797,7 +798,7 @@ export const ChatMessage = memo(({
         }
 
         return (
-          <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '18px', letterSpacing: '-0.03em' }}>
+          <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
             {renderContentWithStyles(children)}
             {(atEnd && !isEmpty) && <span className="ai-cursor-inline">█</span>}
           </div>
@@ -805,15 +806,15 @@ export const ChatMessage = memo(({
       },
       h1: ({ node, children }: any) => {
         const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h1 className="text-2xl font-semibold mb-4 text-bone-100 mt-6 first:mt-0" style={{ fontFamily: '"Crimson Text"', fontSize: '28px', letterSpacing: '-0.03em', fontWeight: 600 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h1>;
+        return <h1 className="text-2xl font-medium mb-4 text-bone-100 mt-6 first:mt-0" style={{ fontFamily: '"Literata"', fontSize: '26px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h1>;
       },
-      h2: ({ node, children }: any) => {
+      h2({ node, children }: any) {
         const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h2 className="text-xl font-semibold mb-3 text-bone-100 mt-5" style={{ fontFamily: '"Crimson Text"', fontSize: '24px', letterSpacing: '-0.03em', fontWeight: 600 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h2>;
+        return <h2 className="text-xl font-medium mb-3 text-bone-100 mt-5" style={{ fontFamily: '"Literata"', fontSize: '22px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h2>;
       },
-      h3: ({ node, children }: any) => {
+      h3({ node, children }: any) {
         const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h3 className="text-lg font-semibold mb-2 text-bone-100 mt-4" style={{ fontFamily: '"Crimson Text"', fontSize: '20px', letterSpacing: '-0.03em', fontWeight: 600 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h3>;
+        return <h3 className="text-lg font-medium mb-2 text-bone-100 mt-4" style={{ fontFamily: '"Literata"', fontSize: '18px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h3>;
       },
 
       a: ({ href, children }: any) => {
@@ -834,13 +835,13 @@ export const ChatMessage = memo(({
 
         return <LinkWithPopup href={href}>{children}</LinkWithPopup>;
       },
-      strong: ({ node, children }: any) => {
+      strong({ children }: any) {
         const inTable = !!useContext(InTableContext);
-        return <strong className="font-semibold" style={!inTable ? { fontFamily: '"Crimson Text"', fontWeight: 600, letterSpacing: '-0.03em' } : undefined}>{renderContentWithStyles(children)}</strong>;
+        return <strong className="font-medium" style={!inTable ? { fontFamily: '"Literata"', fontWeight: 500, letterSpacing: '-0.01em' } : undefined}>{renderContentWithStyles(children)}</strong>;
       },
-      em: ({ children }: any) => {
+      em({ children }: any) {
         const inTable = !!useContext(InTableContext);
-        return <em className="italic" style={!inTable ? { fontFamily: '"Crimson Text"', letterSpacing: '-0.03em' } : undefined}>{renderContentWithStyles(children)}</em>;
+        return <em className="italic" style={!inTable ? { fontFamily: '"Literata"', letterSpacing: '-0.01em' } : undefined}>{renderContentWithStyles(children)}</em>;
       },
       ul: ({ children, className: ulClassName }: any) => {
         const isTaskList = typeof ulClassName === 'string' && ulClassName.includes('contains-task-list');
@@ -930,7 +931,7 @@ export const ChatMessage = memo(({
 
         return (
           <li className={clsx(
-            "flex items-start group/li gap-1.5", 
+            "flex items-start group/li gap-1.5",
             listType === 'ol' ? "[counter-increment:list-counter]" : "",
             "list-none"
           )}>
@@ -949,12 +950,12 @@ export const ChatMessage = memo(({
                   </span>
                 </span>
               ) : listType === 'ul' ? (
-                <span className="w-[5.5px] h-[5.5px] rounded-full bg-bone-60/40 mt-[11px] mr-1" />
+                <span className="w-[5.5px] h-[5.5px] rounded-full bg-bone-70/40 mt-[11px] mr-1" />
               ) : listType === 'ol' ? (
-                <span className="text-bone-60/40 font-medium font-serif text-[18px] tracking-tight mt-0 before:content-[counter(list-counter)_'.']" style={{ fontFamily: '"Crimson Text"' }} />
+                <span className="text-bone-70/40 font-normal font-serif text-[16px] tracking-tight mt-0 before:content-[counter(list-counter)_'.']" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }} />
               ) : null}
             </div>
-            <div className="flex-1 min-w-0 leading-[1.6] font-medium tracking-[0] break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '18px', letterSpacing: '-0.03em' }}>
+            <div className="flex-1 min-w-0 leading-[1.6] font-normal tracking-[0] break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
               <InListContext.Provider value={true}>
                 {renderContentWithStyles(filteredChildren)}
               </InListContext.Provider>
@@ -969,7 +970,7 @@ export const ChatMessage = memo(({
         return null;
       },
       blockquote: ({ children }: any) => (
-        <blockquote className="border-l-4 border-white/10 pl-4 py-1 my-3 italic bg-white/5 rounded-r text-bone-60">
+        <blockquote className="border-l-4 border-white/10 pl-4 py-1 my-3 italic bg-white/5 rounded-r text-bone-70">
           {children}
         </blockquote>
       ),
@@ -989,7 +990,7 @@ export const ChatMessage = memo(({
 
         if (inline || inTable) {
           return (
-            <code className={clsx("bg-white/10 rounded px-1.5 py-0.5 text-[12px] font-mono tracking-[0] font-medium", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
+            <code className={clsx("bg-[var(--bone-6)] rounded px-1.5 py-0.5 text-[12px] font-mono tracking-[0] font-medium", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
               {children}{atEnd && <span className="ai-cursor-inline">█</span>}
             </code>
           );
@@ -998,37 +999,41 @@ export const ChatMessage = memo(({
         const matchLang = /language-(\w+)/.exec(className || '');
         const language = matchLang ? matchLang[1] : 'Code';
         const isMono = language !== 'markdown' && language !== 'text';
-
-        const inList = !!useContext(InListContext);
+        const inList = useContext(InListContext);
+        const contentStr = String(children).replace(/\n$/, '');
+        const isSingleRow = !contentStr.includes('\n');
 
         return (
           <div className={clsx(
-            "my-3 w-full rounded-2xl overflow-hidden border border-white/10 bg-black/10 group/code",
+            "my-3 w-full rounded-3xl overflow-hidden border border-[var(--bone-12)] bg-[var(--color-dark)] group/code relative",
             inList && "ml-[-12px] !w-[calc(100%+12px)]"
           )}>
-            <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.03] border-b border-white/5 select-none">
-              <span className="text-[10.5px] font-bold text-bone-60 uppercase tracking-widest font-sans">{language}</span>
-              <button
-                onClick={() => navigator.clipboard.writeText(String(children).replace(/\n$/, ''))}
-                className="flex items-center gap-1.5 text-[10.5px] font-semibold text-bone-40 hover:text-bone-100 transition-colors duration-200"
-              >
-                <Copy className="w-3 h-3" />
-                <span>Copy</span>
-              </button>
-            </div>
-            <pre className="p-4 overflow-x-auto m-0 bg-transparent">
-              <code className={clsx("text-[13px] leading-relaxed font-mono", isMono ? "font-mono" : "font-sans")} style={isMono ? { fontFamily: 'DM Mono' } : undefined} {...props}>
+            <button
+              onClick={() => navigator.clipboard.writeText(contentStr)}
+              className={clsx(
+                "absolute right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-12)] transition-all opacity-0 group-hover/code:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5",
+                isSingleRow ? "top-1/2 -translate-y-1/2" : "top-2.5"
+              )}
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+
+            <pre className="px-4 py-3 overflow-x-auto m-0 bg-transparent">
+
+              <code className={clsx("text-[14px] leading-relaxed font-mono text-[var(--bone-100)]", isMono ? "font-mono" : "font-sans")} style={isMono ? { fontFamily: 'DM Mono' } : undefined} {...props}>
                 {children}{atEnd && <span className="ai-cursor-inline">█</span>}
               </code>
             </pre>
           </div>
         );
+
       },
-      hr: () => <hr className="border-white/10 my-4" />,
+      hr: () => <hr className="border-[var(--bone-12)] my-4" />,
       img: ({ src, alt }: any) => {
         if (!src) return null;
-        // Clean up data URIs that might have been mangled by markdown parsing or sanitization
         const cleanSrc = src.trim().replace(/\n/g, '').replace(/\r/g, '');
+        // Skip fabricated/invalid URLs entirely (bot occasionally emits bogus image markdown)
+        if (!/^(data:image\/|https?:\/\/|\/)/.test(cleanSrc)) return null;
         return (
           <ChatImage
             src={cleanSrc}
@@ -1045,7 +1050,7 @@ export const ChatMessage = memo(({
         return (
           <InTableContext.Provider value={true}>
             <div className={clsx(
-              "overflow-x-auto my-3 border border-white/10 rounded-2xl w-full bg-black/10",
+              "overflow-x-auto my-3 border border-[var(--bone-12)] rounded-2xl w-full bg-[var(--color-dark)]",
               inList && "ml-[-12px] !w-[calc(100%+12px)]"
             )}>
               <table className="w-full text-[13px] border-collapse font-sans">{children}</table>
@@ -1053,12 +1058,19 @@ export const ChatMessage = memo(({
           </InTableContext.Provider>
         );
       },
-      thead: ({ children }: any) => <thead className="border-b border-white/10 bg-white/[0.02]">{children}</thead>,
-      tbody: ({ children }: any) => <tbody className="divide-y divide-white/[0.05]">{children}</tbody>,
-      tr: ({ children }: any) => <tr className="hover:bg-white/[0.01] transition-colors">{children}</tr>,
-      th: ({ children }: any) => <th className="px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-bone-40 font-sans">{children}</th>,
+      thead: ({ children }: any) => (
+        <InHeaderContext.Provider value={true}>
+          <thead className="border-b border-[var(--bone-12)] bg-[var(--bone-2)]">{children}</thead>
+        </InHeaderContext.Provider>
+      ),
+      tbody: ({ children }: any) => <tbody className="divide-y divide-[var(--bone-6)]">{children}</tbody>,
+      tr: ({ children }: any) => {
+        const inHeader = React.useContext(InHeaderContext);
+        return <tr className={clsx("transition-colors", !inHeader && "hover:bg-[var(--bone-2)]")}>{children}</tr>;
+      },
+      th: ({ children }: any) => <th className="px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-bone-100 font-sans">{children}</th>,
       td: ({ children }: any) => (
-        <td className="px-3 py-2.5 text-bone-80/90 font-sans leading-snug first:font-semibold first:text-bone-100">
+        <td className="px-3 py-2.5 text-bone-100 font-sans leading-snug first:font-semibold first:text-bone-100">
           {children}
         </td>
       ),
@@ -1137,7 +1149,7 @@ export const ChatMessage = memo(({
       )}>
         <div className={clsx(
           "flex flex-col min-w-0",
-          msg.role === 'user' ? "items-end max-w-[90%]" : "items-start max-w-[99%] flex-1"
+          msg.role === 'user' ? "items-end max-w-[90%]" : "items-start max-w-full flex-1"
         )}>
           {msg.role === 'assistant' && isLast && !displayContent ? (
             <div className="flex items-center gap-2.5 h-5 select-none -ml-1 mb-1">
@@ -1147,6 +1159,7 @@ export const ChatMessage = memo(({
               <div className="flex items-center gap-2">
                 <StatusTyping
                   text={(() => {
+                    if (msg.status) return msg.status;
                     if (msg.pipelineSteps && msg.pipelineSteps.length > 0) {
                       const activeStep = msg.pipelineSteps.find(s => s.status === 'running') || msg.pipelineSteps[msg.pipelineSteps.length - 1];
                       if (activeStep) return activeStep.label || activeStep.goal;
@@ -1154,10 +1167,10 @@ export const ChatMessage = memo(({
                     const category = thinkingEnabled ? "THINKING" : "CLASSIFIER";
                     const custom = aiSessionContext?.status_messages?.[category];
                     if (custom) return `${custom.emoji} ${custom.label}`.trim();
-                    return "Working";
+                    return "Working...";
                   })()}
-                  className="font-medium text-[var(--bone-100)]"
-                  style={{ fontFamily: '"Crimson Text"', fontWeight: 500, fontSize: '17px' }}
+                  className="font-normal text-[var(--bone-100)]"
+                  style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '15px', letterSpacing: '-0.01em' }}
                 />
                 {elapsed > 0 && (
                   <span className="text-[12px] font-medium text-[var(--bone-30)] font-mono opacity-80 select-none mt-0.5">
@@ -1210,7 +1223,7 @@ export const ChatMessage = memo(({
                                   <ChatAudioPlayer url={att.url} name={att.name} />
                                 ) : (
                                   <div className="px-3 py-2 text-[10px] flex items-center gap-2 group-hover:text-bone-100 font-medium">
-                                    <Paperclip strokeWidth={2} className="w-3 h-3 text-bone-60" />
+                                    <Paperclip strokeWidth={2} className="w-3 h-3 text-bone-70" />
                                     <span className="max-w-[120px] truncate">{att.name}</span>
                                   </div>
                                 )}
@@ -1229,18 +1242,18 @@ export const ChatMessage = memo(({
                           onClick={() => setShowThinking(!showThinking)}
                           className={clsx(
                             "flex items-center gap-2 px-3 py-1.5 rounded-[12px] transition-all border border-white/5",
-                            showThinking 
-                              ? "bg-white/10 text-bone-100 border-white/10" 
-                              : "bg-[var(--bone-5)] hover:bg-[var(--bone-10)] text-[var(--bone-60)] hover:text-[var(--bone-90)]"
+                            showThinking
+                              ? "bg-white/10 text-bone-100 border-white/10"
+                              : "bg-[var(--bone-5)] hover:bg-[var(--bone-10)] text-[var(--bone-70)] hover:text-[var(--bone-90)]"
                           )}
                         >
-                          <Brain className={clsx("w-3.5 h-3.5", isAILoading && isLast ? "text-bone-100 animate-pulse" : "text-bone-60")} />
+                          <Brain className={clsx("w-3.5 h-3.5", isAILoading && isLast ? "text-bone-100 animate-pulse" : "text-bone-70")} />
                           <span className="font-semibold tracking-tight">{isAILoading && isLast ? 'Thinking...' : 'Reasoning'}</span>
                           <ChevronDown className={clsx("w-3.5 h-3.5 opacity-50 transition-transform duration-300", showThinking && "rotate-180")} />
                         </button>
                         {showThinking && (
                           <div className="mt-2 pl-4 ml-2 border-l border-white/10 pr-4 py-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="text-[14px] text-[var(--bone-60)] leading-relaxed prose prose-invert !max-w-none prose-p:my-1 prose-sm opacity-90 font-sans">
+                            <div className="text-[14px] text-[var(--bone-70)] leading-relaxed prose prose-invert !max-w-none prose-p:my-1 prose-sm opacity-90 font-sans">
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {thinkContent}
                               </ReactMarkdown>
@@ -1255,15 +1268,21 @@ export const ChatMessage = memo(({
                       isAILoading && isLast && !displayContent && "opacity-0"
                     )}>
                       {isPureImage ? (
-                        <div className="w-full">
+                        <div className="group/row relative transition-colors">
                           {(() => {
-                            const imgMatch = displayContent.match(/!\[(.*?)\]\s*\(\s*(data:image\/.*?;base64,[\s\S]*?|https?:\/\/[\s\S]*?|AUO[\s\S]*?)(?:\s*\)|$)/);
+                            const imgMatch = displayContent.match(/!\[(.*?)\]\s*\(\s*([^)]+?)(?:\s+"([^"]+)")?\s*\)/) || 
+                                           displayContent.match(/!\[(.*?)\]\s*\(\s*(data:image\/.*?;base64,[\s\S]*?|https?:\/\/[\s\S]*?|AUO[\s\S]*?)(?:\s*\)|$)/);
                             if (imgMatch) {
                               const cleanSrc = imgMatch[2].trim().replace(/\s/g, '');
+                              const descriptionFromMarkdown = imgMatch[3];
+                              const description = msg.image_description || descriptionFromMarkdown;
                               return (
                                 <ChatImage
+                                  key={cleanSrc.substring(0, 32) + (description?.length || 0)}
                                   src={cleanSrc}
-                                  alt={imgMatch[1] || ''}
+                                  alt={imgMatch[1] || 'Generated Image'}
+                                  description={description}
+                                  messageId={msg.id}
                                   onHeightChange={scrollToBottom}
                                   onAddToWorkspace={() => handleAddImageToWorkspace(cleanSrc)}
                                 />
@@ -1282,7 +1301,7 @@ export const ChatMessage = memo(({
                           "prose-blockquote:border-l-emerald-500/50 prose-blockquote:bg-emerald-500/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg",
                           "w-full overflow-hidden relative [&_p]:my-0 break-words",
                           !hasFinishedTyping && msg.role === 'assistant' && "prose-streaming"
-                        )} style={{ fontFamily: '"Crimson Text"', fontSize: '18px', fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--bone-100)' }}>
+                        )} style={{ fontFamily: '"Literata"', fontSize: '16px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={markdownComponents as any}
@@ -1316,7 +1335,7 @@ export const ChatMessage = memo(({
                                   href={url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-medium text-[var(--bone-60)] hover:text-bone-100 transition-all duration-200 max-w-[160px] truncate"
+                                  className="flex items-center gap-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-medium text-[var(--bone-70)] hover:text-bone-100 transition-all duration-200 max-w-[160px] truncate"
                                 >
                                   <span className="w-3.5 h-3.5 flex items-center justify-center bg-white/5 rounded text-[8px] font-bold shrink-0 opacity-40">{i + 1}</span>
                                   {faviconUrl && (

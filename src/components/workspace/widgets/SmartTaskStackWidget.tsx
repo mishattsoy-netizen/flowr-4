@@ -4,6 +4,7 @@ import { useStore } from '@/data/store';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X } from 'lucide-react';
+import { stripHtml } from '@/lib/utils';
 
 const ALL_TABS = [
   { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
@@ -216,12 +217,12 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
         {displayTasks.length > 0 ? (
           <div className="space-y-1">
             {displayTasks.map(t => (
-              <div key={t.id} className="group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
+              <div key={t.id} className="group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className="w-4 h-4 rounded-[4px] border border-[var(--bone-30)] hover:border-[var(--bone-60)] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95"
+                  className="w-4 h-4 rounded-[4px] border border-[var(--bone-30)] hover:border-[var(--bone-70)] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95"
                 />
-                <span className="flex-1 text-sm text-foreground/90 font-medium truncate tracking-wide">{t.title}</span>
+                <span className="flex-1 text-sm text-foreground/90 font-medium truncate tracking-wide">{stripHtml(t.title || '')}</span>
                 {t.dueDate && (
                   <span className="text-[11px] text-[var(--bone-30)] font-medium tabular-nums shrink-0">{formatDate(t.dueDate)}</span>
                 )}
@@ -233,7 +234,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
             <CheckCircle2 strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">All caught up!</p>
-              <p className="text-xs text-bone-60 opacity-40 mt-1 leading-snug text-balance">No tasks to display in {activeTabDef.label}. Enjoy your day!</p>
+              <p className="text-xs text-bone-70 opacity-40 mt-1 leading-snug text-balance">No tasks to display in {activeTabDef.label}. Enjoy your day!</p>
             </div>
             <button
               onClick={() => setAdding(true)}

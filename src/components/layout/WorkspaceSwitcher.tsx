@@ -34,7 +34,7 @@ export function WorkspaceSwitcher() {
         </span>
         <ChevronDown
           strokeWidth={2}
-          className={clsx('w-3.5 h-3.5 text-[var(--bone-60)]', open && 'rotate-180')}
+          className={clsx('w-3.5 h-3.5 text-[var(--bone-70)]', open && 'rotate-180')}
         />
       </button>
 
@@ -45,7 +45,7 @@ export function WorkspaceSwitcher() {
               key={ws.id}
               onClick={() => { setActiveWorkspaceId(ws.id); setOpen(false); }}
               className={clsx(
-                "flex items-center w-full px-3 py-2 text-sm text-left gap-2 transition-all duration-0",
+                "flex items-center w-full px-3 py-2 text-sm text-left gap-2 ",
                 ws.id === activeWorkspaceId
                   ? "bg-[var(--bone-15)] text-foreground"
                   : "hover:bg-[var(--bone-6)] text-foreground/80 hover:text-foreground"
@@ -60,7 +60,7 @@ export function WorkspaceSwitcher() {
           <div className="h-px bg-border mx-3 my-1" />
           <button
             onClick={() => { openModal({ kind: 'newWorkspace' }); setOpen(false); }}
-            className="flex items-center w-full px-3 py-2 text-sm hover:bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)] gap-2"
+            className="flex items-center w-full px-3 py-2 text-sm hover:bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)] gap-2"
           >
             <Plus strokeWidth={2} className="w-3.5 h-3.5 shrink-0" />
             New space

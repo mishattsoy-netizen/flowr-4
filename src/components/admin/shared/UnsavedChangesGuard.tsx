@@ -154,7 +154,7 @@ function NavigationGuard() {
             </div>
             <div>
               <h3 className="text-lg font-bold text-bone-100 tracking-tight">Unsaved Changes</h3>
-              <p className="text-sm text-bone-60">You have unsaved edits in this prompt. If you leave now, these changes will be permanently lost.</p>
+              <p className="text-sm text-bone-70">You have unsaved edits in this prompt. If you leave now, these changes will be permanently lost.</p>
             </div>
           </div>
 
@@ -171,7 +171,7 @@ function NavigationGuard() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="h-11 rounded-medium bg-white/5 text-bone-60 hover:text-bone-100 hover:bg-white/10 font-bold text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                className="h-11 rounded-medium bg-white/5 text-bone-70 hover:text-bone-100 hover:bg-white/10 font-bold text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
               >
                 <X className="w-3.5 h-3.5" /> Cancel
               </button>

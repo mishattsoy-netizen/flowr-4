@@ -77,7 +77,24 @@ export async function runOpenRouter(
         }
       }
 
-      console.log(`[DEBUG openrouter.ts] FULL PAYLOAD:`, JSON.stringify(requestBody, null, 2));
+      // Redact base64 image data from log to keep terminal readable (full payload still sent to API)
+      if (process.env.NODE_ENV !== 'production') {
+        const logBody = JSON.parse(JSON.stringify(requestBody))
+        if (Array.isArray(logBody.messages)) {
+          for (const msg of logBody.messages) {
+            if (typeof msg.content === 'string') {
+              msg.content = msg.content.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 image redacted]')
+            } else if (Array.isArray(msg.content)) {
+              for (const part of msg.content) {
+                if (part?.image_url?.url?.startsWith('data:')) {
+                  part.image_url.url = '[base64 image redacted]'
+                }
+              }
+            }
+          }
+        }
+        console.log(`[DEBUG openrouter.ts] PAYLOAD:`, JSON.stringify(logBody, null, 2));
+      }
 
       logger.info(`OpenRouter: Preparing request for model ${modelId} with provider type: ${typeof openrouterProvider}, value: "${openrouterProvider}"`)
 

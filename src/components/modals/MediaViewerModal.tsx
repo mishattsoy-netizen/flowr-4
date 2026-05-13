@@ -61,7 +61,7 @@ export function MediaViewerModal() {
               "w-10 h-10 rounded-full border flex items-center justify-center transition-all",
               showDrawer 
                 ? "bg-bone-100 border-bone-100 text-black" 
-                : "bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+                : "bg-white/5 border border-[var(--bone-12)] text-white/60 hover:text-white hover:bg-white/10"
             )}
             title="Toggle Details"
           >
@@ -70,22 +70,22 @@ export function MediaViewerModal() {
         )}
         <button 
           onClick={(e) => { e.stopPropagation(); handleOpenOriginal(); }}
-          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-white/5 border border-[var(--bone-12)] text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
           title="Open in new tab"
         >
           <ExternalLink className="w-4.5 h-4.5" />
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-white/5 border border-[var(--bone-12)] text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
           title="Download"
         >
           <Download className="w-4.5 h-4.5" />
         </button>
-        <div className="w-px h-6 bg-white/10 mx-1" />
+        <div className="w-px h-6 bg-[var(--bone-6)] mx-1" />
         <button 
           onClick={closeModal} 
-          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
+          className="w-10 h-10 rounded-full bg-white/5 border border-[var(--bone-12)] text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
         >
           <X className="w-5 h-5" />
         </button>
@@ -106,12 +106,12 @@ export function MediaViewerModal() {
               alt="Preview"
               className={clsx(
                   "rounded-xl shadow-2xl transition-all duration-300 select-none",
-                  isZoomed ? "cursor-zoom-out max-w-none scale-150" : "cursor-zoom-in object-contain max-h-[80vh] w-auto border border-white/10"
+                  isZoomed ? "cursor-zoom-out max-w-none scale-150" : "cursor-zoom-in object-contain max-h-[80vh] w-auto border border-[var(--bone-12)]"
               )}
               onClick={() => setIsZoomed(!isZoomed)}
             />
           ) : (
-            <div className="bg-white/5 border border-white/10 p-12 rounded-[2.5rem] flex flex-col items-center gap-6 shadow-2xl">
+            <div className="bg-white/5 border border-[var(--bone-12)] p-12 rounded-[2.5rem] flex flex-col items-center gap-6 shadow-2xl">
               <div className="w-24 h-24 rounded-3xl bg-accent/10 border border-accent/30 flex items-center justify-center shadow-2xl shadow-accent/10">
                 <FileText className="w-12 h-12 text-accent" />
               </div>
@@ -133,7 +133,7 @@ export function MediaViewerModal() {
       {/* Side Description Drawer */}
       <div 
         className={clsx(
-          "fixed top-0 right-0 bottom-0 w-[400px] bg-black/60 backdrop-blur-3xl border-l border-white/10 z-[1005] transition-transform duration-500 ease-out p-8 pt-24 overflow-y-auto custom-scrollbar",
+          "fixed top-0 right-0 bottom-0 w-[400px] bg-black/60 backdrop-blur-3xl border-l border-[var(--bone-12)] z-[1005] transition-transform duration-500 ease-out p-8 pt-24 overflow-y-auto custom-scrollbar",
           showDrawer ? "translate-x-0" : "translate-x-full"
         )}
         onClick={e => e.stopPropagation()}
@@ -141,22 +141,22 @@ export function MediaViewerModal() {
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="space-y-2">
             <h3 className="text-white/40 text-[11px] font-bold uppercase tracking-[0.2em]">Image Narrative</h3>
-            <div className="h-px w-12 bg-bone-100/20" />
+            <div className="h-px w-12 bg-[var(--bone-6)]" />
           </div>
           
-          <div className="text-bone-100/90 text-[17px] leading-relaxed font-medium font-serif italic selection:bg-bone-100/20">
+          <div className="text-bone-100/90 text-[17px] leading-[135%] tracking-[0.135em] font-medium font-serif italic selection:bg-bone-100/20">
             {description}
           </div>
 
           <div className="pt-8 flex flex-col gap-6">
-            {/* Original Prompt Section */}
+            {/* Image Prompt Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-3 h-3 text-white/30" />
-                <h4 className="text-white/30 text-[9px] font-bold uppercase tracking-widest">Original Prompt</h4>
+                <h4 className="text-white/30 text-[9px] font-bold uppercase tracking-widest">Image Prompt</h4>
               </div>
               <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-[13px] text-white/60 leading-relaxed font-mono">
-                {storeMessage?.content || modalData?.description || 'Prompt not available'}
+                {(storeMessage as any)?.image_prompt || 'Prompt not available'}
               </div>
             </div>
 

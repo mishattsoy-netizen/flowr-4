@@ -6,6 +6,12 @@ import { savePipelineSetting } from '@/app/admin/router/actions'
 import OrchestratorTestTool from './OrchestratorTestTool'
 import clsx from 'clsx'
 
+const ALL_CATEGORIES = [
+  'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING', 'CODING',
+  'TOOL_CALLING', 'WEB_SEARCH', 'DEEP_RESEARCH', 'ADVISOR',
+  'IMAGE_GEN', 'IMAGE_UPSCALE', 'VISION', 'AUDIO_VOICE', 'CLASSIFIER'
+]
+
 interface Props {
   settings: {
     orchestrator_enabled?: boolean
@@ -13,6 +19,7 @@ interface Props {
     image_gen_auto_last?: boolean
     history_limit?: number
     history_enabled_categories?: string[]
+    global_prompt_enabled_categories?: string[]
   }
 }
 
@@ -20,11 +27,8 @@ export default function OrchestratorPanel({ settings }: Props) {
   const [orchestratorOn, setOrchestratorOn] = useState(settings.orchestrator_enabled !== false)
   const [maxSteps, setMaxSteps] = useState(settings.max_pipeline_steps ?? 7)
   const [historyLimit, setHistoryLimit] = useState(settings.history_limit ?? 10)
-  const [historyEnabledCats, setHistoryEnabledCats] = useState<string[]>(settings.history_enabled_categories || [
-    'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING', 'CODING',
-    'TOOL_CALLING', 'WEB_SEARCH', 'DEEP_RESEARCH', 'ADVISOR',
-    'IMAGE_GEN', 'IMAGE_UPSCALE', 'VISION', 'AUDIO_VOICE', 'CLASSIFIER'
-  ])
+  const [historyEnabledCats, setHistoryEnabledCats] = useState<string[]>(settings.history_enabled_categories || ALL_CATEGORIES)
+  const [globalEnabledCats, setGlobalEnabledCats] = useState<string[]>(settings.global_prompt_enabled_categories || ALL_CATEGORIES)
   const [autoLast, setAutoLast] = useState(settings.image_gen_auto_last !== false)
   const [, startTransition] = useTransition()
 
@@ -36,12 +40,12 @@ export default function OrchestratorPanel({ settings }: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-white/5">
+    <section className="flex flex-col gap-4 p-4 rounded-big bg-white/5 border border-bone-12">
       <div className="flex items-center gap-3">
         <Network className="w-5 h-5 text-accent" />
         <div>
           <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Multi-Chain Orchestrator</h2>
-          <p className="text-[11px] text-bone-60">sequential chain execution & reasoning pipeline</p>
+          <p className="text-[11px] text-bone-70">sequential chain execution & reasoning pipeline</p>
         </div>
         <div className="ml-auto">
           <Toggle checked={orchestratorOn} onChange={v => handleUpdate('orchestrator_enabled', v, setOrchestratorOn)} />
@@ -92,11 +96,7 @@ export default function OrchestratorPanel({ settings }: Props) {
               <Info className="w-2.5 h-2.5 text-bone-20 cursor-help" />
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {[
-                'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING', 'CODING',
-                'TOOL_CALLING', 'WEB_SEARCH', 'DEEP_RESEARCH', 'ADVISOR',
-                'IMAGE_GEN', 'IMAGE_UPSCALE', 'VISION', 'AUDIO_VOICE', 'CLASSIFIER'
-              ].map(cat => {
+              {ALL_CATEGORIES.map(cat => {
                 const isEnabled = historyEnabledCats.includes(cat)
                 return (
                   <button
@@ -111,7 +111,38 @@ export default function OrchestratorPanel({ settings }: Props) {
                       "px-2 py-1 rounded-md text-[9px] font-bold transition-all border",
                       isEnabled 
                         ? "bg-accent/20 border-accent/30 text-accent" 
-                        : "bg-white/5 border-white/5 text-bone-40 hover:text-bone-60"
+                        : "bg-white/5 border-white/5 text-bone-40 hover:text-bone-70"
+                    )}
+                  >
+                    {cat.replace('_', ' ')}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t border-white/5 pt-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-bone-40 font-bold uppercase tracking-widest">Global Bot Prompt visibility</span>
+              <Info className="w-2.5 h-2.5 text-bone-20 cursor-help" />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_CATEGORIES.map(cat => {
+                const isEnabled = globalEnabledCats.includes(cat)
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      const next = isEnabled 
+                        ? globalEnabledCats.filter(c => c !== cat)
+                        : [...globalEnabledCats, cat]
+                      handleUpdate('global_prompt_enabled_categories', next, setGlobalEnabledCats)
+                    }}
+                    className={clsx(
+                      "px-2 py-1 rounded-md text-[9px] font-bold transition-all border",
+                      isEnabled 
+                        ? "bg-accent/20 border-accent/30 text-accent" 
+                        : "bg-white/5 border-white/5 text-bone-40 hover:text-bone-70"
                     )}
                   >
                     {cat.replace('_', ' ')}
@@ -130,8 +161,8 @@ export default function OrchestratorPanel({ settings }: Props) {
           </p>
         </div>
 
-        <div className="bg-background/40 rounded-[12px] p-3 border border-white/5">
-          <p className="text-[10px] font-bold text-bone-60 uppercase tracking-widest mb-2">Diagnostic Tool</p>
+        <div className="bg-background/40 rounded-regular p-3 border border-bone-6">
+          <p className="text-[10px] font-bold text-bone-70 uppercase tracking-widest mb-2">Diagnostic Tool</p>
           <OrchestratorTestTool />
         </div>
       </div>

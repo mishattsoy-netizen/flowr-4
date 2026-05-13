@@ -58,7 +58,7 @@ export function TaskCardUI({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 opacity-60">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-          <span className="text-[10px] font-ui font-medium uppercase tracking-wider text-[var(--bone-60)]">
+          <span className="text-[10px] font-ui font-medium uppercase tracking-wider text-[var(--bone-70)]">
             {workspaceName}
           </span>
         </div>
@@ -77,7 +77,7 @@ export function TaskCardUI({
 
       {/* Description/Note Clamped */}
       {(task.description || task.note) && (
-        <p className="text-[11px] text-[var(--bone-60)] leading-relaxed line-clamp-2 break-words">
+        <p className="text-[11px] text-[var(--bone-70)] leading-relaxed line-clamp-2 break-words">
           {task.description || task.note}
         </p>
       )}

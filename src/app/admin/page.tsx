@@ -17,7 +17,7 @@ export default async function AdminOverview() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">System Overview</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">System Overview</h1>
         <p className="text-muted-foreground text-sm font-medium">Real-time status of the Flowr AI engine.</p>
       </div>
 
@@ -28,8 +28,8 @@ export default async function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[10px]">
-        <div className="lg:col-span-2 bg-panel rounded-big p-6 relative overflow-hidden">
-          <h2 className="text-[10px] font-bold text-bone-60 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
+        <div className="lg:col-span-2 bg-panel border border-[var(--bone-12)] rounded-big p-6 relative overflow-hidden">
+          <h2 className="text-[10px] font-bold text-bone-70 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
             <div className="w-1 h-1 bg-accent rounded-full" />
             Traffic activity telemetry
           </h2>
@@ -38,8 +38,8 @@ export default async function AdminOverview() {
           </div>
         </div>
 
-        <div className="bg-panel rounded-big p-6 flex flex-col">
-          <h2 className="text-[10px] font-bold text-bone-60 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
+        <div className="bg-panel border border-[var(--bone-12)] rounded-big p-6 flex flex-col">
+          <h2 className="text-[10px] font-bold text-bone-70 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
              <div className="w-1 h-1 bg-bone-100 rounded-full" />
              Recent events log
           </h2>
@@ -60,7 +60,7 @@ export default async function AdminOverview() {
 function MetricCard({ title, value, change, icon: Icon, accent = false }: any) {
   return (
     <div className={cn(
-      "bg-panel rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200",
+      "bg-panel border border-[var(--bone-12)] rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200",
       accent ? "bg-accent/5 border-accent/20" : ""
     )}>
       <div className="flex items-center justify-between mb-4">
@@ -71,7 +71,7 @@ function MetricCard({ title, value, change, icon: Icon, accent = false }: any) {
         />
       </div>
       <div className="space-y-1">
-        <h3 className={cn("text-3xl font-display text-chromatic", accent ? "text-accent" : "text-foreground")}>{value}</h3>
+        <h3 className={cn("text-3xl font-display font-medium text-chromatic", accent ? "text-accent" : "text-foreground")}>{value}</h3>
         <p className="text-[10px] text-muted-foreground font-bold tracking-tight opacity-30">{change}</p>
       </div>
     </div>

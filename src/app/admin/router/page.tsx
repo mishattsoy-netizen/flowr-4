@@ -28,7 +28,7 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">Router Orchestration</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Router Orchestration</h1>
         <p className="text-muted-foreground text-sm font-medium">
           Multi-agent switching matrix — unified chain for all clients.
         </p>

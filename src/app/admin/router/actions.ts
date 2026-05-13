@@ -298,6 +298,23 @@ export async function savePipelineSetting(key: string, value: any) {
   return { success: true }
 }
 
+export async function getSubchainConfigsAction() {
+  const { getAllSubchainConfigs } = await import('@/lib/subchain-config')
+  return getAllSubchainConfigs()
+}
+
+export async function saveSubchainConfigsAction(configs: any[]) {
+  const { invalidateSubchainCache } = await import('@/lib/subchain-config')
+  invalidateSubchainCache()
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key: 'subchain_configs', value: configs, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/app/router')
+  revalidatePath('/admin/telegram/router')
+  return { success: true }
+}
+
 export async function getLayeredPromptPreview(category: string, mode: 'default' | 'pro') {
   const { getCompiledPrompt, getInternalPrompt } = await import('@/lib/bot/compilePrompt')
   const [globalPrompt, systemPrompt] = await Promise.all([

@@ -39,18 +39,8 @@ export function CommandPalette() {
 
   // Sync rendering state with isOpen to support exit animations
   useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      setIsClosing(false);
-    } else if (shouldRender) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-        setIsClosing(false);
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, shouldRender]);
+    setShouldRender(isOpen);
+  }, [isOpen]);
 
   const updateScrollFade = useCallback((target: HTMLDivElement | null) => {
     if (!target) return;
@@ -232,7 +222,7 @@ export function CommandPalette() {
       return [{
         id: 'ask-ai',
         label: `Ask AI: "${query.slice(4).trim() || '...'}"`,
-        description: 'Send this question to the Agent',
+        description: 'Send this question to the Chat',
         icon: <Sparkles strokeWidth={2} className="w-4 h-4" />,
         action: handleAskAI,
         type: 'action' as const,
@@ -344,23 +334,15 @@ export function CommandPalette() {
       onClick={() => setOpen(false)}
     >
       {/* Backdrop */}
-      <div 
-        className={clsx(
-          "absolute inset-0 bg-black/30 backdrop-blur-sm",
-          isClosing ? "backdrop-exit" : "backdrop-enter"
-        )} 
-      />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
       {/* Palette */}
       <div
-        className={clsx(
-          "relative w-full max-w-[640px] bg-[var(--color-panel)] border border-[var(--bone-15)] rounded-[var(--radius-big)] overflow-hidden shadow-2xl",
-          isClosing ? "palette-exit" : "palette-enter"
-        )}
+        className="relative w-full max-w-[640px] bg-[var(--color-panel)] border border-[var(--bone-12)] rounded-[var(--radius-big)] overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Input */}
-        <div className="flex items-center px-5 py-4 border-b border-[var(--bone-15)]">
+        <div className="flex items-center px-5 py-4 border-b border-[var(--bone-6)]">
           <div className="w-5 h-5 shrink-0 flex items-center justify-center mr-3">
             {isCommandMode ? (
               <Command strokeWidth={2} className="w-4.5 h-4.5 text-accent" />
@@ -425,12 +407,12 @@ export function CommandPalette() {
                 "w-full flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-8)] text-left group",
                 activeIndex === idx
                   ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
-                  : "text-[var(--bone-60)] hover:bg-[var(--bone-15)] hover:text-[var(--bone-100)]"
+                  : "text-[var(--bone-70)] hover:bg-[var(--bone-15)] hover:text-[var(--bone-100)]"
               )}
             >
               <div className={clsx(
                 "w-6 h-6 flex items-center justify-center shrink-0",
-                activeIndex === idx ? "text-[var(--bone-100)]" : "text-[var(--bone-60)]"
+                activeIndex === idx ? "text-[var(--bone-100)]" : "text-[var(--bone-70)]"
               )}>
                 {item.icon}
               </div>
@@ -456,7 +438,7 @@ export function CommandPalette() {
               )}
               {((item as any).shortcut) && (
                 <div className="flex items-center gap-0.5 shrink-0 ml-2">
-                  <span className="px-1.5 py-0.5 rounded-[var(--radius-small)] bg-[var(--bone-6)] text-[10px] font-mono text-[var(--bone-30)] group-hover:text-[var(--bone-60)]">
+                  <span className="px-1.5 py-0.5 rounded-[var(--radius-small)] bg-[var(--bone-6)] text-[10px] font-mono text-[var(--bone-30)] group-hover:text-[var(--bone-70)]">
                     {(item as any).shortcut}
                   </span>
                 </div>
@@ -468,10 +450,10 @@ export function CommandPalette() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--bone-15)] bg-[var(--bone-3)]">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--bone-6)] bg-[var(--bone-3)]">
           <button
             onClick={() => { setAIAssistantOpen(true); close(); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
           >
             <Sparkles strokeWidth={2} className="w-3 h-3" />
             Ask AI

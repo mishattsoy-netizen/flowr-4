@@ -4,12 +4,13 @@ import { Entity, EntityType, useStore } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
 import { ChevronRight, ChevronDown, FileText, Frame, Folder, Layers, Plus, MoreHorizontal } from 'lucide-react';
 import clsx from 'clsx';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { IconPicker } from './IconPicker';
 import { Tooltip } from './Tooltip';
 import { useSortable } from '@dnd-kit/sortable';
 import { useDndContext } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { stripHtml } from '@/lib/utils';
 
 interface TreeItemProps {
   entity: Entity;
@@ -63,6 +64,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
 
   const [tempTitle, setTempTitle] = React.useState(entity.title);
   const [iconPickerAnchor, setIconPickerAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEditing = editingEntity?.id === entity.id && editingEntity?.source === 'sidebar';
 
@@ -79,6 +81,14 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       setEditingEntityId(null);
     }
   };
+
+  React.useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      const target = textareaRef.current;
+      target.style.height = '18px';
+      target.style.height = `${Math.min(target.scrollHeight, 40)}px`;
+    }
+  }, [isEditing]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename();
@@ -154,7 +164,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
     
     const iconColorClass = clsx(
       "",
-      isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]"
+      isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]"
     );
 
     if (type === 'collection' || type === 'workspace' || type === 'folder') {
@@ -182,8 +192,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
               className="absolute -inset-[4px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-small)] hover:bg-[var(--bone-10)] cursor-pointer"
             >
               {isCollapsed 
-                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-60)] group-hover:text-[var(--bone-100)]" /> 
-                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-60)] group-hover:text-[var(--bone-100)]" />}
+                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" /> 
+                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />}
             </div>
           )}
         </div>
@@ -213,7 +223,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       ref={setNodeRef}
       style={style}
       className={clsx(
-        isWorkspace && "rounded-[var(--radius-small)] transition-all duration-0",
+        isWorkspace && "rounded-[var(--radius-small)] ",
         isWorkspace && isExpanded && "group/workspace",
         "relative"
       )}
@@ -224,45 +234,57 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         {...listeners}
         data-selected={isActive || undefined}
         className={clsx(
-          "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0",
-          "px-3 rounded-[var(--radius-8)]",
-          "h-7",
+          "sidebar-item-row group relative flex w-full cursor-pointer select-none ",
+          isEditing ? "items-start pt-[5px]" : "items-center h-7",
+          "px-3 rounded-[var(--radius-small)]",
           effectiveMultiSelected
-            ? "bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]"
+            ? "bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
             : (isActive || contextMenu?.entityId === entity.id)
-              ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide" 
-              : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
+              ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide" 
+              : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
-          "text-[14px]",
+          "text-[13px]",
         )}
-        style={{ paddingLeft: `${depth * 18 + 12}px`, paddingRight: '12px' }}
+        style={{ paddingLeft: `${depth * 18 + 10}px`, paddingRight: '6px' }}
       >
-        <div className="w-7 shrink-0 flex items-center justify-center">
+        <div className="w-[14px] shrink-0 flex items-center justify-center">
           {(!disableNesting && isCollapsible) ? getIcon(entity.type) : getIcon(entity.type)}
         </div>
 
         {isEditing ? (
-          <input
+          <textarea
+            ref={textareaRef}
             autoFocus
-            type="text"
+            rows={1}
             value={tempTitle}
             onChange={(e) => setTempTitle(e.target.value)}
             onBlur={handleRename}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleRename();
+              }
+              if (e.key === 'Escape') setEditingEntityId(null);
+            }}
             onClick={(e) => e.stopPropagation()}
-            className="ml-0 flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 inline-block text-sm"
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = '18px';
+              target.style.height = `${Math.min(target.scrollHeight, 40)}px`;
+            }}
+            className="ml-[6px] flex-1 min-w-0 bg-transparent outline-none text-[var(--foreground)] border-none p-0 text-[13px] leading-snug resize-none overflow-hidden break-words whitespace-pre-wrap w-full"
           />
         ) : (
           <span className={clsx(
-            "ml-0 flex-1 text-left text-fade",
-            isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]"
+            "ml-[6px] flex-1 text-left text-fade line-clamp-2 leading-snug",
+            isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]"
           )}>
-            {entity.title}
+            {stripHtml(entity.title)}
           </span>
         )}
 
         <div className={clsx(
-          "flex items-center gap-1 shrink-0 transition-opacity duration-100",
+          "flex items-center gap-1 shrink-0",
           contextMenu?.entityId === entity.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
           {(entity.type === 'workspace' || entity.type === 'collection' || entity.type === 'folder') && (
@@ -307,8 +329,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           <div className="overflow-hidden">
             <div className={clsx("relative flex flex-col gap-[3px]", isExpanded && "mt-[3px]")}>
               <div 
-                className="absolute top-0 bottom-0 w-[1px] bg-[var(--bone-10)]" 
-                style={{ left: `${depth * 18 + 26}px` }}
+                className="absolute top-0 bottom-0 w-[1px] bg-[var(--bone-12)]" 
+                style={{ left: `${depth * 18 + 17}px` }}
               />
               {children.map((child) => (
                 <TreeItem 

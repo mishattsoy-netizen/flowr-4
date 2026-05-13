@@ -65,10 +65,10 @@ export function SettingsModal() {
       {/* Modal Content */}
       <div
         ref={modalRef}
-        className="relative w-full max-w-5xl h-full max-h-[800px] bg-[var(--color-panel)] rounded-[var(--radius-medium)] overflow-hidden flex opacity-0"
+        className="relative w-full max-w-5xl h-full max-h-[800px] bg-[var(--color-panel)] rounded-[var(--radius-medium)] border border-[var(--bone-12)] overflow-hidden flex opacity-0"
       >
         {/* Sidebar */}
-        <div className="w-64 border-r border-border flex flex-col p-6 bg-sidebar/50">
+        <div className="w-64 border-r border-[var(--bone-6)] flex flex-col p-6 bg-sidebar/50">
           <div className="flex items-center gap-2 mb-8 px-2">
             <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
               <SettingsIcon className="w-4 h-4 text-accent" />
@@ -94,10 +94,10 @@ export function SettingsModal() {
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-medium)] group text-[15px]",
                     isActive
                       ? "bg-white/10 text-foreground font-semibold"
-                      : "text-bone-60 hover:text-foreground hover:bg-white/5"
+                      : "text-bone-70 hover:text-foreground hover:bg-white/5"
                   )}
                 >
-                  <Icon strokeWidth={2} className={clsx("w-5 h-5", isActive ? "text-accent" : "text-bone-60 group-hover:text-foreground")} />
+                  <Icon strokeWidth={2} className={clsx("w-5 h-5", isActive ? "text-accent" : "text-bone-70 group-hover:text-foreground")} />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -105,21 +105,21 @@ export function SettingsModal() {
           </nav>
 
           {/* Version Info */}
-          <div className="pt-4 border-t border-border mt-4">
-            <p className="text-[10px] text-bone-60 uppercase tracking-widest text-center">Flowr 4.4.1 - Build 2304</p>
+          <div className="pt-4 border-t border-[var(--bone-6)] mt-4">
+            <p className="text-[10px] text-bone-70 uppercase tracking-widest text-center">Flowr 4.4.1 - Build 2304</p>
           </div>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 bg-background/20">
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-8 border-b border-border bg-white/5">
+          <div className="h-16 flex items-center justify-between px-8 border-b border-[var(--bone-6)] bg-white/5">
             <div className="flex items-center gap-2">
                <h3 className="font-display text-lg capitalize">{activeTab}</h3>
             </div>
             <button
               onClick={closeModal}
-              className="p-2 rounded-full hover:bg-hover text-bone-60 hover:text-foreground"
+              className="p-2 rounded-full hover:bg-hover text-bone-70 hover:text-foreground"
             >
               <X strokeWidth={2} className="w-5 h-5" />
             </button>
@@ -132,14 +132,14 @@ export function SettingsModal() {
                 <div className="space-y-10">
                   {/* Theme Section */}
                   <section>
-                    <h4 className="text-xs font-semibold text-bone-60 uppercase tracking-widest mb-4">Visual Theme</h4>
-                    <p className="text-sm text-bone-60 mb-6">Choose an aesthetic that fits your focus.</p>
+                    <h4 className="text-xs font-semibold text-bone-70 uppercase tracking-widest mb-4">Visual Theme</h4>
+                    <p className="text-sm text-bone-70 mb-6">Choose an aesthetic that fits your focus.</p>
                     <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={() => theme === 'light' && toggleTheme()}
                         className={clsx(
                           "group relative flex flex-col items-center gap-4 p-4 rounded-2xl border",
-                          theme === 'dark' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-border bg-white/5 hover:border-muted-foreground/30"
+                          theme === 'dark' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
                         )}
                       >
                         <div className="w-full aspect-video bg-[#0D0D0C] rounded-lg border border-white/10 overflow-hidden p-3 flex flex-col gap-2">
@@ -160,7 +160,7 @@ export function SettingsModal() {
                         onClick={() => theme === 'dark' && toggleTheme()}
                         className={clsx(
                           "group relative flex flex-col items-center gap-4 p-4 rounded-2xl border",
-                          theme === 'light' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-border bg-white/5 hover:border-muted-foreground/30"
+                          theme === 'light' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
                         )}
                       >
                         <div className="w-full aspect-video bg-[#F8F7F7] rounded-lg border border-black/5 overflow-hidden p-3 flex flex-col gap-2">
@@ -183,13 +183,13 @@ export function SettingsModal() {
                   <section>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h4 className="text-xs font-semibold text-bone-60 uppercase tracking-widest">Interface Scaling</h4>
-                        <p className="text-sm text-bone-60 mt-1">Adjust the overall size of the UI components.</p>
+                        <h4 className="text-xs font-semibold text-bone-70 uppercase tracking-widest">Interface Scaling</h4>
+                        <p className="text-sm text-bone-70 mt-1">Adjust the overall size of the UI components.</p>
                       </div>
                       <span className="px-2 py-1 rounded bg-accent/10 border border-accent/20 text-[10px] font-bold text-accent uppercase tracking-tighter">New</span>
                     </div>
 
-                    <div className="relative flex p-1.5 bg-sidebar/50 rounded-2xl border border-border">
+                    <div className="relative flex p-1.5 bg-sidebar/50 rounded-2xl border border-[var(--bone-6)]">
                       {['small', 'regular', 'big'].map((size) => (
                         <button
                           key={size}
@@ -198,7 +198,7 @@ export function SettingsModal() {
                             "relative flex-1 py-3 px-4 rounded-xl text-[13px] font-medium capitalize z-10",
                             interfaceSize === size
                               ? "text-accent"
-                              : "text-bone-60/70 hover:text-foreground"
+                              : "text-bone-70/70 hover:text-foreground"
                           )}
                         >
                           {interfaceSize === size && (
@@ -210,7 +210,7 @@ export function SettingsModal() {
                         </button>
                       ))}
                     </div>
-                    <div className="mt-4 flex justify-between px-2 text-[10px] text-bone-60 font-medium">
+                    <div className="mt-4 flex justify-between px-2 text-[10px] text-bone-70 font-medium">
                       <span>85% scale</span>
                       <span>Default (100%)</span>
                       <span>115% scale</span>
@@ -226,13 +226,13 @@ export function SettingsModal() {
                     <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent opacity-0 group-hover:opacity-100" />
                     <Zap strokeWidth={2} className="w-10 h-10 text-accent/60 relative z-10" />
                   </div>
-                  <h4 className="text-2xl font-display mb-2">{tabs.find(t => t.id === activeTab)?.label} Settings</h4>
-                  <p className="text-bone-60/80 max-max-w-sm text-[15px] leading-relaxed">
+                  <h4 className="text-2xl font-display font-semibold mb-2">{tabs.find(t => t.id === activeTab)?.label} Settings</h4>
+                  <p className="text-bone-70/80 max-max-w-sm text-[15px] leading-relaxed">
                     This module is currently being optimized for high-fidelity performance. Stay tuned for a seamless experience.
                   </p>
                   <button
                     onClick={() => setActiveTab('interface')}
-                    className="mt-8 px-6 py-2.5 rounded-full bg-white/5 border border-border text-sm font-medium hover:bg-white/10 hover:border-muted-foreground/30"
+                    className="mt-8 px-6 py-2.5 rounded-full bg-white/5 border border-[var(--bone-6)] text-sm font-medium hover:bg-white/10 hover:border-muted-foreground/30"
                   >
                     Return to Interface
                   </button>

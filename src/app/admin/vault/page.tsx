@@ -8,7 +8,7 @@ export default async function VaultPage() {
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">Security Vault</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Security Vault</h1>
         <p className="text-muted-foreground text-sm font-medium">Encrypted storage for infrastructure orchestration keys.</p>
       </div>
 

@@ -48,7 +48,7 @@ function ModalityBadges({
                 onClick={() => onToggle?.(m)}
                 className={cn(
                   'px-1.5 py-0.5 rounded-medium text-[9px] font-bold uppercase tracking-wider border transition-all',
-                  active ? MODALITY_COLORS[m] : 'text-bone-60/30 border-white/5 bg-transparent'
+                  active ? MODALITY_COLORS[m] : 'text-bone-70/30 border-white/5 bg-transparent'
                 )}
               >
                 {m}
@@ -60,7 +60,7 @@ function ModalityBadges({
               key={m}
               className={cn(
                 'px-1.5 py-0.5 rounded-medium text-[9px] font-bold uppercase tracking-wider border',
-                MODALITY_COLORS[m] ?? 'text-bone-60 border-white/10 bg-white/5'
+                MODALITY_COLORS[m] ?? 'text-bone-70 border-white/10 bg-white/5'
               )}
             >
               {m}
@@ -74,7 +74,7 @@ function RpdBar({ used, max }: { used: number; max: number | null }) {
   if (max === null || max === 0) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-mono text-bone-60 opacity-30">{used} / ∞</span>
+        <span className="text-[11px] font-mono text-bone-70 opacity-30">{used} / ∞</span>
       </div>
     )
   }
@@ -89,10 +89,10 @@ function RpdBar({ used, max }: { used: number; max: number | null }) {
   return (
     <div className="flex flex-col gap-1 min-w-[100px]">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-mono text-bone-60 opacity-50">
+        <span className="text-[11px] font-mono text-bone-70 opacity-50">
           {formatVal(used)} / {formatVal(max)}
         </span>
-        <span className="text-[9px] font-bold text-bone-60 opacity-30 ml-2">
+        <span className="text-[9px] font-bold text-bone-70 opacity-30 ml-2">
           {Math.round(pct)}%
         </span>
       </div>
@@ -132,7 +132,7 @@ function ProviderDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "flex items-center justify-between w-32 px-2.5 py-1.5 rounded-medium border text-[11px] font-bold uppercase tracking-wider transition-all",
-          PROVIDER_COLORS[value.toLowerCase()] || "text-bone-60 border-white/10 bg-white/5"
+          PROVIDER_COLORS[value.toLowerCase()] || "text-bone-70 border-white/10 bg-white/5"
         )}
       >
         <span>{value}</span>
@@ -158,7 +158,7 @@ function ProviderDropdown({
                     "flex items-center gap-2 w-full px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-left rounded-small transition-all",
                     value.toLowerCase() === p 
                       ? PROVIDER_COLORS[p] 
-                      : "text-bone-60 hover:bg-white/5 hover:text-foreground"
+                      : "text-bone-70 hover:bg-white/5 hover:text-foreground"
                   )}
                 >
                   <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", PROVIDER_COLORS[p].split(' ')[0].replace('text-', 'bg-'))} />
@@ -245,7 +245,7 @@ function EditableRow({
           </button>
           <button
             onClick={onCancel}
-            className="flex items-center gap-1 px-3 py-1 rounded-medium bg-background border border-white/10 text-bone-60 text-[10px] font-bold uppercase tracking-wider hover:text-foreground transition-all"
+            className="flex items-center gap-1 px-3 py-1 rounded-medium bg-background border border-white/10 text-bone-70 text-[10px] font-bold uppercase tracking-wider hover:text-foreground transition-all"
           >
             <X className="w-3 h-3" /> Cancel
           </button>
@@ -290,7 +290,7 @@ function AddRow({ onAdd }: { onAdd: (m: ModelRow) => void }) {
         <td colSpan={7} className="px-4 py-2">
           <button
             onClick={() => setOpen(true)}
-            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-bone-60 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-bone-70 hover:text-foreground transition-colors"
           >
             <Plus className="w-3 h-3" /> Add model
           </button>
@@ -347,7 +347,7 @@ function AddRow({ onAdd }: { onAdd: (m: ModelRow) => void }) {
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="flex items-center gap-1 px-3 py-1 rounded-medium bg-background border border-white/10 text-bone-60 text-[10px] font-bold uppercase tracking-wider hover:text-foreground transition-all"
+            className="flex items-center gap-1 px-3 py-1 rounded-medium bg-background border border-white/10 text-bone-70 text-[10px] font-bold uppercase tracking-wider hover:text-foreground transition-all"
           >
             <X className="w-3 h-3" /> Cancel
           </button>
@@ -476,9 +476,9 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
     ) : null
 
   return (
-    <div className="bg-panel rounded-big overflow-hidden space-y-4">
+    <div className="bg-panel border border-[var(--bone-12)] rounded-big overflow-hidden space-y-4">
       {/* Preset Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-white/[0.05] bg-white/[0.01]">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-[var(--bone-6)] bg-white/[0.01]">
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -519,7 +519,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-white/[0.03] border-b border-white/5">
+            <tr className="bg-white/[0.03] border-b border-[var(--bone-12)]">
               <th
                 className="px-4 py-3 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase cursor-pointer hover:text-muted-foreground/70 transition-colors select-none"
                 onClick={() => handleSort('id')}
@@ -552,7 +552,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.025]">
+          <tbody className="divide-y divide-[var(--bone-6)]">
             {sorted.map((model) =>
               editingId === model.id ? (
                 <EditableRow
@@ -571,7 +571,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
                       {model.is_favorite && (
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
                       )}
-                      <span className="text-[12px] font-mono text-bone-60 group-hover:text-foreground transition-colors truncate max-w-[320px]" title={model.id}>
+                      <span className="text-[12px] font-mono text-bone-70 group-hover:text-foreground transition-colors truncate max-w-[320px]" title={model.id}>
                         {model.id}
                       </span>
                     </div>
@@ -580,7 +580,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
                     <span
                       className={cn(
                         'px-2 py-0.5 rounded-medium text-[10px] font-bold uppercase tracking-wider border',
-                        PROVIDER_COLORS[model.provider.toLowerCase()] ?? 'text-bone-60 border-white/10 bg-white/5'
+                        PROVIDER_COLORS[model.provider.toLowerCase()] ?? 'text-bone-70 border-white/10 bg-white/5'
                       )}
                     >
                       {model.provider}
@@ -600,13 +600,13 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => setEditingId(model.id)}
-                          className="px-2.5 py-1 rounded-medium bg-white/5 text-bone-60 hover:text-foreground hover:bg-white/10 transition-all uppercase tracking-wider"
+                          className="px-2.5 py-1 rounded-medium bg-white/5 text-bone-70 hover:text-foreground hover:bg-white/10 transition-all uppercase tracking-wider"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(model.id)}
-                          className="p-1.5 rounded-medium bg-white/5 text-bone-60 hover:text-rose-400 hover:bg-rose-400/10 transition-all"
+                          className="p-1.5 rounded-medium bg-white/5 text-bone-70 hover:text-rose-400 hover:bg-rose-400/10 transition-all"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -617,7 +617,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
                           'p-1.5 rounded-medium transition-all shrink-0',
                           model.is_favorite
                             ? 'text-amber-400 bg-amber-400/10'
-                            : 'text-bone-60/30 bg-white/5 hover:text-amber-400 hover:bg-amber-400/10'
+                            : 'text-bone-70/30 bg-white/5 hover:text-amber-400 hover:bg-amber-400/10'
                         )}
                       >
                         <Star className={cn('w-3 h-3', model.is_favorite && 'fill-amber-400')} />
@@ -631,11 +631,11 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
           </tbody>
         </table>
       </div>
-      <div className="px-4 py-2 border-t border-white/[0.03] flex items-center justify-between">
-        <span className="text-[10px] font-bold text-bone-60/30 uppercase tracking-wider">
+      <div className="px-4 py-2 border-t border-[var(--bone-6)] flex items-center justify-between">
+        <span className="text-[10px] font-bold text-bone-70/30 uppercase tracking-wider">
           {models.length} models registered
         </span>
-        <span className="text-[10px] font-bold text-bone-60/20 uppercase tracking-wider">
+        <span className="text-[10px] font-bold text-bone-70/20 uppercase tracking-wider">
           Usage resets daily
         </span>
       </div>

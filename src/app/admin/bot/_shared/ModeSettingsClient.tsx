@@ -81,7 +81,7 @@ export default function ModeSettingsClient({
             )}
             onClick={() => setActiveTab(t.key as SettingsCategory | 'classifier')}
           >
-            <span className={cn('text-xs font-medium', activeTab === t.key ? 'text-bone-100' : 'text-bone-60')}>{t.label}</span>
+            <span className={cn('text-xs font-medium', activeTab === t.key ? 'text-bone-100' : 'text-bone-70')}>{t.label}</span>
             {t.key !== 'classifier' && (
               <div onClick={(e) => e.stopPropagation()}>
                 <Toggle checked={activeStates[t.key] ?? true} onChange={v => handleToggle(t.key as SettingsCategory, v)} />
@@ -97,16 +97,16 @@ export default function ModeSettingsClient({
           <div className="flex flex-col gap-4 p-5 rounded-[16px] bg-white/5">
             <div>
               <p className="text-sm font-medium text-bone-100">{tab.label}</p>
-              <p className="text-xs text-bone-60 mt-0.5">{tab.description}</p>
+              <p className="text-xs text-bone-70 mt-0.5">{tab.description}</p>
             </div>
             <textarea
               value={drafts[tab.key] ?? ''}
               onChange={e => setDrafts(prev => ({ ...prev, [tab.key]: e.target.value }))}
               rows={16}
-              className="w-full bg-[#111111] rounded-[8px] p-4 text-sm text-bone-100 font-mono resize-y focus:outline-none placeholder:text-bone-60"
+              className="w-full bg-[#111111] rounded-[8px] p-4 text-sm text-bone-100 font-mono resize-y focus:outline-none placeholder:text-bone-70"
             />
             <div className="flex justify-between items-center mt-2">
-              <span className="text-xs text-bone-60">{drafts[tab.key]?.length ?? 0} chars</span>
+              <span className="text-xs text-bone-70">{drafts[tab.key]?.length ?? 0} chars</span>
               <button onClick={() => handleSave(tab.key)} disabled={isPending}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-[8px] bg-white text-black hover:bg-bone-80 transition-colors">
                 {saved[tab.key] ? <Check className="w-3.5 h-3.5 text-green-600" /> : null}
@@ -119,10 +119,10 @@ export default function ModeSettingsClient({
         <div className="flex flex-col gap-4 p-5 rounded-[16px] bg-white/5">
           <div>
             <p className="text-sm font-medium text-bone-100">Classifier Prompt</p>
-            <p className="text-xs text-bone-60 mt-0.5">System prompt used when classifying messages in {modeLabel} mode</p>
+            <p className="text-xs text-bone-70 mt-0.5">System prompt used when classifying messages in {modeLabel} mode</p>
           </div>
           <textarea value={classifierPrompt} onChange={e => setClassifierPrompt(e.target.value)} rows={12}
-            className="w-full bg-[#111111] rounded-[8px] p-4 text-sm text-bone-100 font-mono resize-y focus:outline-none placeholder:text-bone-60" />
+            className="w-full bg-[#111111] rounded-[8px] p-4 text-sm text-bone-100 font-mono resize-y focus:outline-none placeholder:text-bone-70" />
           <div className="flex justify-end mt-2">
             <button onClick={handleClassifierSave} disabled={isPending}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-[8px] bg-white text-black hover:bg-bone-80 transition-colors">

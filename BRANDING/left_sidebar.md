@@ -10,7 +10,7 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
   - Classes: `h-full bg-sidebar flex flex-col overflow-hidden flex-shrink-0 w-full`
   - The `bg-sidebar` maps to `--color-panel` in the globals.
 - **Top Header (Logo):** 
-  - Classes: `flex items-center justify-between px-3 py-3 border-b border-border transition-all duration-0`
+  - Classes: `flex items-center justify-between px-3 py-3 border-b border-border`
 - **Main Scroll Area:**
   - Classes: `flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-gutter:stable] pl-3 pr-[4px] pt-3 mr-[2px]`
 - **Footer (Profile/Settings):**
@@ -19,14 +19,14 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
 ## 3. Elements & Components
 
 ### A. Search/Command Button
-- **Container:** `flex items-center w-full px-3 py-1.5 bg-[var(--bone-6)] border border-transparent hover:border-[var(--bone-10)] rounded-[var(--radius-8)] group relative cursor-pointer text-left transition-colors`
+- **Container:** `flex items-center w-full px-3 py-1.5 bg-[var(--bone-6)] border border-transparent hover:border-[var(--bone-10)] rounded-[var(--radius-8)] group relative cursor-pointer text-left`
 - **Icon Container:** `w-5 shrink-0 flex items-center justify-center`
-  - Icon: `w-4 h-4 text-[var(--bone-60)] group-hover:text-[var(--bone-100)] shrink-0 transition-colors`
-- **Label:** `text-[var(--bone-60)] group-hover:text-[var(--bone-100)] w-full text-sm ml-[8px] truncate transition-colors tracking-wide`
+  - Icon: `w-4 h-4 text-[var(--bone-60)] group-hover:text-[var(--bone-100)] shrink-0`
+- **Label:** `text-[var(--bone-60)] group-hover:text-[var(--bone-100)] w-full text-sm ml-[8px] truncate tracking-wide`
 - **Keyboard Shortcut Badge (kbd):** `absolute right-2 px-1.5 py-0.5 bg-[var(--bone-10)] rounded-[var(--radius-small)] text-[9px] font-bold text-[var(--bone-60)] tracking-wider`
 
 ### B. Primary Navigation Items (e.g., Dashboard, Tracker)
-- **Container:** `sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent transition-all duration-0`
+- **Container:** `sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent`
 - **Icon Container:** `w-7 shrink-0 flex items-center justify-center`
   - Icon: `w-3.5 h-3.5`
 - **Label:** `ml-0 flex-1 text-left text-[14px] tracking-wide`
@@ -35,7 +35,7 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
   - **Default:** `bg-transparent text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]`
 
 ### C. Section Headers (Pinned, Unsorted, Workspaces)
-- **Container:** `ml-0 mr-[2px] px-3 py-[3px] (or h-7) flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-8)] transition-colors duration-0`
+- **Container:** `ml-0 mr-[2px] px-3 py-[3px] (or h-7) flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-8)]`
 - **Label:** `text-[10px] font-ui-label font-medium uppercase tracking-wide`
 - **States:**
   - **Context Menu Open:** `!bg-[var(--bone-10)] text-[var(--bone-100)]`
@@ -43,7 +43,7 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
 - **Utility Buttons (Plus, More):** Standard `btn-sidebar-utility` (22x22px).
 
 ### D. Tree Items (Folders, Notes, Collections)
-- **Container:** `sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px]`
+- **Container:** `sidebar-item-row group relative flex items-center w-full cursor-pointer select-none px-3 rounded-[var(--radius-8)] h-7 text-[14px]`
   - Padding: dynamically calculated, e.g., `paddingLeft: {depth * 18 + 12}px, paddingRight: 12px`
 - **Icon Container:** `w-7 shrink-0 flex items-center justify-center`
   - Icon: `w-3.5 h-3.5 shrink-0`
@@ -55,7 +55,7 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
   - **Active:** `!bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide`
   - **Hover:** `text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]`
   - **Multi-Selected:** `bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)]`
-- **Utility Action Group (Hover Options):** `flex items-center gap-1 shrink-0 transition-opacity duration-100 opacity-0 group-hover:opacity-100`
+- **Utility Action Group (Hover Options):** `flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100`
 
 ### E. Child Indentation Guideline
 - A vertical line connects child items to their parent folder.
@@ -73,6 +73,6 @@ The main navigation sidebar containing search, primary routes (Dashboard, Tracke
 - Collapsed small divider: `w-8 h-px bg-border my-0`
 
 ## 5. Key Logic & Constraints
-- **Zero Transition:** Most layout and background changes use `transition-all duration-0` to ensure interaction feels perfectly instantaneous.
+- **Zero Transition:** **Mandatory (0ms)**. All layout and background changes must happen instantly with no fade or duration. Any `transition-*` or `duration-*` classes are prohibited.
 - **Scroll Fading:** Uses a custom scroll handler to fade out the top/bottom edges (`--scroll-top-offset`, `--scroll-bottom-offset`).
 - **Drag & Drop:** While dragging, items use `pointer-events-none` and `opacity: 0` for nested controls.

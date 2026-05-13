@@ -46,10 +46,13 @@ export async function runGoogle(
     while (attempts < 2) {
       attempts++
       try {
+        // Sanitize modelId to remove any provider prefixes (everything before the last slash)
+        // This ensures the SDK correctly prepends "models/" to the URL, preventing 404s
+        const sanitizedId = modelId.split('/').pop() || modelId
         const genAI = new GoogleGenerativeAI(key)
 
-        const isGemma4 = modelId.toLowerCase().includes('gemma-4')
-        const isLegacyGemma = modelId.toLowerCase().includes('gemma') && !isGemma4
+        const isGemma4 = sanitizedId.toLowerCase().includes('gemma-4')
+        const isLegacyGemma = sanitizedId.toLowerCase().includes('gemma') && !isGemma4
         
         let finalPrompt = prompt
         let useSystemInstruction = !isLegacyGemma && !forceLegacy
@@ -60,7 +63,7 @@ export async function runGoogle(
         }
 
         const model = genAI.getGenerativeModel({
-          model: modelId,
+          model: sanitizedId,
           systemInstruction: useSystemInstruction ? systemPrompt : undefined,
           ...(context?.useTools && useSystemInstruction ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {}),
           generationConfig: {
@@ -123,7 +126,8 @@ export async function runGoogle(
         const errorMsg = error.message || 'Unknown error'
         
         // Gemma 4 specific fallback: Retry with legacy prepending if 500/400 error occurs
-        if (modelId.toLowerCase().includes('gemma-4') && !forceLegacy && (errorMsg.includes('500') || errorMsg.includes('400'))) {
+        // Note: We skip this if it was a 404, as Gemma 4 doesn't exist in v1 legacy API
+        if (modelId.toLowerCase().includes('gemma-4') && !forceLegacy && (errorMsg.includes('500') || errorMsg.includes('400')) && !errorMsg.includes('404')) {
           logger.warn(`Gemma 4 failed with native instructions. Retrying with legacy prepend...`)
           forceLegacy = true
           continue

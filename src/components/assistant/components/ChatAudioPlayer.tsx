@@ -67,7 +67,7 @@ export const ChatAudioPlayer = memo(({ url, name, isPending = false, onRemove }:
         })}
       </div>
 
-      <div className="text-[10px] font-mono font-bold text-bone-60 w-8 text-right tabular-nums">
+      <div className="text-[10px] font-mono font-bold text-bone-70 w-8 text-right tabular-nums">
         {formatTime(isPlaying ? currentTime : (duration || currentTime))}
       </div>
 

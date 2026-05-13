@@ -5,7 +5,7 @@ import path from 'path'
 
 export interface RouterModel {
   id: string
-  provider: 'google' | 'huggingface' | 'cloudflare' | 'groq' | 'local' | 'vault' | 'pollinations' | 'ollama' | 'ollama(my pc)' | 'openrouter' | 'siliconflow'
+  provider: 'google' | 'huggingface' | 'cloudflare' | 'groq' | 'local' | 'core' | 'tavily' | 'pollinations' | 'ollama' | 'ollama(my pc)' | 'openrouter' | 'siliconflow'
   is_enabled: boolean
   openrouter_provider?: string
   is_paid?: boolean
@@ -186,6 +186,7 @@ export interface PipelineSettings {
   thinkingSummaryVisible: 'collapsible' | 'hidden'
   statusMessages: Record<string, { label: string; emoji: string }>
   historyEnabledCategories?: IntentCategory[]
+  globalPromptEnabledCategories?: IntentCategory[]
 }
 
 export async function getPipelineSettings(): Promise<PipelineSettings> {
@@ -218,7 +219,8 @@ export async function getPipelineSettings(): Promise<PipelineSettings> {
       thinkingToggleDefault: map['thinking_toggle_default'] === true,
       thinkingSummaryVisible: map['thinking_summary_visible'] ?? 'collapsible',
       statusMessages: map['pipeline_status_messages'] ?? {},
-      historyEnabledCategories: map['history_enabled_categories'] || undefined
+      historyEnabledCategories: map['history_enabled_categories'] || undefined,
+      globalPromptEnabledCategories: map['global_prompt_enabled_categories'] || undefined
     }
 
     // Save to cache

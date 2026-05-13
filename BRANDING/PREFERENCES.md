@@ -18,6 +18,7 @@
 - **UI text:** DM Sans (`font-sans`, `font-ui`) — used for labels, body, controls
 - **Letter spacing:** Prefer `tracking-normal` (0) for UI labels and switcher tabs. Avoid `tracking-tight` or `tracking-tighter`.
 - **UI labels:** DM Sans with `letter-spacing: 0.06em` (`font-ui-label`) — used for small uppercase labels
+- **Image Narrative:** Literata (serif) with `leading-[135%]` and `tracking-[0.135em]` for a premium, spacious look.
 - **Monospace:** DM Mono (`font-mono`) — used for code, vault values
 - **Calendar/pickers:** User explicitly rejects Crimson Pro — use `font-ui` (DM Sans) only
 - **Font weights:** Preferred "strong" weight is **SemiBold** (`600`, `font-semibold`). Use **Bold** (`700`) only for large display numbers (clocks, timers). Never use **Extra Bold** (`800`) or **Black** (`900`).
@@ -31,8 +32,8 @@
 - Subtle hover backgrounds (`hover:bg-white/5`) over bordered buttons
 - Compact, tight spacing
 - `font-ui-label` for small uppercase labels (Today, Clear, etc.)
-- **Sliding transitions:** Specifically for the background "pill" in tab switchers (`transition-all duration-[150ms] ease-out`).
-- **Instant response:** Navigation components (sidebar, workspaces, switcher items) must have **no transition delay** (`duration-0`). State changes (hover, selection) should be sharp and immediate. Other UI interactions (hover, button clicks) should also remain sharp.
+- **Instant response:** **Universal Mandate (0ms)**. ALL interactive elements, including navigation components, tabs, buttons, context menus, and selection indicators, must have **no transition duration** and no fade-in/out effects. State changes (hover, selection) must be perfectly sharp and immediate. 
+  - **Exception**: Structural **Collapse/Expand** animations (e.g., Sidebar width, Folder tree expansion, Section accordions) should maintain their smooth transitions (100ms-300ms) to provide spatial continuity. All other CSS transitions or durations are strictly prohibited.
 - **Selection Indicators:** Prefers checkmarks (`Check` icon) on the right side of the label for nested menu options. Indicator should be subtle (`bone-60`) and brighten to `bone-100` on hover.
 - **Popup Fills:** Selected items in menus/popups should have a subtle background fill (`bone-6`) rather than just a text color change.
 - **Widget Borders:** Prefers ultra-subtle borders for widgets (`border-[var(--bone-3)]`, 3% opacity) to ensure seamless integration into the dashboard.

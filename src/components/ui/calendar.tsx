@@ -116,14 +116,14 @@ export function Calendar({
             setMonth(today)
             onSelect?.(today)
           }}
-          className="px-3 py-1.5 rounded-[4px] hover:bg-white/5 text-[10px] font-ui-label uppercase text-[var(--bone-60)] hover:text-[var(--bone-100)] transition-all"
+          className="px-3 py-1.5 rounded-[4px] hover:bg-white/5 text-[10px] font-ui-label uppercase text-[var(--bone-70)] hover:text-[var(--bone-100)] transition-all"
         >
           Today
         </button>
         <button
           type="button"
           onClick={() => onSelect?.(undefined)}
-          className="px-3 py-1.5 rounded-[4px] hover:bg-white/5 text-[10px] font-ui-label uppercase text-[var(--bone-60)] hover:text-[var(--bone-100)] transition-all"
+          className="px-3 py-1.5 rounded-[4px] hover:bg-white/5 text-[10px] font-ui-label uppercase text-[var(--bone-70)] hover:text-[var(--bone-100)] transition-all"
         >
           Clear
         </button>

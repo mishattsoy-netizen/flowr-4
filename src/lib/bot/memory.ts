@@ -44,7 +44,7 @@ export async function getConversationMemory(telegramId: number, limit: number = 
  * Requires message_logs to have an auth_user_id column (added via migration).
  * Falls back to empty history gracefully if column is missing.
  */
-export async function getWebConversationMemory(authUserId: string, limit: number = 100): Promise<MemoryItem[]> {
+export async function getWebConversationMemory(authUserId: string, limit: number = 100, chatId?: string | null): Promise<MemoryItem[]> {
   try {
     // Fetch the memory_cleared_at timestamp for this user
     const { data: quota } = await supabaseAdmin
@@ -56,7 +56,13 @@ export async function getWebConversationMemory(authUserId: string, limit: number
     let query = supabaseAdmin
       .from('message_logs')
       .select('role, content, context_messages')
-      .or(`auth_user_id.eq.${authUserId},topic_tag.eq.app:${authUserId.slice(0, 8)}`);
+      .eq('auth_user_id', authUserId);
+
+    // Chat isolation: when a chatId is provided, only return messages tagged with this chat.
+    // Without this, "new chat" leaks all prior user history into the context window.
+    if (chatId) {
+      query = query.eq('topic_tag', `chat:${chatId}`);
+    }
 
     if (quota?.memory_cleared_at) {
       query = query.gt('created_at', quota.memory_cleared_at);

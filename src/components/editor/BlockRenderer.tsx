@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  GripVertical, Plus, Check, ChevronRight, ChevronDown, Copy, Link as LinkIcon, ExternalLink, Trash2
+  GripVertical, Plus, ChevronRight, ChevronDown, Copy, Link as LinkIcon, ExternalLink, Trash2
 } from 'lucide-react';
 import { Tooltip } from '@/components/layout/Tooltip';
 import clsx from 'clsx';
 import { EditorBlock, BlockStyle, BlockType, Entity, generateId } from '@/data/store';
-import { formatCounter } from '@/lib/editor/markdownBlocks';
+import { ListBlock } from './ListBlock';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '@/data/store';
 import { DatabaseBlock } from './DatabaseBlock';
@@ -109,29 +109,29 @@ export function BlockRenderer({
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (slashMenuOpen && (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) return;
     if (e.key === 'Enter') {
-      if (e.shiftKey) {
-        // Shift+Enter = Soft break (standard)
-        return; 
-      }
+      // Shift+Enter = soft line break within block (browser default <br>)
+      if (e.shiftKey) return;
 
+      // Plain Enter = new item / new block below
       e.preventDefault();
+      const isListLike = isList || isChecklist;
+      const contentText = contentRef.current?.textContent ?? '';
 
-      // If enter on an empty list item, convert it to a text block (standard Notion behavior)
-      if (isList && !block.content.trim()) {
-        onUpdate(block.id, { type: 'text' });
+      // Empty list item → escape list (convert to plain text, no new block)
+      if (isListLike && !contentText.trim()) {
+        onUpdate(block.id, { type: 'text', content: '' });
         return;
       }
 
-      // If enter on a list item that has children and has content, insert inside (as first child)
-      const isListLike = isList || isChecklist;
+      // List item with children → insert new item as first child
       const hasChildren = !!(block.children && block.children.length > 0);
-      if (isListLike && hasChildren && block.content.trim()) {
+      if (isListLike && hasChildren) {
         onInsertAfter(block.id, block.type, false, true);
         return;
       }
 
-      // Enter = New block (same type for lists, otherwise text)
-      onInsertAfter(block.id, isList ? block.type : 'text');
+      // New block: same list type if on a list, else plain text
+      onInsertAfter(block.id, isListLike ? block.type : 'text');
       return;
     }
 
@@ -145,11 +145,22 @@ export function BlockRenderer({
       return;
     }
 
-    if (e.key === 'Backspace' && !block.content) {
-      const isListLikeForBackspace = ['bulletList', 'dashedList', 'numberedList', 'checklist'].includes(block.type);
-      if (isListLikeForBackspace) {
+    if (e.key === 'Backspace') {
+      const domText = contentRef.current?.textContent ?? '';
+      const isEmpty = !domText.trim();
+      const isListLikeForBackspace = isList || isChecklist;
+
+      if (isEmpty) {
         e.preventDefault();
-        onUpdate(block.id, { type: 'text' });
+        if (isListLikeForBackspace && depth > 0) {
+          // Nested empty list item: unindent back to parent level
+          onUnindent(block.id);
+        } else if (isListLikeForBackspace) {
+          // Top-level empty list item: convert to plain text
+          onUpdate(block.id, { type: 'text', content: '' });
+        } else if (index > 0) {
+          onDelete(block.id);
+        }
         return;
       }
     }
@@ -204,39 +215,6 @@ export function BlockRenderer({
       if (text === '/table' || text === '|') return transform({ type: 'table', tableData: [['', '', ''], ['', '', ''], ['', '', '']] });
     }
 
-    if (e.key === 'Tab' && contentRef.current) {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      if (range && (range.startOffset === 0 || contentRef.current.textContent === '')) {
-        e.preventDefault();
-        onIndent?.(block.id);
-      }
-    }
-
-    if (e.key === 'Backspace' && contentRef.current) {
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const isAtStart = range && range.startOffset === 0;
-      const text = contentRef.current.textContent ?? '';
-
-      if (isAtStart) {
-        // If it's a nested block, unindent it
-        // We can check if it's nested by checking if onUnindent is actually needed
-        // For now, let's just try to unindent if it's a list or has potential to be nested
-        if (isList || isChecklist || text === '') {
-          e.preventDefault();
-          onUnindent?.(block.id);
-          // If it wasn't unindented (i.e. was already top level), it might need to merge
-          // But our unindent logic should handle whether it was successful.
-          // For now, let's assume if it's at start and Backspace is pressed:
-          // 1. Try unindent.
-          // 2. If already top level, delete/merge.
-          if (text === '' && index > 0) {
-            onDelete(block.id);
-          }
-        }
-      }
-    }
     if (e.key === '/' && contentRef.current) {
       const text = contentRef.current.textContent ?? '';
       if (text === '' || text === '/') {
@@ -246,7 +224,7 @@ export function BlockRenderer({
         }, 10);
       }
     }
-  }, [block.id, block.type, index, onInsertAfter, onDelete, onSlash, slashMenuOpen]);
+  }, [block.id, block.type, block.children, index, depth, isList, isChecklist, onInsertAfter, onDelete, onUpdate, onSlash, onIndent, onUnindent, slashMenuOpen]);
 
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -260,7 +238,6 @@ export function BlockRenderer({
 
   const isQuote = block.type === 'quote';
   const effectiveStyle = (isList || isChecklist) ? 'body' : block.style;
-
   const controlsProps = {
     blockId: block.id,
     menuOpen: menuOpen,
@@ -333,12 +310,12 @@ export function BlockRenderer({
           isDragging && "opacity-60"
         )}>
           <div className="relative flex flex-col">
-            <div className="border border-[var(--bone-12)] rounded-3xl overflow-hidden bg-white/[0.02]">
+            <div className="border border-[var(--bone-12)] rounded-3xl overflow-hidden bg-[var(--color-dark)]">
               <table className="w-full border-collapse">
                 <tbody>
                   {tableData.map((row: string[], ri: number) => (
-                    <tr key={ri} className="group/row relative">
-                      <td className="w-8 border-b border-white/5 bg-white/[0.01] relative group/rowhandle border-r border-white/5">
+                    <tr key={ri} className={clsx("group/row relative transition-colors", ri > 0 && "hover:bg-[var(--bone-2)]")}>
+                    <td className="w-8 border-b border-[var(--bone-6)] bg-[var(--bone-2)] relative group/rowhandle border-r border-[var(--bone-6)]">
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
                           <button
                             onClick={() => {
@@ -358,8 +335,8 @@ export function BlockRenderer({
                           contentEditable
                           suppressContentEditableWarning
                           className={clsx(
-                            "px-4 py-2.5 text-[13px] font-sans border-b border-r border-white/5 last:border-r-0 outline-none transition-colors leading-snug",
-                            ri === 0 ? "font-bold text-foreground bg-white/[0.03] text-[10.5px] uppercase tracking-wider" : "text-bone-80/90 focus:bg-white/[0.04]",
+                            "px-4 py-2.5 text-[13px] font-sans border-b border-r border-[var(--bone-6)] last:border-r-0 outline-none transition-colors leading-snug",
+                            ri === 0 ? "font-bold text-bone-100 bg-[var(--bone-2)] text-[10.5px] uppercase tracking-wider" : "text-bone-100 focus:bg-[var(--bone-2)]",
                             ci === 0 && ri !== 0 && "font-semibold text-bone-100", // Bold first column
                             ri === tableData.length - 1 && "border-b-0"
                           )}
@@ -614,31 +591,39 @@ export function BlockRenderer({
     );
   }
 
-  // ─── Default (Text, List, Checklist, Quote) ───────────
-  const listMarker = () => {
-    const d = depth % 3;
-    if (block.type === 'bulletList') {
-      if (d === 0) return <div className="w-[5.5px] h-[5.5px] rounded-full bg-[var(--bone-70)] flex-shrink-0" />;
-      if (d === 1) return <div className="w-[5.5px] h-[5.5px] rounded-sm border border-[var(--bone-70)] flex-shrink-0" />;
-      return <div className="w-[5.5px] h-[5.5px] bg-[var(--bone-70)] flex-shrink-0" />;
-    }
-    if (block.type === 'dashedList') {
-      if (d === 0) return <div className="w-[8px] h-[1px] bg-[var(--bone-70)] flex-shrink-0" />;
-      if (d === 1) return <div className="w-[6px] h-[1px] bg-[var(--bone-70)] flex-shrink-0" />;
-      return <div className="w-[3px] h-[3px] rounded-full bg-[var(--bone-70)] flex-shrink-0" />;
-    }
-    if (block.type === 'numberedList') {
-      const counterStyle = d === 0 ? 'arabic' : d === 1 ? 'alpha' : 'roman';
-      const counter = formatCounter(listNumber ?? 1, counterStyle);
-      return <span className="text-bone-70/40 text-[16px] font-normal leading-none" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }}>{counter}.</span>;
-    }
-    if (block.type === 'checklist') return (
-      <div onClick={() => onUpdate(block.id, { checked: !block.checked })} className={clsx("w-[16px] h-[16px] shrink-0 rounded-[4px] border-[1.5px] flex items-center justify-center transition-all cursor-pointer", block.checked ? "bg-white/20 border-white/40" : "border-white/20 hover:border-white/40")}>
-        {block.checked && <Check className="w-[12px] h-[12px] text-bone-100" strokeWidth={3} />}
+  if (isList || isChecklist) {
+    return (
+      <div
+        ref={setNodeRef}
+        data-block-id={block.id}
+        className={clsx(
+          "editor-block group flex flex-col relative overflow-visible transition-all duration-0 py-0.5",
+          "before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']",
+          isDragging && "z-50",
+          isSelected && "selected-block",
+        )}
+        style={{ ...style, fontFamily: '"Literata"', letterSpacing: '-0.01em' }}
+      >
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <div className="flex-1 w-full px-1 py-1">
+          <ListBlock
+            block={block}
+            listNumber={listNumber}
+            onUpdate={onUpdate}
+            onFocus={onFocus}
+            onExitBottom={() => onInsertAfter(block.id, 'text')}
+            onExitTop={() => {
+              if (index > 0) {
+                onUpdate(block.id, { type: 'text', content: '', children: undefined });
+              } else {
+                onUpdate(block.id, { type: 'text', content: '', children: undefined });
+              }
+            }}
+          />
+        </div>
       </div>
     );
-    return null;
-  };
+  }
 
   return (
     <div
@@ -670,11 +655,6 @@ export function BlockRenderer({
         style={{ ... (block.bgColor ? colorStyle : {}) }}
       >
         <div className="flex-1 flex items-start w-full min-h-[1.5em] h-full relative">
-          {(isList || isChecklist) && (
-            <div className={clsx("shrink-0 flex items-start justify-end pr-1", getLineHeightClass(effectiveStyle))} style={{ width: '20px', paddingTop: isChecklist ? '4.5px' : '11px' }}>
-              {listMarker()}
-            </div>
-          )}
           {block.foldingEnabled && (
             <div
               className={clsx(
@@ -752,7 +732,7 @@ function getStyleClasses(style?: BlockStyle): string {
     case 'title': return 'text-[28px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
     case 'heading': return 'text-[24px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
     case 'subheading': return 'text-[20px] font-semibold tracking-[-0.02em] font-display text-bone-100 leading-snug';
-    case 'mono': return 'font-mono text-[15px] bg-white/[0.02] border border-[var(--bone-12)] rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[#E6EDF3] w-full';
+    case 'mono': return 'font-mono text-[15px] bg-[var(--color-dark)] border border-[var(--bone-12)] rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[var(--bone-100)] w-full';
     case 'body':
     default: return 'text-[16px] font-normal font-display leading-[1.6] tracking-[-0.02em] text-bone-100';
   }

@@ -109,12 +109,12 @@ export function IconPicker({ entityId, anchorRect, onClose }: IconPickerProps) {
       ref={ref}
       className={clsx(
         "fixed z-[400] popup-glass-big p-4 w-[320px] max-h-[400px] flex flex-col ",
-        ready ? "opacity-100" : "opacity-0"
+        !ready && "invisible"
       )}
       style={{ left: pos.x, top: pos.y }}
     >
       {/* Search */}
-      <div className="flex items-center bg-background border border-border rounded-[var(--radius-small)] px-3 py-2 mb-3 group focus-within:border-[var(--bone-60)] ">
+      <div className="flex items-center bg-background border border-border rounded-[var(--radius-small)] px-3 py-2 mb-3 group focus-within:border-[var(--bone-70)] ">
         <Search strokeWidth={2} className="w-3.5 h-3.5 text-muted-foreground mr-2 shrink-0 group-focus-within:text-foreground" />
         <input
           autoFocus

@@ -75,7 +75,7 @@ export default function KeywordsClient({ initialKeywords }: Props) {
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 max-w-4xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-display font-normal tracking-tight text-foreground mb-1 flex items-center gap-2.5">
+          <h1 className="text-4xl font-display font-medium tracking-tight text-foreground mb-1 flex items-center gap-2.5">
             <Tag className="w-8 h-8 text-accent" />
             Intent Keywords
           </h1>
@@ -93,7 +93,7 @@ export default function KeywordsClient({ initialKeywords }: Props) {
             onClick={handleSync}
             disabled={isSyncing}
             title="Overwrite local inputs with current DB values"
-            className="flex items-center gap-1.5 px-3 h-8 bg-white/5 border border-white/10 text-bone-60 hover:text-foreground hover:bg-white/10 rounded-medium text-[11px] font-semibold disabled:opacity-50 transition-all"
+            className="flex items-center gap-1.5 px-3 h-8 bg-white/5 border border-white/10 text-bone-70 hover:text-foreground hover:bg-white/10 rounded-medium text-[11px] font-semibold disabled:opacity-50 transition-all"
           >
             <RefreshCw className={cn('w-3 h-3', isSyncing && 'animate-spin')} />
             {isSyncing ? 'Syncing...' : 'Sync from DB'}
@@ -110,7 +110,7 @@ export default function KeywordsClient({ initialKeywords }: Props) {
                 <span className={cn('text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-[6px] border', colors.bg, colors.text, colors.border)}>
                   {cat.replace(/_/g, ' ')}
                 </span>
-                <span className="text-[10px] text-bone-60 font-mono">{cat}</span>
+                <span className="text-[10px] text-bone-70 font-mono">{cat}</span>
               </div>
               <input
                 value={inputs[cat] ?? ''}

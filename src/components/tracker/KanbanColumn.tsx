@@ -34,7 +34,7 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
         <h3 className="text-xs font-ui-label font-bold uppercase tracking-widest text-[var(--bone-30)]">
           {title}
         </h3>
-        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--bone-10)] text-[var(--bone-60)]">
+        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-[var(--bone-10)] text-[var(--bone-70)]">
           {tasks.length}
         </span>
       </div>

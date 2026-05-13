@@ -154,7 +154,7 @@ export async function getInternalPrompt(chainType: string, mode: BotMode = 'defa
 
   // 3. Hardcoded default fallback
   if (!rolePrompt) {
-    rolePrompt = DEFAULT_INTERNAL_PROMPTS[chainType] ?? `You are the ${chainType} step in a multi-step pipeline. Write structured output for the next chain.`
+    rolePrompt = DEFAULT_INTERNAL_PROMPTS[chainType] ?? `You are the ${chainType} component of this AI system. Process the input accurately according to your specific role. Deliver a high-quality response that follows all safety and formatting constraints.`
   }
 
   const parts: string[] = [rolePrompt]

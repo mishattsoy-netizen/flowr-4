@@ -2,7 +2,7 @@
 
 import { useStore } from '@/data/store';
 import type { SidebarSectionId } from '@/data/store';
-import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ChevronDown, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings, Plus, Check } from 'lucide-react';
+import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ChevronDown, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings, Plus, Check, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect, useRef, useState } from 'react';
 import { IconPicker } from './IconPicker';
@@ -60,6 +60,7 @@ function MenuItemComponent({
 }) {
   const [subMenuPos, setSubMenuPos] = useState({ x: 0, y: 0 });
   const itemRef = useRef<HTMLDivElement>(null);
+  if (item.hidden) return null;
 
   if (item.isDivider) {
     if (item.hidden) return null;
@@ -89,7 +90,7 @@ function MenuItemComponent({
       <button
         onClick={handleToggle}
         className={clsx(
-          "popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors",
+          "popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm",
           item.danger && "popup-item-danger",
           isOpen && "bg-[var(--bone-10)] text-[var(--bone-100)]",
           item.selected && "bg-[var(--bone-6)]"
@@ -97,8 +98,8 @@ function MenuItemComponent({
       >
         {item.icon && <div className="w-4 h-4 shrink-0">{item.icon}</div>}
         <span className="flex-1 text-left font-medium tracking-wide">{item.label}</span>
-        {item.selected && <Check strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-60)] group-hover:text-[var(--bone-100)] transition-colors shrink-0" />}
-        {item.children && <ChevronRight strokeWidth={2} className={clsx("w-3 h-3 opacity-50 transition-transform", isOpen && "rotate-90")} />}
+        {item.selected && <Check strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)] shrink-0" />}
+        {item.children && <ChevronRight strokeWidth={2} className={clsx("w-3 h-3 opacity-50", isOpen && "rotate-90")} />}
       </button>
 
       {item.children && isOpen && (
@@ -142,7 +143,8 @@ export function ContextMenu() {
     activeWorkspaceId,
     setActiveWorkspaceId,
     collapsedIds,
-    toggleCollapsed
+    toggleCollapsed,
+    addTab
   } = useStore();
   const selectedSidebarIds = useStore(state => state.selectedSidebarIds);
   const clearSelectedSidebarIds = useStore(state => state.clearSelectedSidebarIds);
@@ -207,11 +209,13 @@ export function ContextMenu() {
   if (!contextMenu) return null;
 
   // Handle case where entityId might be a sectionId instead of an entityId
+  const systemPages = ['dashboard', 'chat', 'tracker'];
   const entity = entities.find(e => e.id === contextMenu.entityId);
   const isSectionMenu = contextMenu.source === 'sidebar-section';
   const isSpacesMenu = contextMenu.source === 'spaces';
+  const isSystemMenu = systemPages.includes(contextMenu.entityId as string);
 
-  if (!isSectionMenu && !isSpacesMenu && !entity) return null;
+  if (!isSectionMenu && !isSpacesMenu && !isSystemMenu && !entity) return null;
 
   const getItems = (): MenuItem[] => {
     if (isSectionMenu) {
@@ -296,6 +300,17 @@ export function ContextMenu() {
       ];
     }
 
+    if (isSystemMenu) {
+      const id = contextMenu.entityId;
+      return [
+        {
+          icon: <ExternalLink className="w-4 h-4" />,
+          label: 'Open in new tab',
+          onClick: () => { if (id) addTab(id); closeContextMenu(); },
+        }
+      ];
+    }
+
     // Standard entity menu
     const isFavorite = favoriteIds.includes(entity!.id);
     const isCollection = entity!.type === 'collection' || entity!.type === 'workspace';
@@ -316,7 +331,7 @@ export function ContextMenu() {
       closeContextMenu();
     };
 
-    const items: MenuItem[] = [
+    const items: MenuItem[] = ([
       {
         icon: isCollapsible ? (isCollapsed ? <ChevronRight strokeWidth={2} className="w-4 h-4" /> : <ChevronDown strokeWidth={2} className="w-4 h-4" />) : <Star strokeWidth={2} className={`w-4 h-4 ${isFavorite ? 'text-accent' : ''}`} />,
         label: isCollapsible ? (isCollapsed ? 'Unfold' : 'Fold') : (isFavorite ? 'Unpin' : 'Pin to sidebar'),
@@ -326,23 +341,28 @@ export function ContextMenu() {
           closeContextMenu(); 
         },
       },
-      { isDivider: true },
       {
-        icon: <Star className={`w-4 h-4 ${isFavorite ? 'text-accent' : ''}`} />,
-        label: isFavorite ? 'Unpin from sidebar' : 'Pin to sidebar',
-        onClick: () => { toggleFavorite(entity!.id); closeContextMenu(); },
-        hidden: isCollapsible // Fold already replaces this or we want it separate
+        icon: <Edit2 className="w-4 h-4" />,
+        label: 'Rename',
+        onClick: () => { setEditingEntityId(entity!.id, contextMenu.source); closeContextMenu(); },
       },
+    ] as MenuItem[]).filter(item => !item.hidden);
+
+    if (isCollection) {
+      items.push({
+        icon: <Palette className="w-4 h-4" />,
+        label: 'Change icon',
+        onClick: () => { setPickerEntityId(entity!.id); },
+      });
+    }
+
+    items.push({ isDivider: true });
+    
+    items.push(
       {
         icon: <Link2 className="w-4 h-4" />,
         label: 'Copy link',
         onClick: handleCopyLink,
-      },
-      {
-        icon: <FolderInput className="w-4 h-4" />,
-        label: 'Move to...',
-        onClick: () => { openModal({ kind: 'moveTo', entityId: entity!.id }); },
-        hidden: isCollection
       },
       {
         icon: <Copy className="w-4 h-4" />,
@@ -350,20 +370,11 @@ export function ContextMenu() {
         onClick: () => { duplicateEntity(entity!.id); closeContextMenu(); },
       },
       {
-        icon: <Edit2 className="w-4 h-4" />,
-        label: 'Rename',
-        onClick: () => { setEditingEntityId(entity!.id, contextMenu.source); closeContextMenu(); },
-      },
-    ].filter(item => !item.hidden);
-
-    if (isCollection) {
-      // Add Change Icon after Rename or in a specific spot
-      items.splice(items.findIndex(i => i.label === 'Rename') + 1, 0, {
-        icon: <Palette className="w-4 h-4" />,
-        label: 'Change icon',
-        onClick: () => { setPickerEntityId(entity!.id); },
-      });
-    }
+        icon: <ExternalLink className="w-4 h-4" />,
+        label: 'Open in new tab',
+        onClick: () => { addTab(entity!.id); closeContextMenu(); },
+      }
+    );
 
     items.push({ isDivider: true });
     items.push({

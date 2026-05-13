@@ -83,7 +83,7 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
       )}>
         {/* Toggle button */}
         <div
-          className="flex items-center justify-center h-12 w-full border-b border-border transition-colors shrink-0"
+          className="flex items-center justify-center h-12 w-full border-b border-[var(--bone-12)] transition-colors shrink-0"
         >
           {open ? (
             <div className="flex items-center gap-2 w-full px-3">
@@ -92,8 +92,8 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
                 onClick={() => setOpen(false)}
                 title="Collapse activity log"
               >
-                <ClipboardList className="w-3.5 h-3.5 text-[var(--bone-60)] shrink-0" strokeWidth={2} />
-                <span className="text-xs font-medium text-[var(--bone-60)]">Activity Log</span>
+                <ClipboardList className="w-3.5 h-3.5 text-[var(--bone-70)] shrink-0" strokeWidth={2} />
+                <span className="text-xs font-medium text-[var(--bone-70)]">Activity Log</span>
               </div>
               <button
                 onClick={e => { e.stopPropagation(); fetchLogs(true) }}
@@ -159,29 +159,29 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowClearConfirm(false)} />
-          <div className="relative bg-[#1A1A1A] border border-white/5 rounded-big w-full max-w-sm mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div className="relative bg-[#1A1A1A] border border-[var(--bone-12)] rounded-big w-full max-w-sm mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bone-12)]">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
                   <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                 </div>
                 <h3 className="text-xs font-semibold text-foreground">Clear Activity Log</h3>
               </div>
-              <button onClick={() => setShowClearConfirm(false)} className="text-bone-60 hover:text-foreground">
+              <button onClick={() => setShowClearConfirm(false)} className="text-bone-70 hover:text-foreground">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
             
             <div className="px-4 py-3">
-              <p className="text-xs text-bone-60 leading-normal">
+              <p className="text-xs text-bone-70 leading-normal">
                 Are you sure you want to clear all activity logs? This action cannot be undone.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-white/5 bg-white/[0.01]">
+            <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-[var(--bone-6)] bg-white/[0.01]">
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="px-3 py-1.5 rounded border border-white/10 text-[10px] font-bold text-bone-60 hover:text-foreground transition-all uppercase tracking-wider"
+                className="px-3 py-1.5 rounded border border-[var(--bone-6)] text-[10px] font-bold text-bone-70 hover:text-foreground transition-all uppercase tracking-wider"
               >
                 Cancel
               </button>

@@ -124,7 +124,8 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
     return () => {
       unsubscribeCore();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
+ // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;
 }

@@ -34,7 +34,7 @@ export function DeleteConfirmModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={closeModal}>
       <div
-        className="bg-panel border border-border/50 rounded-[1.25rem] p-5 w-[360px]"
+        className="bg-panel border border-[var(--bone-12)] rounded-[1.25rem] p-5 w-[360px]"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
@@ -51,7 +51,7 @@ export function DeleteConfirmModal() {
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={closeModal}
-            className="px-4 py-2 border border-border/50 text-sm rounded-full text-muted-foreground hover:text-foreground hover:bg-hover "
+            className="px-4 py-2 border border-[var(--bone-6)] text-sm rounded-full text-muted-foreground hover:text-foreground hover:bg-hover "
           >
             Cancel
           </button>

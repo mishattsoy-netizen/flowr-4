@@ -100,7 +100,7 @@ export default function GlobalSettingsClient({
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-display font-normal">Global Settings</h1>
-        <p className="text-sm text-bone-60">Author the bot's global identity — personality, rules, and behavior for all users.</p>
+        <p className="text-sm text-bone-70">Author the bot's global identity — personality, rules, and behavior for all users.</p>
       </div>
 
       {/* Global toggles */}
@@ -108,7 +108,7 @@ export default function GlobalSettingsClient({
         <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
           <div>
             <p className="text-sm font-medium text-bone-100">Global Prompt Injection</p>
-            <p className="text-xs text-bone-60 mt-0.5">Brain + Settings are active on every chat request</p>
+            <p className="text-xs text-bone-70 mt-0.5">Brain + Settings are active on every chat request</p>
           </div>
           <Toggle checked={globalOn} onChange={v => { setGlobalOn(v); startTransition(() => setGlobalPromptEnabled(v)) }} />
         </div>
@@ -116,33 +116,33 @@ export default function GlobalSettingsClient({
         <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
           <div>
             <p className="text-sm font-medium text-bone-100">Local Ollama</p>
-            <p className="text-xs text-bone-60 mt-0.5">Your local Ollama instance is active for all users</p>
+            <p className="text-xs text-bone-70 mt-0.5">Your local Ollama instance is active for all users</p>
           </div>
           <Toggle checked={ollamaOn} onChange={v => { setOllamaOn(v); startTransition(() => setOllamaEnabled(v)) }} />
         </div>
 
-        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5 border border-white/5">
+        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5 border border-[var(--bone-6)]">
           <div>
             <p className="text-sm font-medium text-bone-100">Classifier Keywords</p>
-            <p className="text-xs text-bone-60 mt-0.5">Enable keyword fast-path for intent classification</p>
+            <p className="text-xs text-bone-70 mt-0.5">Enable keyword fast-path for intent classification</p>
           </div>
           <Toggle checked={keywordsOn} onChange={v => { setKeywordsOn(v); startTransition(() => setKeywordsEnabled(v)) }} />
         </div>
 
         <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
           <div className="flex items-center gap-3">
-            <Cpu className="w-4 h-4 text-bone-60" />
+            <Cpu className="w-4 h-4 text-bone-70" />
             <div>
               <p className="text-sm font-medium text-bone-100">Backend Model</p>
-              <p className="text-xs text-bone-60 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
+              <p className="text-xs text-bone-70 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-background/50 rounded-[12px] p-1.5 border border-white/5 relative min-w-[280px]">
+          <div className="flex items-center gap-2 bg-background/50 rounded-[12px] p-1.5 border border-[var(--bone-6)] relative min-w-[280px]">
             <ProviderSelector 
               value={backendProvider} 
               providers={allProviders} 
               onChange={setBackendProvider}
-              className="border-r border-white/5 pr-1.5"
+              className="border-r border-[var(--bone-6)] pr-1.5"
             />
             <ModelDropdown 
               value={backend} 
@@ -158,18 +158,18 @@ export default function GlobalSettingsClient({
 
 
       {/* Context & Compaction */}
-      <section className="flex flex-col gap-4 p-4 rounded-[8px] bg-white/5">
+      <section className="flex flex-col gap-4 p-4 rounded-[8px] bg-white/5 border border-[var(--bone-6)]">
         <h2 className="text-sm font-medium text-bone-80">Context & Compaction</h2>
 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-bone-100">Context Limit</p>
-            <p className="text-xs text-bone-60">Max tokens per session before compaction</p>
+            <p className="text-xs text-bone-70">Max tokens per session before compaction</p>
           </div>
           <div className="flex gap-2">
             {[32000, 64000, 128000].map(v => (
               <button key={v} onClick={() => handleConfigChange('context_limit', v)}
-                className={cn('px-2 py-1 text-xs rounded-[8px]', config.context_limit === v ? 'bg-accent/10 text-accent' : 'bg-white/5 text-bone-60 hover:text-bone-100 hover:bg-white/10')}>
+                className={cn('px-2 py-1 text-xs rounded-[8px]', config.context_limit === v ? 'bg-accent/10 text-accent' : 'bg-white/5 text-bone-70 hover:text-bone-100 hover:bg-white/10')}>
                 {v / 1000}k
               </button>
             ))}
@@ -182,31 +182,31 @@ export default function GlobalSettingsClient({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-bone-100">Compaction Threshold</p>
-            <p className="text-xs text-bone-60">Trigger compaction at this % of context limit</p>
+            <p className="text-xs text-bone-70">Trigger compaction at this % of context limit</p>
           </div>
           <div className="flex items-center gap-2">
             <input type="range" min={50} max={95} step={5} value={Math.round(config.compaction_threshold * 100)}
               onChange={e => handleConfigChange('compaction_threshold', parseInt(e.target.value) / 100)}
               className="w-24" />
-            <span className="text-xs text-bone-60 w-8">{Math.round(config.compaction_threshold * 100)}%</span>
+            <span className="text-xs text-bone-70 w-8">{Math.round(config.compaction_threshold * 100)}%</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Draft models */}
-          <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.02] border border-white/5">
-            <p className="text-[10px] font-bold text-bone-60 uppercase tracking-widest px-1">Draft Step</p>
+          <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.02] border border-[var(--bone-6)]">
+            <p className="text-[10px] font-bold text-bone-70 uppercase tracking-widest px-1">Draft Step</p>
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-bone-60 px-1">Primary</p>
-                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-white/5 relative min-w-[200px]">
+                <p className="text-xs text-bone-70 px-1">Primary</p>
+                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-[var(--bone-6)] relative min-w-[200px]">
                   <ProviderSelector value={draftPrimaryProvider} providers={allProviders} onChange={setDraftPrimaryProvider} />
                   <ModelDropdown value={config.draft_primary_model} models={models} providerFilter={draftPrimaryProvider} onChange={v => handleConfigChange('draft_primary_model', v)} className="flex-1" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-bone-60 px-1">Fallback</p>
-                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-white/5 relative min-w-[200px]">
+                <p className="text-xs text-bone-70 px-1">Fallback</p>
+                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-[var(--bone-6)] relative min-w-[200px]">
                   <ProviderSelector value={draftFallbackProvider} providers={allProviders} onChange={setDraftFallbackProvider} />
                   <ModelDropdown value={config.draft_fallback_model} models={models} providerFilter={draftFallbackProvider} onChange={v => handleConfigChange('draft_fallback_model', v)} className="flex-1" />
                 </div>
@@ -215,19 +215,19 @@ export default function GlobalSettingsClient({
           </div>
 
           {/* Refine models */}
-          <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.02] border border-white/5">
-            <p className="text-[10px] font-bold text-bone-60 uppercase tracking-widest px-1">Refine Step</p>
+          <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.02] border border-[var(--bone-6)]">
+            <p className="text-[10px] font-bold text-bone-70 uppercase tracking-widest px-1">Refine Step</p>
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-bone-60 px-1">Primary</p>
-                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-white/5 relative min-w-[200px]">
+                <p className="text-xs text-bone-70 px-1">Primary</p>
+                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-[var(--bone-6)] relative min-w-[200px]">
                   <ProviderSelector value={refinePrimaryProvider} providers={allProviders} onChange={setRefinePrimaryProvider} />
                   <ModelDropdown value={config.refine_primary_model} models={models} providerFilter={refinePrimaryProvider} onChange={v => handleConfigChange('refine_primary_model', v)} className="flex-1" />
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-bone-60 px-1">Fallback</p>
-                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-white/5 relative min-w-[200px]">
+                <p className="text-xs text-bone-70 px-1">Fallback</p>
+                <div className="flex items-center gap-2 bg-background/50 rounded-[10px] p-1.5 border border-[var(--bone-6)] relative min-w-[200px]">
                   <ProviderSelector value={refineFallbackProvider} providers={allProviders} onChange={setRefineFallbackProvider} />
                   <ModelDropdown value={config.refine_fallback_model} models={models} providerFilter={refineFallbackProvider} onChange={v => handleConfigChange('refine_fallback_model', v)} className="flex-1" />
                 </div>
@@ -242,10 +242,10 @@ export default function GlobalSettingsClient({
       {/* Compiled prompts */}
       <section className="flex items-center justify-between p-4 rounded-[16px] bg-white/5 mt-4">
         <div className="flex items-center gap-3">
-          <Globe className="w-4 h-4 text-bone-60" />
+          <Globe className="w-4 h-4 text-bone-70" />
           <div>
             <p className="text-sm font-medium text-bone-100">Compiled Prompt</p>
-            <p className="text-xs text-bone-60 mt-0.5" suppressHydrationWarning>
+            <p className="text-xs text-bone-70 mt-0.5" suppressHydrationWarning>
               Last compiled: {meta[activeTab]?.compiled_at ? new Date(meta[activeTab].compiled_at).toLocaleString() : 'Never'} · {meta[activeTab]?.entry_count ?? 0} entries · {meta[activeTab]?.content?.length ? `${(meta[activeTab].content.length / 4).toFixed(0)} tokens` : '0 tokens'}
             </p>
           </div>
@@ -268,7 +268,7 @@ export default function GlobalSettingsClient({
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
                   "relative z-10 flex-1 flex items-center justify-center py-1 px-3 rounded-[6px] transition-colors duration-200",
-                  activeTab === tab.key ? "text-[var(--bone-100)]" : "text-bone-60 hover:text-foreground"
+                  activeTab === tab.key ? "text-[var(--bone-100)]" : "text-bone-70 hover:text-foreground"
                 )}
               >
                 <span className="text-[11px] font-semibold">{tab.label}</span>
@@ -294,14 +294,14 @@ export default function GlobalSettingsClient({
       </section>
 
       {showPreview && (
-        <pre className="text-xs text-bone-60 bg-white/5 rounded-[12px] p-4 overflow-auto max-h-64 whitespace-pre-wrap font-mono -mt-2">
+        <pre className="text-xs text-bone-70 bg-white/5 rounded-[12px] p-4 overflow-auto max-h-64 whitespace-pre-wrap font-mono -mt-2">
           {meta[activeTab]?.content || 'No compiled content yet. Click Sync Brain.'}
         </pre>
       )}
 
       {/* Pipeline & Chain Configuration */}
       <div className="h-4" />
-      <div className="border-t border-white/5 pt-6">
+      <div className="border-t border-[var(--bone-6)] pt-6">
         <h2 className="text-lg font-bold text-bone-100 uppercase tracking-widest mb-4 opacity-60">Pipeline & Chain Configuration</h2>
         <div className="flex flex-col gap-6">
           <OrchestratorPanel settings={initialPipelineSettings} />

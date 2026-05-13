@@ -78,13 +78,13 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
   useUnsavedChanges(isDirty, handleGlobalSave)
 
   return (
-    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-white/5">
+    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-[var(--bone-12)]">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <Code2 className="w-5 h-5 text-accent" />
           <div>
             <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Internal Pipeline Prompts</h2>
-            <p className="text-[11px] text-bone-60">system-level directives for specific chain steps</p>
+            <p className="text-[11px] text-bone-70">system-level directives for specific chain steps</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -96,7 +96,7 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
           <button
             onClick={handleSyncFromFiles}
             disabled={syncing}
-            className="flex items-center gap-1.5 px-3 h-7 bg-white/5 border border-white/10 text-bone-60 hover:text-foreground hover:bg-white/10 rounded-md text-[10px] font-bold uppercase tracking-wider disabled:opacity-50 transition-all"
+            className="flex items-center gap-1.5 px-3 h-7 bg-white/5 border border-[var(--bone-6)] text-bone-70 hover:text-foreground hover:bg-white/10 rounded-md text-[10px] font-bold uppercase tracking-wider disabled:opacity-50 transition-all"
           >
             {syncing ? <RefreshCw className="w-3 h-3 animate-spin" /> : syncResult && syncResult.errors.length === 0 ? <Check className="w-3 h-3 text-green-400" /> : <RefreshCw className="w-3 h-3" />}
             {syncing ? 'Syncing...' : 'Sync from Files'}
@@ -104,7 +104,7 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
           {lastSaved && (
             <div className="text-right flex flex-col items-end">
               <span className="text-[9px] font-bold text-bone-40 uppercase tracking-tighter">Last Global Sync</span>
-              <span className="text-[10px] font-mono text-bone-60 opacity-60" suppressHydrationWarning>
+              <span className="text-[10px] font-mono text-bone-70 opacity-60" suppressHydrationWarning>
                 {new Date(lastSaved).toLocaleString()}
               </span>
             </div>
@@ -120,14 +120,14 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
           return (
             <div key={type} className={cn(
               "rounded-[12px] border transition-all duration-200 overflow-hidden",
-              isExpanded ? "bg-background border-accent/20" : "bg-white/5 border-transparent hover:border-white/10"
+              isExpanded ? "bg-background border-accent/20" : "bg-white/5 border-transparent hover:border-[var(--bone-6)]"
             )}>
               <button 
                 onClick={() => setExpanded(isExpanded ? null : type)}
                 className="w-full flex items-center justify-between p-3"
               >
                 <div className="flex items-center gap-3">
-                  <span className={cn("text-[11px] font-mono font-bold tracking-tight px-1.5 py-0.5 rounded-sm", hasCustom ? "bg-accent/20 text-accent" : "bg-white/5 text-bone-60")}>
+                  <span className={cn("text-[11px] font-mono font-bold tracking-tight px-1.5 py-0.5 rounded-sm border border-[var(--bone-6)]", hasCustom ? "bg-accent/20 text-accent" : "bg-white/5 text-bone-70")}>
                     {type}
                   </span>
                   {!isExpanded && prompts[type] && (
@@ -145,14 +145,14 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
                     value={prompts[type] || ''}
                     onChange={e => setPrompts({ ...prompts, [type]: e.target.value })}
                     placeholder="Enter custom internal prompt for this chain... (leave empty to use default)"
-                    className="w-full h-32 bg-black/40 border border-white/5 rounded-[8px] p-3 text-xs text-bone-80 focus:outline-none focus:border-accent/40 font-mono leading-relaxed"
+                    className="w-full h-32 bg-black/40 border border-[var(--bone-6)] rounded-[8px] p-3 text-xs text-bone-80 focus:outline-none focus:border-accent/40 font-mono leading-relaxed"
                   />
-                  <div className="flex items-center justify-between mt-1 pt-2 border-t border-white/5">
+                  <div className="flex items-center justify-between mt-1 pt-2 border-t border-[var(--bone-6)]">
                     <div className="flex flex-col">
                       {initialPrompts.value[type] && (
                         <div className="flex flex-col items-start">
                           <span className="text-[9px] font-bold text-bone-40 uppercase tracking-tighter">Last Synced</span>
-                          <span className="text-[10px] font-mono text-bone-60 opacity-60">
+                          <span className="text-[10px] font-mono text-bone-70 opacity-60">
                             {new Date(initialPrompts.updated_at || '').toLocaleString()}
                           </span>
                         </div>
@@ -162,7 +162,7 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col items-end mr-2">
                         <span className="text-[9px] font-bold text-bone-40 uppercase tracking-tighter">Length</span>
-                        <span className="text-[10px] font-mono text-bone-60 opacity-60">
+                        <span className="text-[10px] font-mono text-bone-70 opacity-60">
                           {(prompts[type] || '').length.toLocaleString()} chars
                         </span>
                       </div>

@@ -53,19 +53,19 @@ export default function PresetForm({ preset, onSuccess }: { preset?: any, onSucc
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-in fade-in duration-500">
       <div className="space-y-1.5">
-        <label className="text-[9px] font-bold text-bone-60 tracking-tight uppercase opacity-50">Tier label</label>
+        <label className="text-[9px] font-bold text-bone-70 tracking-tight uppercase opacity-50">Tier label</label>
         <input 
           required
           value={form.name}
           onChange={e => setForm({ ...form, name: e.target.value })}
           placeholder="VIP, Standard, Pro..."
-          className="w-full bg-background border border-white/5 rounded-medium px-3.5 py-2.5 text-xs font-bold text-bone-100 focus:outline-none focus:border-accent/30 placeholder:text-bone-60/10"
+          className="w-full bg-background border border-[var(--bone-6)] rounded-medium px-3.5 py-2.5 text-xs font-bold text-bone-100 focus:outline-none focus:border-accent/30 placeholder:text-bone-70/10"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-3 bg-background/30 p-4 rounded-medium border border-white/5">
-          <label className="text-[9px] font-bold text-bone-60 flex items-center justify-between tracking-tight uppercase opacity-50">
+        <div className="space-y-3 bg-background/30 p-4 rounded-medium border border-[var(--bone-6)]">
+          <label className="text-[9px] font-bold text-bone-70 flex items-center justify-between tracking-tight uppercase opacity-50">
             Messages
             <span className="text-accent font-mono text-[10px]">{form.msg_limit}</span>
           </label>
@@ -78,8 +78,8 @@ export default function PresetForm({ preset, onSuccess }: { preset?: any, onSucc
             className="w-full h-1 bg-white/5 rounded-none appearance-none cursor-pointer accent-accent"
           />
         </div>
-        <div className="space-y-3 bg-background/30 p-4 rounded-medium border border-white/5">
-          <label className="text-[9px] font-bold text-bone-60 flex items-center justify-between tracking-tight uppercase opacity-50">
+        <div className="space-y-3 bg-background/30 p-4 rounded-medium border border-[var(--bone-6)]">
+          <label className="text-[9px] font-bold text-bone-70 flex items-center justify-between tracking-tight uppercase opacity-50">
             Images
             <span className="text-accent font-mono text-[10px]">{form.image_limit}</span>
           </label>
@@ -134,12 +134,12 @@ function Toggle({ label, icon: Icon, active, onClick }: any) {
         "flex items-center justify-between p-3 px-3.5 rounded-regular border group relative overflow-hidden transition-all",
         active 
           ? "bg-accent/10 border-accent/30 text-accent" 
-          : "bg-background border-white/5 text-bone-60 hover:text-bone-100 hover:border-white/10 instrument-hover"
+          : "bg-background border border-[var(--bone-6)] text-bone-70 hover:text-bone-100 hover:border-[var(--bone-6)] instrument-hover"
       )}
     >
       <div className="flex items-center gap-3">
         <Icon 
-          className={cn("w-3.5 h-3.5", active ? "text-accent fill-accent/10" : "text-bone-60 opacity-30")} 
+          className={cn("w-3.5 h-3.5", active ? "text-accent fill-accent/10" : "text-bone-70 opacity-30")} 
           strokeWidth={2}
         />
         <span className="text-[10px] font-bold tracking-tight">{label}</span>

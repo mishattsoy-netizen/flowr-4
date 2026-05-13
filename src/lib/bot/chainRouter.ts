@@ -11,6 +11,7 @@ import { runOllama } from './providers/ollama'
 import { runHuggingFace, runHuggingFaceText } from './providers/huggingface'
 import { runWebSearchChain } from './providers/tavily'
 import { runDuckDuckGoSearchChain } from './providers/duckduckgo'
+import { runDeepResearchChain } from './providers/deepResearch'
 import { runCloudflare } from './providers/cloudflare'
 import { runPollinations, runPollinationsText } from './providers/pollinations'
 import { runSiliconFlow, runSiliconFlowText } from './providers/siliconflow'
@@ -18,7 +19,7 @@ import { getImageDimensions } from './image-utils'
 import { runHuggingFaceUpscale } from './providers/huggingface'
 import { getConversationMemory, getWebConversationMemory } from './memory'
 import { supabaseAdmin } from '../supabase'
-import { getCompiledPrompt } from './compilePrompt'
+import { getCompiledPrompt, getInternalPrompt } from './compilePrompt'
 import { getSessionState, updateSessionState, estimateTokens, summarizeSession } from './context'
 import { planChainSequence } from './orchestrator'
 import { executePipeline, PipelineStep, StatusCallback } from './pipeline'
@@ -30,7 +31,7 @@ import { TraceCollector } from './tracing'
 async function trackModelUsage(p_model_id: string, p_provider: string) {
   try {
     const today = new Date().toISOString().split('T')[0]
-    
+
     // 1. Check if we need a global reset for the day
     const { data: model } = await supabaseAdmin
       .from('models')
@@ -42,9 +43,9 @@ async function trackModelUsage(p_model_id: string, p_provider: string) {
       logger.info(`[RPD] New day detected (${today}). Resetting all model usage...`)
       await supabaseAdmin
         .from('models')
-        .update({ 
-          usage_today: 0, 
-          last_reset_date: today 
+        .update({
+          usage_today: 0,
+          last_reset_date: today
         })
         .neq('last_reset_date', today) // Only reset those not yet reset
     }
@@ -63,7 +64,7 @@ const modelFailureCache: Record<string, number> = {}
 
 export function markModelFailed(modelId: string) {
   modelFailureCache[modelId] = Date.now()
-  logger.warn(`Model ${modelId} marked as failed. Skipping for ${FAILURE_CACHE_MS/1000}s.`)
+  logger.warn(`Model ${modelId} marked as failed. Skipping for ${FAILURE_CACHE_MS / 1000}s.`)
 }
 
 export function isModelFailed(modelId: string): boolean {
@@ -100,6 +101,7 @@ export interface ChainResponse {
   advisor_questions?: string
   text_content?: string
   image_description?: string
+  image_prompt?: string
   trace?: any[]
   step_traces?: import('./tracing').StepTrace[]
 }
@@ -107,22 +109,28 @@ export interface ChainResponse {
 export async function runChain(
   prompt: string,
   inputBuffer?: Buffer | Buffer[],
-  context?: { 
-    chatId?: number; 
-    userId?: string; 
-    aiApiKey?: string; 
-    activeEntityId?: string; 
-    activeWorkspaceId?: string; 
-    classificationModelId?: string; 
-    temperature?: number; 
-    mode?: BotMode; 
-    intentTag?: string | null; 
-    replyContext?: any; 
-    thinkingEnabled?: boolean; 
-    advisorEnabled?: boolean; 
+  context?: {
+    chatId?: number;
+    userId?: string;
+    aiApiKey?: string;
+    activeEntityId?: string;
+    activeChatId?: string | null;
+    activeWorkspaceId?: string;
+    classificationModelId?: string;
+    temperature?: number;
+    mode?: BotMode;
+    intentTag?: string | null;
+    replyContext?: any;
+    thinkingEnabled?: boolean;
+    advisorEnabled?: boolean;
     onStatus?: StatusCallback;
     vision_notes?: string;
     _forcedCategory?: IntentCategory;
+    _triggerType?: string;
+    _triggerValue?: string;
+    _skipSessionSummary?: boolean;
+    isTempChat?: boolean;
+    clientHistory?: any[];
   }
 ): Promise<ChainResponse> {
   const tracer = new TraceCollector()
@@ -130,9 +138,9 @@ export async function runChain(
   // Inject current date context to help bot understand knowledge cutoff and current time
   const now = new Date()
   const dateContext = `[CURRENT CONTEXT]\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\n`
-  
+
   // 0. Prefetch independent config in parallel
-  const sessionId = context?.chatId?.toString() || context?.activeEntityId || 'global'
+  const sessionId = context?.chatId?.toString() || context?.activeChatId || context?.activeEntityId || 'global'
   const [sessionState, globalPrompt, fallbackModes, pipelineSettings] = await Promise.all([
     getSessionState(sessionId),
     getCompiledPrompt(context?.mode ?? 'default'),
@@ -145,8 +153,13 @@ export async function runChain(
   let history: any[] = []
   if (context?.chatId) {
     history = await getConversationMemory(context.chatId, historyLimit)
-  } else if (context?.userId && context.userId !== 'anonymous') {
-    history = await getWebConversationMemory(context.userId, historyLimit)
+  } else if (!context?.isTempChat && context?.userId && context.userId !== 'anonymous') {
+    history = await getWebConversationMemory(context.userId, historyLimit, context.activeChatId ?? null)
+  }
+  // Fallback to client-provided history when DB lookup returns nothing
+  // (anonymous users, temp chats, or missing message_logs rows)
+  if (history.length === 0 && context?.clientHistory && context.clientHistory.length > 0) {
+    history = context.clientHistory.slice(-historyLimit)
   }
   const currentSummary = sessionState?.distilled_summary || null
 
@@ -201,15 +214,18 @@ export async function runChain(
 
   // 2. Standard Routing Flow
   let forcedCategory: any = context?._forcedCategory ?? null
+  let triggerInfo: { type: string, value: string } | null = (context?._triggerType)
+    ? { type: context._triggerType, value: context._triggerValue || '' }
+    : null
   let classificationTrace: any[] = []
 
   // Resolve pipeline settings and thinking toggle
   const thinkingEnabled = context?.thinkingEnabled ?? pipelineSettings.thinkingToggleDefault
-  const onStatus: StatusCallback = context?.onStatus ?? (() => {})
+  const onStatus: StatusCallback = context?.onStatus ?? (() => { })
 
   const getStatusLabel = (chain: string, fallback?: string) => {
     const custom = pipelineSettings.statusMessages?.[chain]
-    return custom ? `${custom.emoji} ${custom.label}`.trim() : (fallback || 'Working')
+    return custom ? `${custom.emoji} ${custom.label}`.trim() : (fallback || 'Working...')
   }
 
   if (activeBuffer) {
@@ -240,9 +256,18 @@ export async function runChain(
 
     for (const modelConfig of visionChain) {
       if (!modelConfig.is_enabled) continue
+      const visionT0 = Date.now()
+      const visionTraceMeta = {
+        chain: 'VISION',
+        model: modelConfig.id,
+        provider: modelConfig.provider,
+        input_system: systemPromptCombined,
+        input_user: activePrompt,
+        input_history_count: history.length,
+      }
       try {
         logger.info(`Routing vision to: ${modelConfig.id} (${modelConfig.provider}) — with ${activeBuffers.length} images`)
-        
+
         let visionRes: any = null
 
         switch (modelConfig.provider.toLowerCase()) {
@@ -264,9 +289,11 @@ export async function runChain(
         }
 
         if (visionRes) {
+          const outputContent = typeof visionRes === 'object' ? visionRes.content : visionRes
+          tracer.recordSuccess({ ...visionTraceMeta, output: outputContent }, Date.now() - visionT0)
           visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'success' })
           let content = typeof visionRes === 'object' ? visionRes.content : visionRes
-          
+
           // Check for JSON metadata (The "Autonomous Brain" logic)
           let metadata: any = null
           try {
@@ -281,6 +308,7 @@ export async function runChain(
 
           if (metadata && metadata.logic_nature) {
             logger.info(`Vision-First Orchestration triggered: ${metadata.logic_nature}`)
+            triggerInfo = { type: 'vision', value: modelConfig.id }
 
             // If vision model already produced the final answer, return it directly
             if (metadata.logic_nature === 'FAST_SIMPLE' && metadata.next_instructions) {
@@ -292,7 +320,8 @@ export async function runChain(
                 model: modelConfig.id,
                 model_chain: `vision → ${modelConfig.id}`,
                 status: 'success',
-                trace: visionTrace
+                trace: visionTrace,
+                step_traces: tracer.all.length > 0 ? tracer.all : undefined,
               } as any
             }
 
@@ -307,20 +336,23 @@ export async function runChain(
           }
 
           trackModelUsage(modelConfig.id, modelConfig.provider)
-          return { 
-            type: 'text', 
-            content, 
-            usage_type: 'vision', 
-            model: modelConfig.id, 
-            model_chain: `vision → ${modelConfig.id}`, 
+          return {
+            type: 'text',
+            content,
+            usage_type: 'vision',
+            model: modelConfig.id,
+            model_chain: `vision → ${modelConfig.id}`,
             status: 'success',
-            trace: visionTrace
+            trace: visionTrace,
+            step_traces: tracer.all.length > 0 ? tracer.all : undefined,
           } as any
         } else {
-           visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'failed', error: 'Empty response' })
+          tracer.recordFailed({ ...visionTraceMeta, error: 'Empty response' }, Date.now() - visionT0)
+          visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'failed', error: 'Empty response' })
         }
       } catch (e: any) {
         logger.warn(`Vision failure [${modelConfig.id}]: ${e.message}`)
+        tracer.recordFailed({ ...visionTraceMeta, error: e.message }, Date.now() - visionT0)
         visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'failed', error: e.message })
       }
     }
@@ -330,12 +362,12 @@ export async function runChain(
       if (visionChain.length === 0) {
         logger.error('VISION chain is empty — add models via Admin > Router > VISION')
       }
-      onStatus({ chain: 'VISION', status: 'failed', label: 'Vision Failed', goal: 'Processing visual input' })
-      return { 
-        type: 'text', 
-        content: "⚡ *Vision Analysis Failed* — Check your model IDs and API keys in the Router.", 
-        usage_type: 'vision', 
-        model_chain: 'vision → (none)', 
+      onStatus({ chain: 'VISION', status: 'failed', label: getStatusLabel('VISION', 'Vision Failed'), goal: 'Processing visual input' })
+      return {
+        type: 'text',
+        content: "⚡ *Vision Analysis Failed* — Check your model IDs and API keys in the Router.",
+        usage_type: 'vision',
+        model_chain: 'vision → (none)',
         status: 'error',
         trace: visionTrace
       }
@@ -360,11 +392,22 @@ export async function runChain(
     classifierModel = classifyRes.classifierModel
     classificationTrace = classifyRes.trace
     classifyError = classifyRes.error ?? null
+    if (classifyRes.trigger_type) {
+      triggerInfo = { type: classifyRes.trigger_type, value: classifyRes.trigger_value || '' }
+    }
 
     if (!rawCategory) {
       onStatus({ chain: 'CLASSIFIER', status: 'failed', goal: 'Classifying intent' })
       logger.error(`Classification failed: ${classifyError ?? 'unknown reason'}`)
-      return { type: 'text', content: "⚡ *System Overload*", usage_type: 'chat', model_chain: 'classifier → (failed)', status: 'error' }
+      return {
+        type: 'text',
+        content: "⚡ *System Overload*",
+        usage_type: 'chat',
+        model_chain: 'classifier → (failed)',
+        status: 'error',
+        step_traces: tracer.all.length > 0 ? tracer.all : undefined,
+        classification_trace: classificationTrace,
+      } as any
     }
     onStatus({ chain: 'CLASSIFIER', status: 'done', goal: 'Classifying intent' })
   }
@@ -422,7 +465,7 @@ export async function runChain(
       let { chain: finalChain, system_prompt: finalSysPrompt } = await getRouterChain(finalChainType)
 
       finalSysPrompt = dateContext + '\n\n' + (finalSysPrompt || '')
-      if (currentSummary) finalSysPrompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + finalSysPrompt
+      if (currentSummary && finalChainType !== 'WEB_SEARCH' && finalChainType !== 'DEEP_RESEARCH' && !context?._skipSessionSummary) finalSysPrompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + finalSysPrompt
       if (globalPrompt) finalSysPrompt = globalPrompt + '\n\n' + finalSysPrompt
       if (context?.replyContext?.attentionBlock) finalSysPrompt = context.replyContext.attentionBlock + '\n\n' + finalSysPrompt
       if (finalAccumulated) finalSysPrompt = `[PIPELINE CONTEXT]\n${finalAccumulated}\n\n` + finalSysPrompt
@@ -453,13 +496,14 @@ export async function runChain(
             onStatus({ ...finalOutputStep })
 
             const allSteps = [...pipelineResult.steps, ...thinkSteps, finalOutputStep]
+            const triggerPart = triggerInfo ? `${triggerInfo.type.toUpperCase().replace(/_/g, ' ')}|${triggerInfo.value}|true → ` : ''
             return {
               type: pipelineResult.imageBuffer ? 'photo' : 'text',
               content: pipelineResult.imageBuffer ?? content,
               text_content: pipelineResult.imageBuffer ? content : undefined,
               usage_type: 'chat',
               model: modelConfig.id,
-              model_chain: `orchestrator → ${allSteps.map(s => s.chain).join(' → ')}${imageDescription ? ' → VISION' : ''}`,
+              model_chain: `${triggerPart}orchestrator → ${allSteps.map(s => s.chain).join(' → ')}${imageDescription ? ' → VISION' : ''}`,
               status: 'success',
               classification_trace: classificationTrace,
               pipeline_steps: allSteps,
@@ -472,7 +516,7 @@ export async function runChain(
         }
       }
 
-      return { type: 'text', content: '⚡ *System Overload*', usage_type: 'chat', status: 'error', classification_trace: classificationTrace }
+      return { type: 'text', content: '⚡ *System Overload*', usage_type: 'chat', status: 'error', classification_trace: classificationTrace, step_traces: tracer.all.length > 0 ? tracer.all : undefined } as any
     }
 
     // Orchestrator failed — fall through to COMPLEX_THINKING
@@ -503,27 +547,33 @@ export async function runChain(
     category = 'COMPLEX_THINKING'
   }
 
-  let { chain, system_prompt, temperature } = await getRouterChain(category)
+  let { chain, system_prompt: routerOverridePrompt, temperature } = await getRouterChain(category)
+
+  // Fetch internal pipeline prompt if available (from Admin > Bot > Global)
+  const internalPipelinePrompt = await getInternalPrompt(category, context?.mode ?? 'default')
+
+  // UNIFICATION: Global Bot Prompt + Internal Pipeline Prompt + Router Override
+  // Order: 1. Global (Rules/Personality) 2. Internal (Instructions) 3. Router Override (Specific overrides)
+  let finalSysPrompt = dateContext
+
+  // Only inject global prompt if the category is enabled in pipeline settings
+  const isGlobalPromptEnabled = !pipelineSettings.globalPromptEnabledCategories || pipelineSettings.globalPromptEnabledCategories.includes(category)
+
+  if (globalPrompt && isGlobalPromptEnabled) finalSysPrompt += "\n\n" + globalPrompt
+  if (internalPipelinePrompt) finalSysPrompt += "\n\n" + internalPipelinePrompt
+  if (routerOverridePrompt) finalSysPrompt += "\n\n" + routerOverridePrompt
+
+  let system_prompt = finalSysPrompt
 
   if (context?.vision_notes) {
-    system_prompt = `${context.vision_notes}\n\n${system_prompt}`
+    system_prompt = `[VISION DATA]\n${context.vision_notes}\n\n` + system_prompt
   }
 
-  if (!system_prompt && (category === 'TOOL_CALLING' || category === 'IMAGE_GEN')) {
-    logger.error(`No system_prompt configured for "${category}" chain — set it in Admin > Router > ${category}`)
-  }
-
-  // Inject current date context to help bot understand knowledge cutoff and current time
-  system_prompt = dateContext + "\n\n" + (system_prompt || "")
-
-  // Inject distilled session summary if available
-  if (currentSummary) {
+  // Inject global session summary if available.
+  // Skip for WEB_SEARCH/DEEP_RESEARCH and fallbacks from those chains — poisoned summaries override search results.
+  const skipSummary = category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH' || context?._skipSessionSummary
+  if (currentSummary && !skipSummary) {
     system_prompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + system_prompt
-  }
-
-  // Inject global compiled prompt (settings + brain entries) as prefix
-  if (globalPrompt) {
-    system_prompt = globalPrompt + "\n\n" + (system_prompt || "")
   }
 
   if (context?.replyContext?.attentionBlock) {
@@ -572,15 +622,29 @@ export async function runChain(
       if (thinkResult.direction) {
         system_prompt = `[THINK CHAIN DIRECTION]\n${thinkResult.direction}\n\n` + system_prompt
       }
+      if (thinkResult.correctedContext) {
+        // Inject search results from thinking pass so subsequent models in the chain have context
+        system_prompt = `[SEARCH DATA]\n${thinkResult.correctedContext}\n\n` + system_prompt
+      }
     } catch (e: any) {
       logger.warn(`Single-chain think pre-pass failed: ${e.message}`)
     }
   }
 
-  // ── Prompt Expansion for IMAGE_GEN ──
+  // ── Iterative search for DEEP_RESEARCH ──
   let activePromptForGen = prompt
+  if (category === 'DEEP_RESEARCH') {
+    onStatus({ chain: 'DEEP_RESEARCH', goal: 'Running iterative web research', status: 'running', label: getStatusLabel('DEEP_RESEARCH') })
+    const researchResult = await runDeepResearchChain(prompt, context)
+    if (!researchResult.includes('Search failed')) {
+      activePromptForGen = researchResult
+    }
+    onStatus({ chain: 'DEEP_RESEARCH', goal: 'Running iterative web research', status: 'done' })
+  }
+
+  // ── Prompt Expansion for IMAGE_GEN ──
   if (category === 'IMAGE_GEN') {
-    onStatus({ chain: 'IMAGE_GEN', goal: 'Expanding prompt with context', status: 'running', label: '🧠 Thinking' })
+    onStatus({ chain: 'IMAGE_GEN', goal: 'Expanding prompt with context', status: 'running', label: getStatusLabel('IMAGE_GEN') })
     const expansionT0 = Date.now()
     const expansionResult = await expandImagePrompt(prompt, history, context)
     activePromptForGen = expansionResult.expanded
@@ -597,7 +661,7 @@ export async function runChain(
     onStatus({ chain: 'IMAGE_GEN', goal: 'Expanding prompt with context', status: 'done' })
   }
 
-  for (const modelConfig of uniqueChain) {
+  modelLoop: for (const modelConfig of uniqueChain) {
 
     // ── CostGuard: project cost from prompt + estimated completion tokens ──
     if (modelConfig.is_paid && (modelConfig.prompt_cost || modelConfig.completion_cost)) {
@@ -635,16 +699,19 @@ export async function runChain(
       providerKeys = [context.aiApiKey]
     }
 
-    if (providerKeys.length === 0) {
+    // core/tavily providers fetch their own keys internally — skip the key gate for them
+    const isKeylessProvider = modelConfig.provider === 'core' || modelConfig.provider === 'tavily'
+    if (providerKeys.length === 0 && !isKeylessProvider) {
       logger.warn(`No API keys for ${modelConfig.id} (${key}) — skipping`)
       routingTrace.push({ model: modelConfig.id, category, key: 'NO_KEY', success: false })
       continue
     }
+    if (isKeylessProvider && providerKeys.length === 0) providerKeys = ['none']
 
     const startIndex = triedKeysCount[key] || 0
 
     try {
-      for (let k = startIndex; k < providerKeys.length; k++) {
+      keyLoop: for (let k = startIndex; k < providerKeys.length; k++) {
         const activeKey = providerKeys[k]
 
         if (k === providerKeys.length - 1 && providerKeys.length > 1) {
@@ -665,7 +732,11 @@ export async function runChain(
             setSynthesisModel: (m: string) => { usedSynthesisModel = m }
           }
 
-          const historyForChain = (!pipelineSettings.historyEnabledCategories || pipelineSettings.historyEnabledCategories.includes(category)) ? history : []
+          // WEB_SEARCH/DEEP_RESEARCH: never pass conversation history — prior wrong answers poison synthesis.
+          // The search results are the ground truth; history would override them.
+          const historyForChain = (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH')
+            ? []
+            : (!pipelineSettings.historyEnabledCategories || pipelineSettings.historyEnabledCategories.includes(category)) ? history : []
 
           const traceMeta = {
             chain: category,
@@ -681,7 +752,7 @@ export async function runChain(
           try {
             switch (modelConfig.provider.toLowerCase()) {
               case 'google':
-                response = await runGoogle(modelConfig.id, activePromptForGen, system_prompt + "\n\n" + (globalPrompt || ''), undefined, { ...context, temperature } as any, historyForChain)
+                response = await runGoogle(modelConfig.id, activePromptForGen, system_prompt, undefined, { ...context, temperature } as any, historyForChain)
                 break
               case 'groq':
                 response = await runGroq(modelConfig.id, activePromptForGen, system_prompt, activeKey || context?.aiApiKey, routeContext, historyForChain)
@@ -696,10 +767,41 @@ export async function runChain(
               case 'cloudflare':
                 response = await runCloudflare(modelConfig.id, activePromptForGen, activeKey || context?.aiApiKey, system_prompt, historyForChain, category)
                 break
-              case 'vault':
-                if (modelConfig.id === 'tavily-search') response = await runWebSearchChain(activePromptForGen, routeContext)
-                if (modelConfig.id === 'duckduckgo-search') response = await runDuckDuckGoSearchChain(activePromptForGen, routeContext)
+              case 'core':
+              case 'tavily': {
+                // If we already have search data (from Thinking pass, Web Search, or Deep Research), skip redundant search
+                // Note: Deep Research results are often in activePromptForGen instead of system_prompt
+                const hasSearchData =
+                  system_prompt.includes('[SEARCH DATA]') ||
+                  system_prompt.includes('[SEARCH RESULTS') ||
+                  system_prompt.includes('RESEARCH FINDINGS:') ||
+                  activePromptForGen.includes('RESEARCH FINDINGS:')
+
+                if (hasSearchData) {
+                  logger.info(`Skipping redundant search for ${modelConfig.id} - data already present from prior pass.`)
+                  continue modelLoop
+                }
+
+                const SEARCH_FAILURE_STRINGS = ['search failed', 'unavailable', 'could not retrieve', 'failed to retrieve', 'unable to find', 'no results']
+                let searchResult: string | null = null
+                // Use the ORIGINAL prompt for search, not activePromptForGen which might contain prior search data
+                if (modelConfig.id === 'tavily-search') searchResult = await runWebSearchChain(prompt, routeContext, system_prompt)
+                if (modelConfig.id === 'duckduckgo-search') searchResult = await runDuckDuckGoSearchChain(prompt, routeContext, system_prompt)
+
+                const isSearchFailure = !searchResult || SEARCH_FAILURE_STRINGS.some(f => searchResult!.toLowerCase().includes(f))
+
+                if (isSearchFailure) {
+                  const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} 1`
+                  routingTrace.push({ model: modelConfig.id, category, key: displayKey, success: false, status: 'empty' })
+                  tracer.recordFailed({ ...traceMeta, error: 'search failed to retrieve results' }, Date.now() - t0)
+                  break
+                }
+
+                // Success: update system_prompt for the next model and set response to trigger success path
+                system_prompt = `${system_prompt}\n\n[SEARCH DATA: ${modelConfig.id}]\n${searchResult}\n\n`
+                response = { content: searchResult }
                 break
+              }
               case 'pollinations':
                 if (category === 'IMAGE_GEN') {
                   response = await runPollinations(activePromptForGen, modelConfig.id)
@@ -738,6 +840,15 @@ export async function runChain(
               citations = (response as any).citations
             }
 
+            // For WEB_SEARCH/DEEP_RESEARCH search steps, we DON'T return. 
+            // We've already updated system_prompt and recorded trace inside the switch.
+            // We just need to move to the next model in the modelLoop (the synthesis LLM).
+            if ((modelConfig.provider === 'tavily' || modelConfig.id.includes('search')) && (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH')) {
+              // If this was a search provider success, we've already done everything needed inside the switch.
+              // We just break the keyLoop to move to the next model in the modelLoop.
+              break keyLoop
+            }
+
             if (category === 'IMAGE_GEN' && typeof finalContent === 'string') {
               const looksLikeImage =
                 finalContent.startsWith('data:image') ||
@@ -768,13 +879,23 @@ export async function runChain(
             if (category === 'IMAGE_GEN') {
               try {
                 let processingBuffer: Buffer | null = Buffer.isBuffer(finalContent) ? finalContent : null
-                if (!processingBuffer && typeof finalContent === 'string' && (finalContent.startsWith('http') || finalContent.includes('.ai/'))) {
-                  logger.info(`Fetching remote image for processing: ${finalContent.slice(0, 50)}...`)
-                  const fetchRes = await fetch(finalContent)
-                  if (fetchRes.ok) {
-                    processingBuffer = Buffer.from(await fetchRes.arrayBuffer())
-                  } else {
-                    logger.warn(`Failed to fetch remote image for processing: ${fetchRes.status}`)
+                if (!processingBuffer && typeof finalContent === 'string') {
+                  const contentStr: string = finalContent
+                  if (contentStr.startsWith('data:')) {
+                    // data:image/png;base64,...  or  data:image/jpeg;base64,...
+                    const b64 = contentStr.includes(';base64,') ? contentStr.split(';base64,')[1] : contentStr.split(',')[1]
+                    if (b64) {
+                      processingBuffer = Buffer.from(b64, 'base64')
+                      logger.info(`Converted data: URL to buffer for processing (${processingBuffer.length} bytes)`)
+                    }
+                  } else if (contentStr.startsWith('http') || contentStr.includes('.ai/')) {
+                    logger.info(`Fetching remote image for processing: ${contentStr.slice(0, 50)}...`)
+                    const fetchRes = await fetch(contentStr)
+                    if (fetchRes.ok) {
+                      processingBuffer = Buffer.from(await fetchRes.arrayBuffer())
+                    } else {
+                      logger.warn(`Failed to fetch remote image for processing: ${fetchRes.status}`)
+                    }
                   }
                 }
                 if (processingBuffer) {
@@ -826,11 +947,15 @@ export async function runChain(
             }
 
             const chainParts: string[] = []
+            if (triggerInfo) {
+              const displayType = triggerInfo.type.toUpperCase().replace(/_/g, ' ')
+              chainParts.push(`${displayType}|${triggerInfo.value}|true`)
+            }
             if (classificationTrace && classificationTrace.length > 0) {
               classificationTrace.forEach(t => {
                 chainParts.push(`${t.model}|${t.key || 'DEFAULT'}|${t.success ? 'true' : 'false'}`)
               })
-            } else if (classifierModel) {
+            } else if (classifierModel && !triggerInfo) {
               chainParts.push(classifierModel)
             }
             if (category) chainParts.push(category)
@@ -866,6 +991,7 @@ export async function runChain(
               citations,
               tokens_used: typeof finalContent === 'string' ? estimateTokens(prompt + finalContent + (system_prompt || '')) : undefined,
               image_description: imageDescription,
+              image_prompt: category === 'IMAGE_GEN' ? activePromptForGen : undefined,
               pipeline_steps: thinkPipelineStepsPrepass.length > 0 ? thinkPipelineStepsPrepass : undefined,
               step_traces: tracer.all.length > 0 ? tracer.all : undefined,
             }
@@ -912,7 +1038,23 @@ export async function runChain(
   // All models in the chain exhausted — fall back to COMPLEX_THINKING if not already there
   if (category !== 'COMPLEX_THINKING' && category !== 'MEDIUM_THINKING' && category !== 'FAST_SIMPLE') {
     logger.warn(`[Fallback] All models exhausted for ${category} — retrying with COMPLEX_THINKING`)
-    return runChain(prompt, inputBuffer, { ...context, _forcedCategory: 'COMPLEX_THINKING' })
+    const searchCategories = ['WEB_SEARCH', 'DEEP_RESEARCH']
+    const fallbackResult = await runChain(prompt, inputBuffer, {
+      ...context,
+      _forcedCategory: 'COMPLEX_THINKING',
+      // Strip session summary from fallback when search chain failed — prevents poisoned context
+      ...(searchCategories.includes(category) ? { _skipSessionSummary: true } : {}),
+    })
+    // Merge failed WEB_SEARCH routing trace into fallback result so admin logs show all attempted models
+    if (routingTrace.length > 0 && fallbackResult.routing_trace) {
+      fallbackResult.routing_trace = [...routingTrace, ...fallbackResult.routing_trace]
+    } else if (routingTrace.length > 0) {
+      fallbackResult.routing_trace = [...routingTrace, ...(fallbackResult.routing_trace || [])]
+    }
+    if (tracer.all.length > 0) {
+      fallbackResult.step_traces = [...tracer.all, ...(fallbackResult.step_traces || [])]
+    }
+    return fallbackResult
   }
 
   const chainParts: string[] = []

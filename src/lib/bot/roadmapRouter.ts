@@ -125,7 +125,7 @@ export async function runRoadmapChain(
         response = await runGoogle(model.id, prompt, systemPrompt, buffer, routeContext, history)
       } else if (model.provider === 'groq') {
         response = await runGroq(model.id, prompt, systemPrompt, providerKeys[0], routeContext, history)
-      } else if (model.provider === 'vault') {
+      } else if (model.provider === 'core' || model.provider === 'tavily') {
         if (model.id === 'tavily-search') response = await runWebSearchChain(prompt, routeContext)
         if (model.id === 'duckduckgo-search') response = await runDuckDuckGoSearchChain(prompt, routeContext)
       }

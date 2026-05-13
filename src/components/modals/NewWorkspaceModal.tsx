@@ -44,7 +44,7 @@ export function NewWorkspaceModal() {
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="font-ui w-full bg-transparent border border-[color:var(--bone-15)] rounded-[var(--radius-small)] px-3.5 py-2.5 text-sm text-foreground placeholder:text-[color:var(--dim-foreground)] focus:border-[color:var(--bone-60)] outline-none "
+            className="font-ui w-full bg-transparent border border-[color:var(--bone-15)] rounded-[var(--radius-small)] px-3.5 py-2.5 text-sm text-foreground placeholder:text-[color:var(--dim-foreground)] focus:border-[color:var(--bone-70)] outline-none "
           />
           {name && (
             <button

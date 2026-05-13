@@ -17,19 +17,24 @@ import {
   Mic,
   Brain,
   Layers,
+  Layers2,
   X,
   Save,
   Edit2,
   MessageSquareCode
 } from 'lucide-react'
-import { 
-  updateRouterChain, 
-  getFallbackModes, 
-  setFallbackMode, 
-  getRouterTemperatures, 
+import {
+  updateRouterChain,
+  getFallbackModes,
+  setFallbackMode,
+  getRouterTemperatures,
   setRouterTemperature,
-  updateRouterSystemPrompt 
+  updateRouterSystemPrompt,
+  getSubchainConfigsAction,
+  saveSubchainConfigsAction,
 } from '@/app/admin/router/actions'
+import type { SubchainConfig } from '@/lib/subchain-config'
+import type { IntentCategory } from '@/lib/router-config'
 import { saveChainPreset, loadChainPreset, listChainPresets } from '@/app/admin/bot/registry/actions'
 import { cn } from '@/lib/utils'
 import ModelDropdown from './ModelDropdown'
@@ -107,11 +112,11 @@ function ModelSelector({
               setSearch(value)
             }
           }}
-          className="w-full bg-transparent border-none p-0 focus:ring-0 text-[13.5px] font-medium text-bone-60 group-hover:text-bone-100 placeholder:text-bone-60/20 truncate tracking-wide"
+          className="w-full bg-transparent border-none p-0 focus:ring-0 text-[13.5px] font-medium text-bone-70 group-hover:text-bone-100 placeholder:text-bone-70/20 truncate tracking-wide"
           placeholder="Model node ID..."
         />
         
-        <ChevronDown className="shrink-0 w-3 h-3 text-bone-60 opacity-20 group-hover:opacity-100" />
+        <ChevronDown className="shrink-0 w-3 h-3 text-bone-70 opacity-20 group-hover:opacity-100" />
       </div>
 
       {isOpen && (
@@ -140,20 +145,20 @@ function ModelSelector({
                 }}
                 className={cn(
                   "w-full flex items-center justify-between gap-3 px-3 py-1.5 text-[11px] font-medium tracking-wide",
-                  value === model.id ? "bg-accent/10 text-accent" : "text-bone-60 hover:bg-bone-hover hover:text-bone-100"
+                  value === model.id ? "bg-accent/10 text-accent" : "text-bone-70 hover:bg-bone-hover hover:text-bone-100"
                 )}
               >
                 <span className="truncate" title={model.id}>{model.id}</span>
                 <span className={cn(
                   "text-[8px] font-bold px-1 py-0.5 rounded-sm border",
-                  value === model.id ? "bg-accent/20 border-accent/30 text-accent" : "bg-background border-white/5 text-bone-60 opacity-40 group-hover:opacity-100"
+                  value === model.id ? "bg-accent/20 border-accent/30 text-accent" : "bg-background border-white/5 text-bone-70 opacity-40 group-hover:opacity-100"
                 )}>
                   {model.rpd}
                 </span>
               </button>
             ))
           ) : !search && (
-            <div className="px-4 py-4 text-center text-[9px] font-bold text-bone-60 opacity-30 italic tracking-tight uppercase">Empty node list</div>
+            <div className="px-4 py-4 text-center text-[9px] font-bold text-bone-70 opacity-30 italic tracking-tight uppercase">Empty node list</div>
           )}
         </div>
       )}
@@ -191,6 +196,53 @@ export default function RouterManager({
   )
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+
+  // Subchain state
+  const SUBCHAIN_PARENTS: Record<string, true> = { IMAGE_GEN: true, DEEP_RESEARCH: true }
+  const hasSubchains = category ? SUBCHAIN_PARENTS[category] === true : false
+  const ALL_CATEGORIES: IntentCategory[] = [
+    'FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX_THINKING', 'CLASSIFIER',
+    'VISION', 'IMAGE_GEN', 'IMAGE_UPSCALE', 'WEB_SEARCH', 'DEEP_RESEARCH',
+    'TOOL_CALLING', 'CODING', 'THINKING', 'ORCHESTRATOR', 'ADVISOR',
+  ]
+  const [isSubchainView, setIsSubchainView] = useState(false)
+  const [subchains, setSubchains] = useState<SubchainConfig[]>([])
+  const [activeSubchainId, setActiveSubchainId] = useState<string | null>(null)
+  const [isSavingSubchain, setIsSavingSubchain] = useState(false)
+
+  useEffect(() => {
+    if (!isSubchainView || !category) return
+    getSubchainConfigsAction().then(all => {
+      const mine = all.filter(s => s.parent_category === category)
+      setSubchains(mine)
+      if (mine.length > 0 && !activeSubchainId) setActiveSubchainId(mine[0].id)
+    })
+  }, [isSubchainView, category])
+
+  const activeSubchain = subchains.find(s => s.id === activeSubchainId) ?? null
+
+  const handleSubchainChainChange = (subchainId: string, newCategory: IntentCategory) => {
+    setSubchains(prev => prev.map(s => s.id === subchainId ? { ...s, chain_category: newCategory } : s))
+  }
+
+  const handleSubchainPromptChange = (value: string) => {
+    if (!activeSubchainId) return
+    setSubchains(prev => prev.map(s => s.id === activeSubchainId ? { ...s, system_prompt: value } : s))
+  }
+
+  const handleSaveSubchains = async () => {
+    if (!subchains.length) return
+    setIsSavingSubchain(true)
+    try {
+      const all = await getSubchainConfigsAction()
+      const others = all.filter(s => s.parent_category !== category)
+      await saveSubchainConfigsAction([...others, ...subchains])
+    } catch (err: any) {
+      alert(`Failed to save subchain config: ${err.message}`)
+    } finally {
+      setIsSavingSubchain(false)
+    }
+  }
   const [isPresetOpen, setIsPresetOpen] = useState(false)
   const [presetName, setPresetName] = useState('')
   const [presetsList, setPresetsList] = useState<any[]>([])
@@ -388,12 +440,12 @@ export default function RouterManager({
 
   return (
     <div className={cn(
-      "bg-panel rounded-big px-3 pb-2 pt-3 h-full flex flex-col relative",
+      "bg-panel border border-[var(--bone-12)] rounded-big px-3 pb-2 pt-3 h-full flex flex-col relative",
       hasChanges ? "ring-1 ring-accent/20" : ""
     )}>
       {/* Preset Manager Popup */}
       {isPresetOpen && (
-        <div className="absolute top-12 right-4 w-72 bg-panel/95 backdrop-blur-xl border border-white/10 rounded-big shadow-2xl z-50 animate-in zoom-in-95 fade-in duration-0 p-4">
+        <div className="absolute top-12 right-4 w-72 bg-panel/95 backdrop-blur-xl border border-[var(--bone-12)] rounded-big shadow-2xl z-50 animate-in zoom-in-95 fade-in duration-0 p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground/80">Chain Presets</h4>
             <button 
@@ -406,13 +458,13 @@ export default function RouterManager({
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-col gap-2 p-2 bg-white/[0.02] rounded-medium border border-white/5">
+            <div className="flex flex-col gap-2 p-2 bg-white/[0.02] rounded-medium border border-[var(--bone-6)]">
               <input
                 type="text"
                 placeholder="New preset name..."
                 value={presetName}
                 onChange={(e) => setPresetName(e.target.value)}
-                className="bg-background border border-white/5 rounded-sm px-2 py-1 text-[11px] text-foreground focus:outline-none w-full h-7 transition-all duration-0"
+                className="bg-background border border-[var(--bone-6)] rounded-sm px-2 py-1 text-[11px] text-foreground focus:outline-none w-full h-7 transition-all duration-0"
               />
               <button
                 onClick={handleSavePreset}
@@ -430,7 +482,7 @@ export default function RouterManager({
                     key={p.id} 
                     className="group flex items-center justify-between p-2 rounded-sm hover:bg-white/5 border border-transparent hover:border-white/5 transition-all duration-0"
                   >
-                    <span className="text-[11px] font-medium text-bone-60 truncate mr-2">{p.name}</span>
+                    <span className="text-[11px] font-medium text-bone-70 truncate mr-2">{p.name}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-0">
                       <button 
                         onClick={() => handleLoadPreset(p.id)}
@@ -457,29 +509,31 @@ export default function RouterManager({
       )}
 
       {isPromptOpen && (
-        <div className="px-3 py-3 mb-3 bg-white/[0.02] border border-white/5 rounded-medium animate-in slide-in-from-top-1 duration-200">
+        <div className="px-3 py-3 mb-3 bg-white/[0.02] border border-[var(--bone-6)] rounded-medium animate-in slide-in-from-top-1 duration-200">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] font-bold text-bone-60 uppercase tracking-widest">System Prompt Override</label>
+            <label className="text-[10px] font-bold text-bone-70 uppercase tracking-widest">
+              {isSubchainView && activeSubchain ? `${activeSubchain.label} — System Prompt` : 'System Prompt Override'}
+            </label>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setIsPromptOpen(false)}
                 className="text-[9px] font-bold text-bone-40 hover:text-bone-100 uppercase"
               >
                 Dismiss
               </button>
-              <button 
-                onClick={handleSavePrompt}
-                disabled={isSavingPrompt}
+              <button
+                onClick={isSubchainView ? handleSaveSubchains : handleSavePrompt}
+                disabled={isSubchainView ? isSavingSubchain : isSavingPrompt}
                 className="text-[9px] font-bold text-accent hover:brightness-110 uppercase"
               >
-                {isSavingPrompt ? 'Saving...' : 'Save Prompt'}
+                {(isSubchainView ? isSavingSubchain : isSavingPrompt) ? 'Saving...' : 'Save Prompt'}
               </button>
             </div>
           </div>
           <textarea
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            className="w-full h-32 bg-background/50 border border-white/5 rounded-sm p-2 text-[11px] text-bone-100 font-mono focus:outline-none focus:ring-1 focus:ring-accent/30 resize-none custom-scrollbar"
+            value={isSubchainView ? (activeSubchain?.system_prompt ?? '') : systemPrompt}
+            onChange={(e) => isSubchainView ? handleSubchainPromptChange(e.target.value) : setSystemPrompt(e.target.value)}
+            className="w-full h-32 bg-background/50 border border-[var(--bone-6)] rounded-sm p-2 text-[11px] text-bone-100 font-mono focus:outline-none focus:ring-1 focus:ring-accent/30 resize-none custom-scrollbar"
             placeholder="Enter instructions for this chain node..."
           />
         </div>
@@ -509,49 +563,79 @@ export default function RouterManager({
                    <span>401?</span>
                 </div>
                 <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-[#1A1A1A] border border-white/10 rounded-medium shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[100]">
-                  <p className="text-[9px] leading-relaxed text-bone-60">
+                  <p className="text-[9px] leading-relaxed text-bone-70">
                     <span className="text-amber-500 font-bold">Cloudflare 401?</span><br />
                     Ensure your token has <span className="text-bone-100 font-bold">"Workers AI: Edit"</span> permission in the Cloudflare dashboard.
                   </p>
                 </div>
               </div>
             )}
+            {/* Subchain tabs — shown only in subchain view */}
+            {isSubchainView && subchains.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setActiveSubchainId(s.id)}
+                className={cn(
+                  'px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wide transition-all duration-0',
+                  activeSubchainId === s.id ? 'bg-accent/20 text-accent' : 'text-bone-60 hover:text-foreground hover:bg-white/5'
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+
+            {/* Normal controls — hidden in subchain view */}
+            {!isSubchainView && (<>
+              <button
+                onClick={handleToggleMode}
+                className={cn(
+                  "flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-0 text-[9px] font-bold tracking-wide uppercase",
+                  fallbackMode === 'api_key_first'
+                    ? "bg-accent/10 text-accent"
+                    : "bg-white/5 text-bone-70 hover:text-foreground hover:bg-white/[0.08]"
+                )}
+                title={fallbackMode === 'api_key_first' ? 'Try alternative API keys first' : 'Try next model first'}
+              >
+                <span className="w-1 h-1 rounded-full bg-current" />
+                {fallbackMode === 'api_key_first' ? 'Keys' : 'Models'}
+              </button>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-white/5 text-bone-70 hover:text-foreground hover:bg-white/[0.08] text-[9px] font-bold uppercase tracking-wide">
+                <span>Temp</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  value={temperature}
+                  onChange={(e) => handleTempChange(parseFloat(e.target.value) || 0)}
+                  className="w-10 bg-transparent border-none p-0 focus:ring-0 text-[9px] font-mono text-center font-bold text-accent select-none outline-none"
+                />
+              </div>
+            </>)}
+
             <button
-              onClick={handleToggleMode}
-              className={cn(
-                "flex items-center gap-1.5 px-2 py-0.5 rounded-sm transition-all duration-0 text-[9px] font-bold tracking-wide uppercase",
-                fallbackMode === 'api_key_first' 
-                  ? "bg-accent/10 text-accent" 
-                  : "bg-white/5 text-bone-60 hover:text-foreground hover:bg-white/[0.08]"
-              )}
-              title={fallbackMode === 'api_key_first' ? 'Try alternative API keys first' : 'Try next model first'}
-            >
-              <span className="w-1 h-1 rounded-full bg-current" />
-              {fallbackMode === 'api_key_first' ? 'Keys' : 'Models'}
-            </button>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-white/5 text-bone-60 hover:text-foreground hover:bg-white/[0.08] text-[9px] font-bold uppercase tracking-wide">
-              <span>Temp</span>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="2"
-                value={temperature}
-                onChange={(e) => handleTempChange(parseFloat(e.target.value) || 0)}
-                className="w-10 bg-transparent border-none p-0 focus:ring-0 text-[9px] font-mono text-center font-bold text-accent select-none outline-none"
-              />
-            </div>
-            <button 
               onClick={() => setIsPromptOpen(!isPromptOpen)}
               className={cn(
                 "p-1 rounded-sm transition-all duration-0",
                 isPromptOpen ? "bg-accent/20 text-accent" : "hover:bg-white/5 text-muted-foreground/40 hover:text-foreground"
               )}
-              title="System Prompt"
+              title={isSubchainView ? 'Subchain System Prompt' : 'System Prompt'}
             >
               <MessageSquareCode className="w-3.5 h-3.5" />
             </button>
-            <button 
+            {hasSubchains && (
+              <button
+                onClick={() => setIsSubchainView(v => !v)}
+                className={cn(
+                  'p-1 rounded-sm transition-all duration-0',
+                  isSubchainView ? 'bg-accent/20 text-accent' : 'hover:bg-white/5 text-muted-foreground/40 hover:text-foreground'
+                )}
+                title="Subchain View"
+              >
+                <Layers2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
               onClick={() => setIsPresetOpen(true)}
               className="p-1 rounded-sm hover:bg-white/5 text-muted-foreground/40 hover:text-foreground transition-all"
               title="Preset Manager"
@@ -562,7 +646,38 @@ export default function RouterManager({
         </div>
       )}
 
-      <div 
+      {isSubchainView ? (
+        <div className="flex flex-col gap-1 pb-3">
+          {subchains.map(s => (
+            <div key={s.id} className="flex items-center gap-3 px-2 py-1.5 rounded-medium hover:bg-white/[0.02]">
+              <span className="text-[11px] font-medium text-bone-60 w-[130px] shrink-0 truncate">{s.label}</span>
+              <div className="relative flex-1">
+                <select
+                  value={s.chain_category}
+                  onChange={(e) => handleSubchainChainChange(s.id, e.target.value as IntentCategory)}
+                  className="w-full bg-transparent border border-white/10 rounded-sm px-2 py-0.5 text-[11px] font-mono text-bone-100 focus:outline-none focus:ring-1 focus:ring-accent/30 appearance-none cursor-pointer hover:border-white/20 transition-all"
+                >
+                  {ALL_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat} className="bg-[#0f0f0f] text-bone-100">{cat.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-bone-60 opacity-40 pointer-events-none" />
+              </div>
+              <div className={cn('w-1.5 h-1.5 rounded-full shrink-0', activeSubchainId === s.id ? 'bg-accent' : 'bg-white/10')} />
+            </div>
+          ))}
+          <div className="mt-2 px-2 flex justify-end">
+            <button
+              onClick={handleSaveSubchains}
+              disabled={isSavingSubchain}
+              className="bg-accent text-background px-3 py-1.5 rounded-medium text-[10px] font-bold tracking-widest hover:brightness-110 transition-all duration-0 uppercase disabled:opacity-50"
+            >
+              {isSavingSubchain ? 'Saving...' : 'Save Subchains'}
+            </button>
+          </div>
+        </div>
+      ) : (
+      <div
         className="flex flex-col gap-1 pb-3"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
@@ -601,7 +716,7 @@ export default function RouterManager({
              
              <div className="flex items-center gap-2 ml-auto">
                {/* Col 2: RPD */}
-               <div className="flex items-center gap-1 shrink-0 text-bone-60 group-hover:text-bone-80 transition-colors duration-0 w-16 justify-end">
+               <div className="flex items-center gap-1 shrink-0 text-bone-70 group-hover:text-bone-80 transition-colors duration-0 w-16 justify-end">
                  <span className={cn(
                     "text-[9px] font-mono font-medium",
                     (() => {
@@ -661,37 +776,37 @@ export default function RouterManager({
            )
          })}
       </div>
- 
-      <div className="mt-auto px-3 py-1 flex justify-between items-center border-t border-white/[0.03]">
-        <button 
-          onClick={addModel}
-          disabled={models.length >= 10}
-          className="text-[10px] flex items-center gap-2 text-bone-60 hover:text-foreground hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-bone-60 font-bold tracking-widest px-3 py-1.5 rounded-medium uppercase transition-all duration-0"
-        >
-          <Plus className="w-3 h-3" /> Add node
-        </button>
-        
-        {hasChanges && (
-          <div className="flex items-center gap-4 animate-in slide-in-from-right-2 duration-300">
-            <button 
-              onClick={() => {
-                setModels(chain.model_list)
-                setHasChanges(false)
-              }}
-              className="text-[10px] font-bold tracking-widest text-bone-60 hover:text-rose-500 uppercase transition-all duration-0"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="bg-accent text-background px-3 py-1.5 rounded-medium text-[10px] font-bold tracking-widest hover:brightness-110 transition-all duration-0 uppercase"
-            >
-              {isSaving ? 'Syncing...' : 'Commit changes'}
-            </button>
-          </div>
-        )}
-      </div>
+      )}
+
+      {!isSubchainView && (
+        <div className="mt-auto px-3 py-1 flex justify-between items-center border-t border-[var(--bone-6)]">
+          <button
+            onClick={addModel}
+            disabled={models.length >= 10}
+            className="text-[10px] flex items-center gap-2 text-bone-70 hover:text-foreground hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-bone-70 font-bold tracking-widest px-3 py-1.5 rounded-medium uppercase transition-all duration-0"
+          >
+            <Plus className="w-3 h-3" /> Add node
+          </button>
+
+          {hasChanges && (
+            <div className="flex items-center gap-4 animate-in slide-in-from-right-2 duration-300">
+              <button
+                onClick={() => { setModels(chain.model_list); setHasChanges(false) }}
+                className="text-[10px] font-bold tracking-widest text-bone-70 hover:text-rose-500 uppercase transition-all duration-0"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-accent text-background px-3 py-1.5 rounded-medium text-[10px] font-bold tracking-widest hover:brightness-110 transition-all duration-0 uppercase"
+              >
+                {isSaving ? 'Syncing...' : 'Commit changes'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

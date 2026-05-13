@@ -42,7 +42,7 @@ export function TopicPieChart({ data }: { data: any[] }) {
           <Tooltip 
             contentStyle={{ 
               backgroundColor: 'var(--color-panel)', 
-              border: '1px solid var(--bone-15)', 
+              border: '1px solid var(--bone-12)', 
               borderRadius: 'var(--radius-8)',
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
               padding: '8px 12px'
@@ -83,7 +83,7 @@ export function UsageAreaChart({ data }: { data: any[] }) {
           <Tooltip 
             contentStyle={{ 
               backgroundColor: 'var(--color-panel)', 
-              border: '1px solid var(--bone-15)', 
+              border: '1px solid var(--bone-12)', 
               borderRadius: 'var(--radius-8)',
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
               padding: '8px 12px'
@@ -133,7 +133,7 @@ export function UsageTypeBarChart({ data }: { data: any[] }) {
             cursor={{ fill: 'var(--white-overlay)' }}
             contentStyle={{ 
               backgroundColor: 'var(--color-panel)', 
-              border: '1px solid var(--bone-15)', 
+              border: '1px solid var(--bone-12)', 
               borderRadius: 'var(--radius-8)',
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
               padding: '8px 12px'

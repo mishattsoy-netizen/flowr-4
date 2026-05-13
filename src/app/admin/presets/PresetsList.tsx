@@ -24,8 +24,8 @@ export default function PresetsList({ initialPresets = [] }: { initialPresets: a
   if (!initialPresets || initialPresets.length === 0) {
     return (
       <div className="widget p-12 text-center border-dashed border-white/5 bg-transparent">
-        <div className="text-bone-60 text-sm font-bold tracking-tight mb-2">No presets configured</div>
-        <p className="text-[10px] text-bone-60 opacity-30 font-bold tracking-tight uppercase">Define usage limits to begin</p>
+        <div className="text-bone-70 text-sm font-bold tracking-tight mb-2">No presets configured</div>
+        <p className="text-[10px] text-bone-70 opacity-30 font-bold tracking-tight uppercase">Define usage limits to begin</p>
       </div>
     )
   }
@@ -37,12 +37,12 @@ export default function PresetsList({ initialPresets = [] }: { initialPresets: a
           <div className="flex items-start justify-between mb-6">
             <div className="space-y-0.5">
               <h3 className="text-xl font-bold text-bone-100 tracking-tight leading-none">{preset.name}</h3>
-              <p className="text-[9px] text-bone-60 font-bold tracking-tight opacity-40">System usage configuration</p>
+              <p className="text-[9px] text-bone-70 font-bold tracking-tight opacity-40">System usage configuration</p>
             </div>
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={() => handleDelete(preset.id)}
-                className="p-2.5 rounded-regular bg-background border border-white/5 text-bone-60 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all font-bold"
+                className="p-2.5 rounded-regular bg-background border border-[var(--bone-6)] text-bone-70 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all font-bold"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -53,8 +53,8 @@ export default function PresetsList({ initialPresets = [] }: { initialPresets: a
           </div>
 
           <div className="grid grid-cols-2 gap-3.5 mb-6">
-            <div className="p-3.5 rounded-medium bg-background border border-white/5 space-y-1">
-              <div className="flex items-center gap-1.5 text-[8px] font-bold text-bone-60 tracking-[0.05em] uppercase opacity-60">
+            <div className="p-3.5 rounded-medium bg-background border border-[var(--bone-6)] space-y-1">
+              <div className="flex items-center gap-1.5 text-[8px] font-bold text-bone-70 tracking-[0.05em] uppercase opacity-60">
                 <MessageSquare className="w-2.5 h-2.5" />
                 Messages
               </div>
@@ -62,8 +62,8 @@ export default function PresetsList({ initialPresets = [] }: { initialPresets: a
                 {preset.daily_msg_limit} <span className="text-[9px] opacity-20 font-bold ml-1">/ day</span>
               </div>
             </div>
-            <div className="p-3.5 rounded-medium bg-background border border-white/5 space-y-1">
-              <div className="flex items-center gap-1.5 text-[8px] font-bold text-bone-60 tracking-[0.05em] uppercase opacity-60">
+            <div className="p-3.5 rounded-medium bg-background border border-[var(--bone-6)] space-y-1">
+              <div className="flex items-center gap-1.5 text-[8px] font-bold text-bone-70 tracking-[0.05em] uppercase opacity-60">
                 <ImageIcon className="w-2.5 h-2.5" />
                 Images
               </div>
@@ -73,7 +73,7 @@ export default function PresetsList({ initialPresets = [] }: { initialPresets: a
             </div>
           </div>
 
-          <button className="w-full flex items-center justify-between p-3.5 rounded-regular bg-white/[0.02] border border-white/5 text-bone-60 hover:text-bone-100 hover:border-white/10 hover:bg-bone-hover group/btn transition-colors">
+          <button className="w-full flex items-center justify-between p-3.5 rounded-regular bg-white/[0.02] border border-[var(--bone-6)] text-bone-70 hover:text-bone-100 hover:border-white/10 hover:bg-bone-hover group/btn transition-colors">
             <span className="text-[10px] font-bold tracking-[0.05em] uppercase">Edit configuration</span>
             <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
           </button>

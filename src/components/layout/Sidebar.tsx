@@ -5,14 +5,18 @@ import type { EntityType, Entity, SidebarSectionId } from '@/data/store';
 import { getDescendantIds } from '@/data/store.helpers';
 import { getEntityIcon } from '@/data/icons';
 
-import { Search, LayoutDashboard, Star, ChevronRight, ChevronDown, Moon, Plus, ChevronLeft, Folder, Sun, X, FileText, Frame, Layers, MoreHorizontal, Settings, Columns, GripVertical, Activity, ListTodo, ChevronsUpDown } from 'lucide-react';
+import { Search, LayoutDashboard, Star, ChevronRight, ChevronDown, Moon, Plus, ChevronLeft, Folder, Sun, X, FileText, Frame, Layers, MoreHorizontal, Settings, Columns, GripVertical, Activity, ListTodo, ChevronsUpDown, MessageSquare, Calendar, Clock, Trash2, Pencil, ExternalLink } from 'lucide-react';
 import { Toggle } from '../ui/Toggle';
 import clsx from 'clsx';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useDeferredLoading } from '@/hooks/use-deferred-loading';
 import { TreeItem } from './TreeItem';
 import { Tooltip } from './Tooltip';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { SidebarSkeleton } from './SidebarSkeleton';
+import { ChatHistorySkeleton } from '../chat/ChatSkeleton';
 import React from 'react';
+import { stripHtml } from '@/lib/utils';
 import {
   DndContext,
   PointerSensor,
@@ -44,7 +48,7 @@ const LogoSimple = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const Sidebar = React.memo(function Sidebar() {
+export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId }: { forceFull?: boolean, initialEntityId?: string }) {
   const entities = useStore(state => state.entities);
   const activeEntityId = useStore(state => state.activeEntityId);
   const favoriteIds = useStore(state => state.favoriteIds);
@@ -69,12 +73,33 @@ export const Sidebar = React.memo(function Sidebar() {
   const selectedSidebarIds = useStore(state => state.selectedSidebarIds);
   const setSelectedSidebarIds = useStore(state => state.setSelectedSidebarIds);
   const clearSelectedSidebarIds = useStore(state => state.clearSelectedSidebarIds);
+  
+  const effectiveCollapsed = forceFull ? false : isSidebarCollapsed;
+  const chatConversations = useStore(state => state.chatConversations);
+  const loadChatConversations = useStore(state => state.loadChatConversations);
+  const activeChatId = useStore(state => state.activeChatId);
+  const loadConversation = useStore(state => state.loadConversation);
+  const startNewChat = useStore(state => state.startNewChat);
+  const startTempChat = useStore(state => state.startTempChat);
+  const isTempChat = useStore(state => state.isTempChat);
+  const deleteChatConversation = useStore(state => state.deleteChatConversation);
+  const renameChatConversation = useStore(state => state.renameChatConversation);
+  const addTab = useStore(state => state.addTab);
 
   const [isFavoritesCollapsed, setIsFavoritesCollapsed] = useState(false);
   const [isWorkspacesCollapsed, setIsWorkspacesCollapsed] = useState(false);
   const [isUnsortedCollapsed, setIsUnsortedCollapsed] = useState(false);
   const [sectionOrder] = useState(['favorites', 'unsorted', 'workspaces']);
+  const [chatEditingId, setChatEditingId] = useState<string | null>(null);
+  const [chatEditTitle, setChatEditTitle] = useState('');
+  const [chatConfirmDeleteId, setChatConfirmDeleteId] = useState<string | null>(null);
+  const [chatMenuOpenId, setChatMenuOpenId] = useState<string | null>(null);
+  const [chatMenuPos, setChatMenuPos] = useState({ x: 0, y: 0 });
+  const chatEditInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  // Show skeleton immediately on mount/refresh (0ms delay) to prevent "gray void"
+  const showSkeleton = (!storeHydrated || !isMounted);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const lastClickedRef = useRef<string | null>(null);
 
@@ -103,10 +128,57 @@ export const Sidebar = React.memo(function Sidebar() {
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     updateScrollFade(e.currentTarget);
   };
+  const [inferredEntityId, setInferredEntityId] = useState<string | null>(initialEntityId || null);
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    if (!inferredEntityId) {
+      const attr = document.documentElement.getAttribute('data-initial-entity');
+      if (attr) setInferredEntityId(attr);
+    }
+
+    // Zustand hydration check
+    if (useStore.persist.hasHydrated()) {
+      setStoreHydrated(true);
+    } else {
+      const unsub = useStore.persist.onFinishHydration(() => {
+        setStoreHydrated(true);
+        unsub();
+      });
+      return unsub;
+    }
+  }, []);
 
   React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (activeEntityId === 'chat') loadChatConversations();
+  }, [activeEntityId]);
+
+  React.useEffect(() => {
+    if (chatEditingId && chatEditInputRef.current) {
+      chatEditInputRef.current.focus();
+      chatEditInputRef.current.select();
+    }
+  }, [chatEditingId]);
+
+  const groupChatsByDate = (convs: typeof chatConversations) => {
+    const now = Date.now();
+    const oneDayMs = 86400000;
+    const groups: Record<string, typeof convs> = { Today: [], Yesterday: [], 'Last 7 days': [], Older: [] };
+    for (const c of convs) {
+      const age = now - new Date(c.updated_at).getTime();
+      if (age < oneDayMs) groups['Today'].push(c);
+      else if (age < oneDayMs * 2) groups['Yesterday'].push(c);
+      else if (age < oneDayMs * 7) groups['Last 7 days'].push(c);
+      else groups['Older'].push(c);
+    }
+    return groups;
+  };
+
+  const handleChatRenameSubmit = (id: string) => {
+    if (chatEditTitle.trim()) renameChatConversation(id, chatEditTitle.trim());
+    setChatEditingId(null);
+  };
 
   React.useEffect(() => {
     if (!isMounted) return;
@@ -291,16 +363,16 @@ export const Sidebar = React.memo(function Sidebar() {
 
   const navItemClass = (isActive: boolean) => clsx(
     "sidebar-item-row flex items-center w-full cursor-pointer select-none text-sm group",
-    "px-3 py-[3px] rounded-[var(--radius-8)] transition-colors duration-0",
+    "px-3 py-[3px] rounded-[var(--radius-small)] ",
     isActive
       ? "bg-[var(--bone-6)] text-[var(--bone-100)] hover:bg-[var(--bone-10)]"
-      : "bg-transparent text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+      : "bg-transparent text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
   );
 
   const getSmallIcon = (type: EntityType, entity?: Entity, noMargin: boolean = false) => {
     const isDashboard = activeEntityId === 'dashboard';
     const isActive = activeEntityId === entity?.id && !isDashboard;
-    const cls = clsx("w-4 h-4 shrink-0 ", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]");
+    const cls = clsx("w-4 h-4 shrink-0 ", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]");
 
     const renderIcon = () => {
       if ((type === 'collection' || type === 'folder' || type === 'workspace') && entity?.icon) {
@@ -319,16 +391,16 @@ export const Sidebar = React.memo(function Sidebar() {
     };
 
     if (noMargin) return renderIcon();
-    return <div className="flex items-center justify-center w-4 mr-2 shrink-0">{renderIcon()}</div>;
+    return <div className="flex items-center justify-center w-[14px] shrink-0">{renderIcon()}</div>;
   };
 
   return (
     <aside
       onMouseEnter={() => {
-        if (!isSidebarPinned && isSidebarCollapsed) toggleSidebar();
+        if (!isSidebarPinned && effectiveCollapsed) toggleSidebar();
       }}
       onMouseLeave={() => {
-        if (!isSidebarPinned && !isSidebarCollapsed) toggleSidebar();
+        if (!isSidebarPinned && !effectiveCollapsed) toggleSidebar();
       }}
       className={clsx(
         "h-full bg-sidebar flex flex-col overflow-hidden flex-shrink-0 w-full",
@@ -338,22 +410,22 @@ export const Sidebar = React.memo(function Sidebar() {
       <div
         onClick={toggleSidebar}
         className={clsx(
-          "flex items-center px-3 py-3 border-b border-[var(--bone-6)] group cursor-pointer transition-all duration-0",
-          isSidebarCollapsed ? "justify-center" : "justify-between"
+          "flex items-center px-3 py-3 border-b border-[var(--bone-6)] group cursor-pointer ",
+          effectiveCollapsed ? "justify-center" : "justify-between"
         )}
       >
-        {!isSidebarCollapsed ? (
+        {!effectiveCollapsed ? (
           <img
             src={theme === 'dark' ? "/logo dark mode.svg" : "/logo light mode.svg"}
             className="h-7 object-contain"
             alt="Flowr"
           />
         ) : (
-          <LogoSimple className="w-6 h-6 text-[var(--bone-60)] group-hover:text-[var(--bone-100)]" />
+          <LogoSimple className="w-6 h-6 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />
         )}
 
         <div className="flex items-center gap-1 shrink-0">
-          {!isSidebarCollapsed && (
+          {!effectiveCollapsed && (
             <div className="flex items-center gap-2 mr-1" onClick={(e) => e.stopPropagation()}>
               <Tooltip content={isSidebarPinned ? "Sidebar Pinned" : "Auto-collapse Sidebar"}>
                 <Toggle
@@ -364,9 +436,9 @@ export const Sidebar = React.memo(function Sidebar() {
               </Tooltip>
             </div>
           )}
-          {!isSidebarCollapsed && (
-            <div className="p-1 text-[var(--bone-60)] group-hover:text-[var(--bone-100)] shrink-0">
-              <ChevronLeft strokeWidth={2} className={clsx("w-5 h-5 transition-transform duration-200", isSidebarCollapsed && "rotate-180")} />
+          {!effectiveCollapsed && (
+            <div className="p-1 text-[var(--bone-70)] group-hover:text-[var(--bone-100)] shrink-0">
+              <ChevronLeft strokeWidth={2} className={clsx("w-5 h-5", effectiveCollapsed && "rotate-180")} />
             </div>
           )}
         </div>
@@ -376,11 +448,11 @@ export const Sidebar = React.memo(function Sidebar() {
 
 
         <div className="px-3 pt-3 pb-[6px]">
-          {isSidebarCollapsed ? (
+          {effectiveCollapsed ? (
             <Tooltip content="Search">
               <button
                 onClick={toggleCommandPalette}
-                className="w-10 h-10 mx-auto flex items-center justify-center rounded-[var(--radius-8)] text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)] transition-colors duration-0"
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-[var(--radius-8)] text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)] "
               >
                 <Search strokeWidth={2} className="w-5 h-5" />
               </button>
@@ -388,103 +460,251 @@ export const Sidebar = React.memo(function Sidebar() {
           ) : (
             <button
               onClick={toggleCommandPalette}
-              className="flex items-center w-full px-3 py-1.5 bg-[var(--bone-6)] border border-transparent hover:border-[var(--bone-10)] rounded-[var(--radius-8)] group relative cursor-pointer text-left transition-colors"
+              className="flex items-center w-full px-3 py-1.5 bg-[var(--bone-6)] border border-transparent hover:border-[var(--bone-10)] rounded-[var(--radius-small)] group relative cursor-pointer text-left"
             >
-              <div className="w-5 shrink-0 flex items-center justify-center">
-                <Search strokeWidth={2} className="w-4 h-4 text-[var(--bone-60)] group-hover:text-[var(--bone-100)] shrink-0 transition-colors" />
+              <div className="w-4 shrink-0 flex items-center justify-center">
+                <Search strokeWidth={2} className="w-4 h-4 text-[var(--bone-70)] group-hover:text-[var(--bone-100)] shrink-0" />
               </div>
-              <span className="text-[var(--bone-60)] group-hover:text-[var(--bone-100)] w-full text-sm ml-[8px] truncate transition-colors tracking-wide">
-                Search or command...
+              <span className="text-[var(--bone-70)] group-hover:text-[var(--bone-100)] w-full text-[13px] ml-[6px] truncate tracking-wide">
+                Search or command
               </span>
-              <kbd className="absolute right-2 px-1.5 py-0.5 bg-[var(--bone-10)] rounded-[var(--radius-small)] text-[9px] font-bold text-[var(--bone-60)] tracking-wider">
+              <kbd className="absolute right-2 px-1.5 py-0.5 bg-[var(--bone-10)] rounded-[var(--radius-small)] text-[9px] font-bold text-[var(--bone-70)] tracking-wider">
                 ⇧ Z
               </kbd>
             </button>
           )}
         </div>
 
+        {effectiveCollapsed ? (
+          <div className="flex flex-col items-center gap-3 w-full px-3 mb-2 flex-none">
+            <Tooltip content="Dashboard">
+              <button
+                onClick={() => setActiveEntityId('dashboard')}
+                className={clsx(
+                  "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border ",
+                  ((storeHydrated ? activeEntityId : inferredEntityId) === 'dashboard')
+                    ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
+                    : "bg-transparent text-[var(--bone-70)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                )}
+              >
+                <LayoutDashboard strokeWidth={2} className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Tracker">
+              <button
+                onClick={() => setActiveEntityId('tracker')}
+                className={clsx(
+                  "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border ",
+                  ((storeHydrated ? activeEntityId : inferredEntityId) === 'tracker')
+                    ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
+                    : "bg-transparent text-[var(--bone-70)] border-transparent hover:bg-[var(--bone-6)] hover:text(--bone-100)]"
+                )}
+              >
+                <Calendar strokeWidth={2} className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Chat">
+              <button
+                onClick={() => setActiveEntityId('chat')}
+                className={clsx(
+                  "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border ",
+                  ((storeHydrated ? activeEntityId : inferredEntityId) === 'chat')
+                    ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
+                    : "bg-transparent text-[var(--bone-70)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                )}
+              >
+                <MessageSquare strokeWidth={2} className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <div className="w-8 h-px bg-border/20 my-1" />
+          </div>
+        ) : (
+          <div className="px-3 flex flex-col gap-[3px] pt-0 mb-2 flex-none">
+            <button
+              onClick={() => setActiveEntityId('dashboard')}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                openContextMenu('dashboard', e.clientX, e.clientY, 'sidebar');
+              }}
+              className={clsx(
+                "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 group border border-transparent ",
+                ((storeHydrated ? activeEntityId : inferredEntityId) === 'dashboard')
+                  ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide"
+                  : "bg-transparent text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+              )}
+            >
+              <div className="w-[14px] shrink-0 flex items-center justify-center">
+                <LayoutDashboard strokeWidth={2} className="w-3.5 h-3.5" />
+              </div>
+              <span className="ml-[6px] flex-1 text-left text-[13px] tracking-wide">Home</span>
+            </button>
+            <button
+              onClick={() => setActiveEntityId('tracker')}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                openContextMenu('tracker', e.clientX, e.clientY, 'sidebar');
+              }}
+              className={clsx(
+                "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 group border border-transparent ",
+                ((storeHydrated ? activeEntityId : inferredEntityId) === 'tracker')
+                  ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide"
+                  : "bg-transparent text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+              )}
+            >
+              <div className="w-[14px] shrink-0 flex items-center justify-center">
+                <Calendar strokeWidth={2} className="w-3.5 h-3.5" />
+              </div>
+              <span className="ml-[6px] flex-1 text-left text-[13px] tracking-wide">Calendar</span>
+            </button>
+            <button
+              onClick={() => setActiveEntityId('chat')}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                openContextMenu('chat', e.clientX, e.clientY, 'sidebar');
+              }}
+              className={clsx(
+                "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 group border border-transparent ",
+                ((storeHydrated ? activeEntityId : inferredEntityId) === 'chat')
+                  ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide"
+                  : "bg-transparent text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+              )}
+            >
+              <div className="w-[14px] shrink-0 flex items-center justify-center">
+                <MessageSquare strokeWidth={2} className="w-3.5 h-3.5" />
+              </div>
+              <span className="ml-[6px] flex-1 text-left text-[13px] tracking-wide">Chat</span>
+            </button>
+            <div className="h-px bg-border/20 -mx-3 mt-2 mb-0" />
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {!isMounted ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-accent/20 border-t-accent rounded-[var(--radius-8)] animate-spin" />
-            </div>
-          ) : isSidebarCollapsed ? (
+          {(!isMounted || !storeHydrated) ? (
+            showSkeleton ? (
+              (inferredEntityId === 'chat' && !effectiveCollapsed) 
+                ? <ChatHistorySkeleton /> 
+                : <SidebarSkeleton collapsed={effectiveCollapsed} />
+            ) : null
+          ) : effectiveCollapsed ? (
             <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-4 flex flex-col items-center gap-3 w-full scrollbar-none">
-              <Tooltip content="Dashboard">
-                <button
-                  onClick={() => setActiveEntityId('dashboard')}
-                  className={clsx(
-                    "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
-                    activeEntityId === 'dashboard'
-                      ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
-                      : "bg-transparent text-[var(--bone-60)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
-                  )}
-                >
-                  <LayoutDashboard strokeWidth={2} className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              <Tooltip content="Tracker">
-                <button
-                  onClick={() => setActiveEntityId('tracker')}
-                  className={clsx(
-                    "sidebar-item-row p-2 rounded-[var(--radius-8)] w-10 h-10 flex items-center justify-center border transition-all duration-0",
-                    activeEntityId === 'tracker'
-                      ? "bg-[var(--bone-6)] text-[var(--bone-100)] border-transparent"
-                      : "bg-transparent text-[var(--bone-60)] border-transparent hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
-                  )}
-                >
-                  <ListTodo strokeWidth={2} className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              <div className="w-8 h-px bg-border my-0" />
               <Tooltip content="Pinned items">
                 <button
                   onClick={toggleSidebar}
-                  className="p-2 rounded-[var(--radius-8)] text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)] w-10 h-10 flex items-center justify-center group transition-colors duration-0"
+                  className="p-2 rounded-[var(--radius-8)] text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)] w-10 h-10 flex items-center justify-center group "
                 >
                   <Star strokeWidth={2} className="w-5 h-5" />
                 </button>
               </Tooltip>
             </div>
           ) : (
-            <>
-              <div className="px-3 flex flex-col gap-[3px] pt-0 mb-0 flex-none">
-                <button
-                  onClick={() => setActiveEntityId('dashboard')}
-                  className={clsx(
-                    "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent transition-all duration-0",
-                    activeEntityId === 'dashboard'
-                      ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide"
-                      : "bg-transparent text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
-                  )}
-                >
-                  <div className="w-7 shrink-0 flex items-center justify-center">
-                    <LayoutDashboard strokeWidth={2} className="w-3.5 h-3.5" />
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {activeEntityId === 'chat' ? (
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div className="flex flex-col pl-[10px] pr-1.5 pt-3 pb-1 shrink-0">
+                    <button
+                      onClick={startNewChat}
+                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                    >
+                      <div className="w-[14px] shrink-0 flex items-center justify-center">
+                        <Plus strokeWidth={2} className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="ml-[6px] flex-1 text-left text-[13px] tracking-wide">New Chat</span>
+                    </button>
+                    <button
+                      onClick={startTempChat}
+                      className={clsx(
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 group border border-transparent ",
+                        isTempChat ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-normal" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                      )}
+                    >
+                      <div className="w-[14px] shrink-0 flex items-center justify-center">
+                        <Clock strokeWidth={2} className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="ml-[6px] flex-1 text-left text-[13px] tracking-wide">Temp Chat</span>
+                    </button>
                   </div>
-                  <span className="ml-0 flex-1 text-left text-[14px] tracking-wide">Dashboard</span>
-                </button>
-                <button
-                  onClick={() => setActiveEntityId('tracker')}
-                  className={clsx(
-                    "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-8)] px-3 h-7 group border border-transparent transition-all duration-0",
-                    activeEntityId === 'tracker'
-                      ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide"
-                      : "bg-transparent text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
-                  )}
-                >
-                  <div className="w-7 shrink-0 flex items-center justify-center">
-                    <ListTodo strokeWidth={2} className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="ml-0 flex-1 text-left text-[14px] tracking-wide">Tracker</span>
-                </button>
-                <div className="h-px bg-border/30 -mx-3 mt-[9px] mb-0" />
-              </div>
 
+                  {chatConfirmDeleteId && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={() => setChatConfirmDeleteId(null)}>
+                      <div className="bg-panel border border-border/50 rounded-[1.25rem] p-5 w-[360px]" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-lg font-semibold text-foreground mb-3">Delete conversation?</h2>
+                        <p className="text-sm text-muted-foreground mb-6">This will permanently delete this conversation and all its messages.</p>
+                        <div className="flex items-center justify-end gap-3">
+                          <button onClick={() => setChatConfirmDeleteId(null)} className="px-4 py-2 border border-border/50 text-sm rounded-full text-muted-foreground hover:text-foreground hover:bg-hover">Cancel</button>
+                          <button onClick={() => { deleteChatConversation(chatConfirmDeleteId); setChatConfirmDeleteId(null); }} className="px-4 py-2 text-sm rounded-full bg-danger hover:bg-danger/80 text-white font-medium">Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-3 pb-4 space-y-1">
+                    {Object.entries(groupChatsByDate(chatConversations)).map(([label, convs]) => {
+                      if (convs.length === 0) return null;
+                      return (
+                        <div key={label}>
+                          <p className="pl-[10px] pr-1.5 h-7 flex items-center text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-70)]">
+                            <div className="w-[14px] shrink-0" />
+                            <span className="ml-[6px]">{label}</span>
+                          </p>
+                          {convs.map(conv => (
+                            <div
+                              key={conv.id}
+                              className={clsx(
+                                "sidebar-item-row group flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[10px] pr-1.5 h-7 border border-transparent ",
+                                activeChatId === conv.id ? "bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                              )}
+                              onClick={() => loadConversation(conv.id)}
+                            >
+                              {chatEditingId === conv.id ? (
+                                <input
+                                  ref={chatEditInputRef}
+                                  value={chatEditTitle}
+                                  onChange={e => setChatEditTitle(e.target.value)}
+                                  onBlur={() => handleChatRenameSubmit(conv.id)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleChatRenameSubmit(conv.id);
+                                    if (e.key === 'Escape') setChatEditingId(null);
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                  className="flex-1 bg-transparent text-[13px] tracking-wide outline-none border-b border-white/30"
+                                />
+                              ) : (
+                                <span className="flex-1 text-[13px] tracking-wide truncate">{stripHtml(conv.title)}</span>
+                              )}
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  setChatMenuPos({ x: rect.right + 4, y: rect.top });
+                                  setChatMenuOpenId(chatMenuOpenId === conv.id ? null : conv.id);
+                                }}
+                                className={clsx(
+                                  "btn-sidebar-utility opacity-0 group-hover:opacity-100",
+                                  chatMenuOpenId === conv.id && "!opacity-100 !bg-[var(--bone-15)] !text-[var(--bone-100)]"
+                                )}
+                              >
+                                <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    {chatConversations.length === 0 && (
+                      <p className="text-xs text-muted-foreground/60 text-center pt-8">No conversations yet</p>
+                    )}
+                  </div>
+                </div>
+              ) : activeEntityId === 'tracker' ? (
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-6 text-center gap-2">
+                  <Calendar className="w-8 h-8 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground/50">Calendar coming soon</p>
+                </div>
+              ) : (
               <div
                 ref={mainScrollRef}
                 onScroll={onScroll}
                 onClick={(e) => {
-                  // Clear multi-select when clicking on empty space (not on a sidebar item)
                   if ((e.target as HTMLElement).closest('.sidebar-item-row') === null && selectedSidebarIds.length > 0) {
                     clearSelectedSidebarIds();
                   }
@@ -506,13 +726,16 @@ export const Sidebar = React.memo(function Sidebar() {
                           <div
                             onClick={() => setIsFavoritesCollapsed(!isFavoritesCollapsed)}
                             className={clsx(
-                              "ml-0 mr-[2px] px-3 py-[3px] flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-8)] transition-colors duration-0",
+                              "ml-0 mr-[2px] pl-[10px] pr-1.5 py-0 flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-small)] h-7",
                               contextMenu?.entityId === 'pinned'
                                 ? "!bg-[var(--bone-10)] text-[var(--bone-100)]"
-                                : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                                : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                             )}
                           >
-                            <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide">Pinned</span>
+                            <div className="flex items-center">
+                              <div className="w-[14px] shrink-0" />
+                              <span className="ml-[6px] text-[10px] font-ui-label font-medium uppercase tracking-wide">Pinned</span>
+                            </div>
                             <div className="flex items-center gap-0.5">
                               <button
                                 onClick={(e) => {
@@ -570,13 +793,16 @@ export const Sidebar = React.memo(function Sidebar() {
                           <div
                             onClick={() => setIsUnsortedCollapsed(!isUnsortedCollapsed)}
                             className={clsx(
-                              "ml-0 mr-[2px] px-3 h-7 flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-8)] transition-colors duration-0",
+                              "ml-0 mr-[2px] pl-[10px] pr-1.5 h-7 flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-small)] ",
                               contextMenu?.entityId === 'unsorted'
                                 ? "!bg-[var(--bone-10)] text-[var(--bone-100)]"
-                                : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                                : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                             )}
                           >
-                            <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide">Unsorted</span>
+                            <div className="flex items-center">
+                              <div className="w-[14px] shrink-0" />
+                              <span className="ml-[6px] text-[10px] font-ui-label font-medium uppercase tracking-wide">Unsorted</span>
+                            </div>
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
@@ -623,14 +849,17 @@ export const Sidebar = React.memo(function Sidebar() {
                         <div key="workspaces" className="flex flex-col">
                           <div
                             className={clsx(
-                              "ml-0 mr-[2px] px-3 h-7 flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-8)] transition-colors duration-0",
+                              "ml-0 mr-[2px] pl-[10px] pr-1.5 h-7 flex items-center justify-between group cursor-pointer select-none rounded-[var(--radius-small)] ",
                               contextMenu?.entityId === 'workspaces'
                                 ? "!bg-[var(--bone-10)] text-[var(--bone-100)]"
-                                : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                                : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                             )}
                             onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
                           >
-                            <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide">Workspaces</span>
+                            <div className="flex items-center">
+                              <div className="w-[14px] shrink-0" />
+                              <span className="ml-[6px] text-[10px] font-ui-label font-medium uppercase tracking-wide">Workspaces</span>
+                            </div>
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
@@ -685,26 +914,27 @@ export const Sidebar = React.memo(function Sidebar() {
                   <DragOverlay dropAnimation={null} />
                 </DndContext>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
+    </div>
 
-      <div className={clsx("p-3 border-t border-[var(--bone-6)] flex items-center mt-auto", isSidebarCollapsed ? "flex-col gap-5 py-4" : "justify-between")}>
+      <div className={clsx("p-3 border-t border-[var(--bone-6)] flex items-center mt-auto", effectiveCollapsed ? "flex-col gap-5 py-4" : "justify-between")}>
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--bone-15)] to-[var(--bone-6)] border border-[var(--bone-10)] flex items-center justify-center shrink-0 overflow-hidden">
-            <span className="text-[10px] font-bold text-[var(--bone-60)] tracking-wide">M</span>
+            <span className="text-[10px] font-bold text-[var(--bone-70)] tracking-wide">M</span>
           </div>
-          {!isSidebarCollapsed && (
+          {!effectiveCollapsed && (
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-[var(--bone-100)] truncate tracking-wide">Misha</span>
-              <span className="text-[10px] text-[var(--bone-60)] truncate tracking-wide">
+              <span className="text-[10px] text-[var(--bone-70)] truncate tracking-wide">
                 {activeWorkspace?.name || 'Personal'}
               </span>
             </div>
           )}
         </div>
-        <div className={clsx("flex items-center gap-1 shrink-0", isSidebarCollapsed && "flex-col gap-2")}>
+        <div className={clsx("flex items-center gap-1 shrink-0", effectiveCollapsed && "flex-col gap-2")}>
           <Tooltip content="Spaces">
             <button
               onClick={(e) => {
@@ -731,6 +961,44 @@ export const Sidebar = React.memo(function Sidebar() {
           </Tooltip>
         </div>
       </div>
+
+      {chatMenuOpenId && (
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={() => setChatMenuOpenId(null)} />
+          <div
+            className="fixed z-[300] popup-glass-small min-w-[160px] p-1.5 flex flex-col gap-[3px]"
+            style={{ left: chatMenuPos.x, top: chatMenuPos.y }}
+          >
+            <button
+              onClick={() => { 
+                if (chatMenuOpenId) {
+                  loadConversation(chatMenuOpenId);
+                  addTab('chat');
+                }
+                setChatMenuOpenId(null); 
+              }}
+              className="popup-item"
+            >
+              <ExternalLink strokeWidth={2} className="w-4 h-4 shrink-0" />
+              Open in new tab
+            </button>
+            <button
+              onClick={() => { setChatEditingId(chatMenuOpenId); setChatEditTitle(chatConversations.find(c => c.id === chatMenuOpenId)?.title ?? ''); setChatMenuOpenId(null); }}
+              className="popup-item"
+            >
+              <Pencil strokeWidth={2} className="w-4 h-4 shrink-0" />
+              Rename
+            </button>
+            <button
+              onClick={() => { setChatConfirmDeleteId(chatMenuOpenId); setChatMenuOpenId(null); }}
+              className="popup-item-danger"
+            >
+              <Trash2 strokeWidth={2} className="w-4 h-4 shrink-0" />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
     </aside>
   );
 });

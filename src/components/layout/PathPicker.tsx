@@ -58,7 +58,7 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
                 }}
                 className={clsx(
                   "group flex items-center w-full px-3 py-1.5  cursor-pointer text-left outline-none",
-                  "border-b border-border/50",
+                  "border-b border-[var(--bone-6)]",
                   (node.type === 'collection' || node.type === 'workspace') ? "text-[15px]" : "text-sm",
                   isSelected
                     ? "bg-accent/10 text-foreground hover:bg-accent/20"
@@ -104,7 +104,7 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
   };
 
   return (
-    <div className="w-full bg-background/20 border border-border/30 rounded-2xl max-h-64 overflow-y-auto scrollbar-none overflow-hidden">
+    <div className="w-full bg-background/20 border border-[var(--bone-6)] rounded-2xl max-h-64 overflow-y-auto scrollbar-none overflow-hidden">
       {renderTree(null, 0)}
       {allContainers.length === 0 && (
         <div className="text-xs text-muted-foreground p-3 text-center">No available workspaces</div>

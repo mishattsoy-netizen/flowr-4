@@ -109,7 +109,7 @@ export async function runThinkChain(
 ): Promise<ThinkChainOutput> {
   const { statusMessages } = await import('../router-config').then(m => m.getPipelineSettings())
   const customStatus = statusMessages['THINKING']
-  const label = customStatus ? `${customStatus.emoji} ${customStatus.label}`.trim() : 'Working'
+  const label = customStatus ? `${customStatus.emoji} ${customStatus.label}`.trim() : 'Working...'
 
   const { system_prompt } = await getRouterChain('THINKING')
   const systemPrompt = system_prompt || DEFAULT_THINK_SYSTEM_PROMPT

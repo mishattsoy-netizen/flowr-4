@@ -79,12 +79,14 @@ export async function logWebInteraction(
   modelChain?: string,
   requestId?: string,
   contextMessages?: any,
-  imageDescription?: string
+  imageDescription?: string,
+  chatId?: string | null
 ) {
   if (!supabaseAdmin) return
   try {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)
     const validAuthUserId = (isUUID && authUserId !== '00000000-0000-0000-0000-000000000000') ? authUserId : null
+    const topicTag = chatId ? `chat:${chatId}` : null
     // Try with auth_user_id (requires migration 20260424_message_logs_web_users.sql)
     const { error } = await supabaseAdmin.from('message_logs').insert({
       auth_user_id: validAuthUserId,
@@ -93,6 +95,7 @@ export async function logWebInteraction(
       type: 'text',
       usage_type: usageType,
       status,
+      topic_tag: topicTag,
       model_chain: modelChain ?? null,
       request_id: requestId ?? null,
       context_messages: imageDescription ? { ...(contextMessages || {}), image_description: imageDescription } : (contextMessages ?? null)
@@ -105,7 +108,7 @@ export async function logWebInteraction(
         role,
         type: 'text',
         usage_type: usageType,
-        topic_tag: `app:${authUserId.slice(0, 8)}`,
+        topic_tag: topicTag ?? `app:${authUserId.slice(0, 8)}`,
         status,
         model_chain: modelChain ?? null,
         request_id: requestId ?? null
@@ -130,7 +133,8 @@ export async function logModelWebMessage(
   modelChain?: string,
   requestId?: string,
   contextMessages?: any,
-  imageDescription?: string
+  imageDescription?: string,
+  chatId?: string | null
 ): Promise<number | null> {
   if (!supabaseAdmin) {
     console.log('[Analytics] supabaseAdmin is missing or not initialized in logModelWebMessage!')
@@ -139,6 +143,7 @@ export async function logModelWebMessage(
   try {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId)
     const validAuthUserId = (isUUID && authUserId !== '00000000-0000-0000-0000-000000000000') ? authUserId : null
+    const topicTag = chatId ? `chat:${chatId}` : null
     const { data, error } = await supabaseAdmin.from('message_logs').insert({
       auth_user_id: validAuthUserId,
       content,
@@ -146,6 +151,7 @@ export async function logModelWebMessage(
       type: 'text',
       usage_type: usageType,
       status,
+      topic_tag: topicTag,
       model_chain: modelChain ?? null,
       request_id: requestId ?? null,
       context_messages: imageDescription ? { ...(contextMessages || {}), image_description: imageDescription } : (contextMessages ?? null)
@@ -157,7 +163,7 @@ export async function logModelWebMessage(
         role: 'model',
         type: 'text',
         usage_type: usageType,
-        topic_tag: `app:${authUserId.slice(0, 8)}`,
+        topic_tag: topicTag ?? `app:${authUserId.slice(0, 8)}`,
         status,
         model_chain: modelChain ?? null,
         request_id: requestId ?? null

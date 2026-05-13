@@ -30,7 +30,7 @@
 <div className="relative flex items-center p-0.5 bg-background rounded-[8px] min-w-[160px]">
   {/* Sliding Background Pill */}
   <div 
-    className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
+    className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] shadow-sm"
     style={{ 
       left: isActive ? '3px' : 'calc(50% + 1px)', // 3px inset on sides, 2px gap in middle
       width: 'calc(50% - 4px)'
@@ -39,7 +39,7 @@
 ```
   <button
     className={clsx(
-      "relative z-10 flex-1 flex items-center justify-center py-1 rounded-[6px] transition-colors duration-200",
+      "relative z-10 flex-1 flex items-center justify-center py-1 rounded-[6px]",
       isActive ? "text-[var(--bone-100)]" : "text-muted-foreground hover:text-foreground"
     )}
   >
@@ -53,4 +53,4 @@
 ## Logic and Constraints
 - The switcher is designed for 2-3 tabs max.
 - The `z-10` on buttons is required to stay above the sliding pill.
-- Transitions should be `300ms ease-out` for the pill and `200ms` for text color changes.
+- Transitions: **None (0ms)** — all states (hover, active, selection) must be instant with no fade effects.

@@ -23,6 +23,8 @@ export interface ClassifyResult {
   classifierModel: string
   trace: ClassifyTrace[]
   matchedKeyword?: string
+  trigger_type?: 'keyword' | 'tag' | 'ai' | 'vision' | 'history_retry'
+  trigger_value?: string
   error?: string
 }
 
@@ -37,7 +39,7 @@ FAST_SIMPLE: Quick questions, greetings, casual chat.
 COMPLEX_THINKING: Hard logic, deep analysis, step-by-step reasoning.
 MEDIUM_THINKING: Moderate complexity, multi-part answers.
 IMAGE_GEN: Requests to create, draw, or generate images/art.
-WEB_SEARCH: Current events, live data, searching the internet.
+WEB_SEARCH: Current events, live data, product comparisons, new software/AI versions (e.g. "Gemini 3.1", "GPT-5"), or anything likely after 2024.
 AUDIO_VOICE: Voice interaction or audio related.
 TOOL_CALLING: Intent that requires specialized tools.
 CODING: Programming, debugging, code snippets.
@@ -74,7 +76,27 @@ export async function classifyIntentWithModel(
 
   // Intent tag handling — tags are trusted directly
   if (intentTag && TAG_CATEGORY_MAP[intentTag]) {
-    return { category: TAG_CATEGORY_MAP[intentTag], classifierModel: 'Intent Tag', trace: [] }
+    return {
+      category: TAG_CATEGORY_MAP[intentTag],
+      classifierModel: 'Intent Tag',
+      trace: [],
+      trigger_type: 'tag',
+      trigger_value: intentTag
+    }
+  }
+
+  // Retry intent fast-path: short follow-ups like "try again", "retry", "again", "one more time"
+  // inherit the category of the last user message in history instead of being classified standalone.
+  const RETRY_PHRASES = ['try again', 'retry', 'again', 'one more time', 'redo', 'do it again', 'try once more', 'please retry']
+  const isRetry = RETRY_PHRASES.some(p => lowerMsg === p || lowerMsg === p + '.' || lowerMsg === p + '!')
+  if (isRetry && history.length > 0) {
+    const lastUserMsg = [...history].reverse().find(h => h.role === 'user')
+    if (lastUserMsg) {
+      const lastText = (lastUserMsg.parts?.[0]?.text || lastUserMsg.content || '').trim()
+      if (lastText && lastText.toLowerCase() !== lowerMsg) {
+        return classifyIntentWithModel(lastText, aiApiKey, modelId, mode, intentTag, [], replyContext, tracer)
+      }
+    }
   }
 
   // Retry logic for DB config load
@@ -83,7 +105,7 @@ export async function classifyIntentWithModel(
   let keywordsObj: any = null
   let retryCount = 0
   const maxRetries = 2
-  
+
   while (retryCount <= maxRetries) {
     try {
       const [keywordsEnabledResult, promptResult, keywordsResult] = await Promise.all([
@@ -118,7 +140,7 @@ export async function classifyIntentWithModel(
       if (!keywordsResult.error && keywordsResult.data?.content) {
         try { keywordsObj = JSON.parse(keywordsResult.data.content) } catch { /* ignore */ }
       }
-      
+
       // If we got the prompt, we are good
       if (activePrompt) break
     } catch (err) {
@@ -144,19 +166,26 @@ export async function classifyIntentWithModel(
       for (const kw of list) {
         const kwLower = kw.trim().toLowerCase()
         if (!kwLower) continue
-        
+
         // Split keyword into words and create a regex that allows words in between
         const words = kwLower.split(/\s+/).filter(Boolean)
         if (words.length === 0) continue
-        
+
         const escapedWords = words.map((w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         // Match words in order with up to 5 words in between
         const pattern = `\\b${escapedWords.join('\\s+(?:\\w+\\s+){0,5}')}\\b`
         const regex = new RegExp(pattern, 'i')
-        
+
         if (regex.test(lowerMsg)) {
           tracer?.recordSuccess({ chain: 'CLASSIFIER', model: 'Keywords', provider: 'keywords', key: 'KW', matched_keyword: kw.trim(), input_user: lowerMsg, input_history_count: 0, output: cat }, 0)
-          return { category: cat, classifierModel: 'Keywords', trace: [], matchedKeyword: kw.trim() }
+          return {
+            category: cat,
+            classifierModel: 'Keywords',
+            trace: [],
+            matchedKeyword: kw.trim(),
+            trigger_type: 'keyword',
+            trigger_value: kw.trim()
+          }
         }
       }
     }
@@ -182,15 +211,13 @@ export async function classifyIntentWithModel(
   }
 
   const trace: ClassifyTrace[] = []
-  
+
   // Image context hint: if the last model message was an image, the user is likely iterating
   const lastModelMsg = [...history].reverse().find(h => h.role === 'model' || h.role === 'assistant')
-  const lastWasImage = lastModelMsg && (
-    lastModelMsg.content?.includes('![') || 
-    lastModelMsg.content?.includes('data:image') ||
-    lastModelMsg.content?.includes('[Image generated') ||
-    (lastModelMsg.parts && JSON.stringify(lastModelMsg.parts).includes('image'))
-  )
+  const lastModelText = lastModelMsg
+    ? (lastModelMsg.content || lastModelMsg.parts?.[0]?.text || '')
+    : ''
+  const lastWasImage = !!lastModelText && /(!\[|data:image|\[Image[: ])/i.test(lastModelText)
 
   const contextHint = lastWasImage ? `\n[CONTEXT: The last response contained an image. Follow-up requests like "one more", "make it...", or "change..." should likely be IMAGE_GEN.]` : ''
   const finalPrompt = `${replyPrefix}${activePrompt}${contextHint}\nUser: "${message}"`
@@ -243,7 +270,13 @@ export async function classifyIntentWithModel(
             trace.push({ model: modelConfig.id, key: displayKey, success: true })
             tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: cat }, Date.now() - t0)
             trackModelUsage(modelConfig.id, modelConfig.provider)
-            return { category: cat, classifierModel: modelConfig.id, trace }
+            return {
+              category: cat,
+              classifierModel: modelConfig.id,
+              trace,
+              trigger_type: 'ai',
+              trigger_value: modelConfig.id
+            }
           }
         }
 
@@ -254,7 +287,13 @@ export async function classifyIntentWithModel(
             trace.push({ model: modelConfig.id, key: displayKey, success: true })
             tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: cat }, Date.now() - t0)
             trackModelUsage(modelConfig.id, modelConfig.provider)
-            return { category: cat, classifierModel: modelConfig.id, trace }
+            return {
+              category: cat,
+              classifierModel: modelConfig.id,
+              trace,
+              trigger_type: 'ai',
+              trigger_value: modelConfig.id
+            }
           }
         }
       }

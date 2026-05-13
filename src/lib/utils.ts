@@ -21,3 +21,16 @@ export function formatCompactNumber(val: number | null | undefined): string {
   }
   return val.toString();
 }
+
+export function stripHtml(html: string): string {
+  if (!html) return '';
+  // Remove HTML tags
+  const stripped = html.replace(/<[^>]*>?/gm, '');
+  // Decode common entities
+  return stripped
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
+}

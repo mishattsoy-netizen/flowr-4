@@ -42,11 +42,11 @@ export function FoldersWidget({ entity }: { entity: Entity }) {
                   }}
                   className={clsx(
                     "group/item flex items-center gap-2.5 px-3 py-1.5 rounded-[var(--radius-medium)] cursor-pointer transition-all duration-200",
-                    activeEntityId === folder.id ? "bg-[var(--bone-6)] text-[var(--bone-100)]" : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                    activeEntityId === folder.id ? "bg-[var(--bone-6)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                   )}
                   role="button"
                 >
-                  <Folder strokeWidth={2} className="w-4 h-4 text-[var(--bone-60)] group-hover/item:text-[var(--bone-100)] shrink-0 " />
+                  <Folder strokeWidth={2} className="w-4 h-4 text-[var(--bone-70)] group-hover/item:text-[var(--bone-100)] shrink-0 " />
                   
                   {isEditing ? (
                     <input
@@ -86,7 +86,7 @@ export function FoldersWidget({ entity }: { entity: Entity }) {
                           "w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                           contextMenu?.entityId === folder.id
                             ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--bone-15)]"
-                            : "opacity-0 group-hover/item:opacity-100 text-[var(--bone-30)] group-hover/item:text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                            : "opacity-0 group-hover/item:opacity-100 text-[var(--bone-30)] group-hover/item:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                         )}
                       >
                         <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
@@ -99,7 +99,7 @@ export function FoldersWidget({ entity }: { entity: Entity }) {
           </div>
         ) : (
           <div className="h-full flex items-center justify-center">
-            <p className="text-sm text-[var(--bone-60)] opacity-40">No folders.</p>
+            <p className="text-sm text-[var(--bone-70)] opacity-40">No folders.</p>
           </div>
         )}
       </div>

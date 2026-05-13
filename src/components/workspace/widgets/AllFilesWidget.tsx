@@ -74,10 +74,10 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: { data?: { sor
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {showSkeleton ? (
           <div className="space-y-1">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5 opacity-[0.4] animate-in fade-in duration-300">
                 <Skeleton className="w-3.5 h-3.5 rounded-sm shrink-0" />
-                <Skeleton className="h-4 w-3/4 rounded-md" />
+                <Skeleton className="h-3.5 rounded-md" style={{ width: `${Math.floor(Math.random() * (85 - 40 + 1) + 40)}%` }} />
               </div>
             ))}
           </div>

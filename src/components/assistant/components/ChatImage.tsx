@@ -6,18 +6,27 @@ import { useStore } from '@/data/store';
 import { StarIcon } from './StarIcon';
 import clsx from 'clsx';
 
+// URL must start with data:, http(s)://, or /  — anything else is fabricated/invalid
+function isValidImageSrc(s: string | undefined | null): s is string {
+  if (!s) return false;
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  return /^(data:image\/|https?:\/\/|\/)/.test(trimmed);
+}
+
 export const ChatImage = memo(({ src, alt, description, messageId, onHeightChange, onAddToWorkspace }: { src: string; alt: string; description?: string; messageId?: string; onHeightChange?: () => void; onAddToWorkspace?: () => void }) => {
-  const [error, setError] = useState(false);
+  const validSrc = isValidImageSrc(src);
+  const [error, setError] = useState(!validSrc);
   // data: URIs are locally available — no network load needed, skip spinner
-  const [loading, setLoading] = useState(!src.startsWith('data:'));
+  const [loading, setLoading] = useState(validSrc && !src.startsWith('data:'));
   const [imgSrc, setImgSrc] = useState(src);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
+    const ok = isValidImageSrc(src);
     setImgSrc(src);
-    // Reset loading state: data URIs load instantly, external URLs need spinner
-    setLoading(!src.startsWith('data:'));
-    setError(false);
+    setLoading(ok && !src.startsWith('data:'));
+    setError(!ok);
   }, [src]);
 
   useEffect(() => {

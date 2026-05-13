@@ -2,6 +2,7 @@
 
 import { Entity, useStore } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
+import { stripHtml } from '@/lib/utils';
 
 export function HeaderWidget({ entity }: { entity: Entity }) {
   const Icon = getEntityIcon(entity.icon);
@@ -13,7 +14,7 @@ export function HeaderWidget({ entity }: { entity: Entity }) {
           <Icon className="w-6 h-6 text-accent" />
         </div>
         <div>
-          <h2 className="text-2xl font-display text-foreground">{entity.title}</h2>
+          <h2 className="text-2xl font-display font-semibold text-foreground">{stripHtml(entity.title || '')}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Workspace
           </p>

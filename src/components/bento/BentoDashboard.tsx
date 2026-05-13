@@ -9,6 +9,8 @@ import { BentoWidget } from './BentoWidget';
 import { WidgetPicker } from './WidgetPicker';
 import type { BentoLayoutItem } from '@/components/bento/types';
 import { computeGridPositions, resizeDivider } from '@/lib/bento-engine';
+import { useStore } from '@/data/store';
+import { DashboardSkeleton } from '../dashboard/DashboardSkeleton';
 
 const MAX_ROWS = 4;
 const GAP = 12; // Matches gap-3 (0.75rem)
@@ -119,18 +121,8 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
     }
   }, [isLoading]);
 
-  const [isFullWidth, setIsFullWidth] = useState<boolean>(true);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(`bento_fullwidth_${contextId}`);
-    if (saved !== null) {
-      setIsFullWidth(saved !== 'false');
-    }
-  }, [contextId]);
-
-  useEffect(() => {
-    localStorage.setItem(`bento_fullwidth_${contextId}`, String(isFullWidth));
-  }, [isFullWidth, contextId]);
+  const isFullWidth = useStore(s => s.isFullWidth);
+  const setIsFullWidth = useStore(s => s.toggleFullWidth);
 
   const { positions, grid } = useMemo(() => computeGridPositions(layout), [layout]);
   // Hit-test against real layout so the grid doesn't shift under the pointer mid-drag
@@ -432,6 +424,10 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
     };
   }
 
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="flex-1 flex flex-row overflow-hidden h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -443,17 +439,17 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
               <div className="flex items-center gap-2 mr-1">
                 {editMode && (
                   <>
-                    <label className="flex items-center gap-2 mr-3 cursor-pointer select-none text-xs text-bone-60">
+                    <label className="flex items-center gap-2 mr-3 cursor-pointer select-none text-xs text-bone-70">
                       <div className="relative">
                         <input
                           type="checkbox"
                           className="sr-only peer"
                           checked={isFullWidth}
-                          onChange={() => setIsFullWidth(!isFullWidth)}
+                          onChange={() => setIsFullWidth()}
                         />
                         <div className="w-7 h-4 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent border border-white/5" />
                       </div>
-                      <span className="font-medium text-bone-60 opacity-60 hover:opacity-100 transition-opacity">Full Width</span>
+                      <span className="font-medium text-bone-70 opacity-60 hover:opacity-100 transition-opacity">Full Width</span>
                     </label>
 
                     <button onClick={undo} disabled={!canUndo} className="btn-bento disabled:opacity-50">

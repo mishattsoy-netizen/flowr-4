@@ -81,7 +81,7 @@ export function TimerWidget({ data, onUpdateData, isEditing }: { data?: TimerDat
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground">Timer</h2>
         {sessions > 0 && (
-          <span className="text-[10px] font-semibold text-bone-60 tracking-wide">{sessions} session{sessions !== 1 ? 's' : ''} today</span>
+          <span className="text-[10px] font-semibold text-bone-70 tracking-wide">{sessions} session{sessions !== 1 ? 's' : ''} today</span>
         )}
       </div>
 
@@ -116,10 +116,10 @@ export function TimerWidget({ data, onUpdateData, isEditing }: { data?: TimerDat
           <span className="text-2xl font-mono text-foreground font-semibold tracking-wider">{formatTime(seconds)}</span>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsRunning(p => !p)} className="w-10 h-10 rounded-full bg-[var(--bone-5)] flex items-center justify-center text-[var(--bone-60)] hover:text-foreground hover:bg-[var(--bone-10)]">
+          <button onClick={() => setIsRunning(p => !p)} className="w-10 h-10 rounded-full bg-[var(--bone-5)] flex items-center justify-center text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--bone-10)]">
             {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
-          <button onClick={reset} className="w-10 h-10 rounded-full bg-[var(--bone-5)] flex items-center justify-center text-[var(--bone-60)] hover:text-foreground hover:bg-[var(--bone-10)]">
+          <button onClick={reset} className="w-10 h-10 rounded-full bg-[var(--bone-5)] flex items-center justify-center text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--bone-10)]">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>

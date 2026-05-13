@@ -41,7 +41,7 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
           setTempTitle(entity.title);
           setEditingEntityId(entity.id, 'view');
         }}
-        className="group text-4xl font-display text-foreground mb-1 flex items-center gap-3"
+        className="group text-4xl font-display font-medium text-foreground mb-1 flex items-center gap-3"
       >
         <div 
           className="shrink-0 p-1 cursor-pointer hover:bg-hover rounded-xl transition-colors"

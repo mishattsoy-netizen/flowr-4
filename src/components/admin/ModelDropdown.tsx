@@ -77,7 +77,7 @@ export default function ModelDropdown({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={value || undefined}
-        className="w-full flex items-center justify-between px-2 py-1 bg-background rounded-medium text-left transition-all duration-0 hover:bg-white/[0.02] group"
+        className="w-full flex items-center justify-between px-2 py-1 bg-background rounded-medium text-left hover:bg-white/[0.02] group"
       >
         <div className="flex items-center gap-2 truncate">
           <span className={cn(
@@ -88,7 +88,7 @@ export default function ModelDropdown({
           </span>
         </div>
         <ChevronDown className={cn(
-          "w-3.5 h-3.5 text-muted-foreground/40 transition-transform duration-200",
+          "w-3.5 h-3.5 text-muted-foreground/40",
           isOpen && "rotate-180"
         )} />
       </button>
@@ -96,7 +96,7 @@ export default function ModelDropdown({
       {isOpen && rect && (
         <div 
           className={cn(
-            "fixed bg-panel border border-white/10 rounded-[16px] shadow-2xl z-[999] animate-in fade-in zoom-in-95 duration-100 overflow-hidden min-w-[240px]",
+            "fixed bg-panel border border-[var(--bone-12)] rounded-[16px] shadow-2xl z-[999] overflow-hidden min-w-[240px]",
             rect.bottom + 300 > window.innerHeight ? "origin-bottom" : "origin-top"
           )}
           style={{
@@ -107,8 +107,8 @@ export default function ModelDropdown({
           }}
         >
           {/* Search Header */}
-          <div className="px-2 pt-2 pb-1.5 border-b border-white/5 bg-white/[0.01]">
-            <div className="relative flex items-center gap-2 px-2 py-1 bg-background border border-white/5 rounded-[8px]">
+          <div className="px-2 pt-2 pb-1.5 border-b border-[var(--bone-6)] bg-white/[0.01]">
+            <div className="relative flex items-center gap-2 px-2 py-1 bg-background border border-[var(--bone-6)] rounded-[8px]">
               <Search className="w-3.5 h-3.5 text-muted-foreground/40" />
               <input 
                 autoFocus
@@ -125,7 +125,6 @@ export default function ModelDropdown({
             {filteredModels.length > 0 ? (
               filteredModels.map((model) => {
                 const provider = model.provider.toLowerCase()
-                const colorClass = PROVIDER_COLORS[provider] || 'text-bone-60'
                 
                 return (
                   <button
@@ -136,8 +135,8 @@ export default function ModelDropdown({
                       setSearch('')
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-1.5 rounded-[8px] transition-all duration-0",
-                      value === model.id ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                      "w-full flex items-center justify-between px-3 py-1.5 rounded-[8px]",
+                      value === model.id ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                     )}
                   >
                     <div className="flex items-center gap-3 truncate">
@@ -152,8 +151,7 @@ export default function ModelDropdown({
                       </div>
                     </div>
                     <div className={cn(
-                      "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border",
-                      colorClass
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-[var(--bone-6)]",
                     )}>
                       {provider}
                     </div>

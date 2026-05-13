@@ -20,25 +20,25 @@ export default async function BotDashboardPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">Analysis Dashboard</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Analysis Dashboard</h1>
         <p className="text-muted-foreground text-sm font-medium">Brain health and learning activity overview.</p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {statCards.map(card => (
-          <div key={card.label} className="bg-[var(--bone-6)] rounded-xl p-4">
+        {statCards.map((card, idx) => (
+          <div key={idx} className="bg-[var(--bone-6)] border border-[var(--bone-12)] rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <card.icon className={`w-4 h-4 ${card.color}`} strokeWidth={2} />
               <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
             </div>
-            <div className="text-3xl font-display text-foreground">{card.value}</div>
+            <div className="text-3xl font-display font-medium text-foreground">{card.value}</div>
           </div>
         ))}
       </div>
 
       {/* Brain breakdown */}
-      <div className="bg-[var(--bone-6)] rounded-xl p-5">
+      <div className="bg-[var(--bone-6)] border border-[var(--bone-12)] rounded-xl p-5">
         <h3 className="text-sm font-semibold text-foreground mb-4">Brain entries by category</h3>
         <div className="space-y-2.5">
           {categoryOrder.map(cat => {
@@ -60,7 +60,7 @@ export default async function BotDashboardPage() {
 
       {/* Last session summary */}
       {stats.lastSessionDate && (
-        <div className="bg-[var(--bone-6)] rounded-xl p-5">
+        <div className="bg-[var(--bone-6)] border border-[var(--bone-12)] rounded-xl p-5">
           <h3 className="text-sm font-semibold text-foreground mb-1">Last routine session</h3>
           <p className="text-xs text-muted-foreground mb-4">{new Date(stats.lastSessionDate).toLocaleString()}</p>
           <div className="flex gap-4">

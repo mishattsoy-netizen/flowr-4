@@ -13,6 +13,8 @@ import {
   Pencil, 
   Trash2,
   LayoutDashboard,
+  MessageSquare,
+  Calendar,
   Type,
   Menu,
   Minus,
@@ -22,12 +24,17 @@ import {
   Cloud,
   CloudOff,
   Database,
-  History
+  History,
+  PanelLeft,
+  FileText,
+  Frame,
+  Layers
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Tooltip } from './Tooltip';
 import { Portal } from './Portal';
 import { Toggle } from '@/components/ui/Toggle';
+import { stripHtml } from '@/lib/utils';
 
 // Constants
 const POPUP_LEAVE_DELAY = 100; // ms to keep popup open when moving mouse
@@ -64,6 +71,9 @@ export const HeaderBar = memo(function HeaderBar() {
   const lastSaved = useStore(state => state.lastSaved);
   const cloudSyncEnabled = useStore(state => state.cloudSyncEnabled);
   const toggleEntityCloudSync = useStore(state => state.toggleEntityCloudSync);
+  const isTempChat = useStore(state => state.isTempChat);
+  const chatConversations = useStore(state => state.chatConversations);
+  const activeChatId = useStore(state => state.activeChatId);
 
   const canGoBack = historyIndex > 0;
   const canGoForward = historyIndex < navigationHistory.length - 1;
@@ -95,13 +105,13 @@ export const HeaderBar = memo(function HeaderBar() {
   const isFavorite = activeEntityId ? favoriteIds.includes(activeEntityId) : false;
 
   const ACTIONS = [
-    { id: 'favorite', icon: Star, label: isFavorite ? 'Unpin' : 'Pin', color: isFavorite ? 'text-accent fill-accent' : 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'layout', icon: Minus, label: isFullWidth ? 'Compact Layout' : 'Full Width Layout', color: isFullWidth ? 'text-accent' : 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'copy', icon: Link, label: 'Copy link', color: 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'move', icon: FolderInput, label: 'Move to...', color: 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'duplicate', icon: Copy, label: 'Duplicate', color: 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'rename', icon: Pencil, label: 'Rename', color: 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
-    { id: 'toolbar', icon: Type, label: isToolbarVisible ? 'Hide Toolbar' : 'Show Toolbar', color: isToolbarVisible ? 'text-accent' : 'text-[var(--bone-60)] hover:text-[var(--bone-100)]' },
+    { id: 'favorite', icon: Star, label: isFavorite ? 'Unpin' : 'Pin', color: isFavorite ? 'text-accent fill-accent' : 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'layout', icon: Minus, label: isFullWidth ? 'Compact Layout' : 'Full Width Layout', color: isFullWidth ? 'text-accent' : 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'copy', icon: Link, label: 'Copy link', color: 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'move', icon: FolderInput, label: 'Move to...', color: 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'duplicate', icon: Copy, label: 'Duplicate', color: 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'rename', icon: Pencil, label: 'Rename', color: 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
+    { id: 'toolbar', icon: Type, label: isToolbarVisible ? 'Hide Toolbar' : 'Show Toolbar', color: isToolbarVisible ? 'text-accent' : 'text-[var(--bone-70)] hover:text-[var(--bone-100)]' },
     { id: 'delete', icon: Trash2, label: 'Delete', color: 'text-danger hover:text-danger' },
   ];
 
@@ -126,7 +136,8 @@ export const HeaderBar = memo(function HeaderBar() {
   // Build path for any entity
   const getPathForEntity = (id: string | null): { id: string; title: string; icon?: string }[] => {
     if (!id || id === 'dashboard') return [];
-    if (id === 'tracker') return [{ id: 'tracker', title: 'Tracker', icon: 'Columns' }];
+    if (id === 'chat') return [{ id: 'chat', title: 'Chat', icon: 'MessageSquare' }];
+    if (id === 'tracker') return [{ id: 'tracker', title: 'Calendar', icon: 'Calendar' }];
     
     const entity = entities.find(e => e.id === id);
     if (!entity) return [];
@@ -145,56 +156,86 @@ export const HeaderBar = memo(function HeaderBar() {
 
   const btnClass = (enabled: boolean) =>
     `w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] ${enabled
-      ? 'text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] cursor-pointer'
+      ? 'text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] cursor-pointer'
       : 'text-border cursor-default'
     }`;
 
   return (
     <div className="h-8 flex items-center px-3 bg-sidebar border-b border-b-[var(--bone-6)] shrink-0 relative z-30">
-      {/* Left Nav Actions */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button 
-          onClick={toggleSidebar}
-          className="md:hidden p-1.5 rounded-[var(--radius-small)] hover:bg-hover text-muted-foreground hover:text-foreground  mr-1"
-        >
-          <Menu strokeWidth={2} className="w-5 h-5" />
-        </button>
-
-        <Tooltip content="Go Back (Alt+Left)">
-          <button onClick={goBack} disabled={!canGoBack} className={btnClass(canGoBack)}>
-            <ArrowLeft strokeWidth={2} className="w-4 h-4" />
+      <div className="flex items-center w-[144px] shrink-0">
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={toggleSidebar}
+            className="md:hidden p-1.5 rounded-[var(--radius-small)] hover:bg-hover text-muted-foreground hover:text-foreground mr-1"
+          >
+            <Menu strokeWidth={2} className="w-5 h-5" />
           </button>
-        </Tooltip>
-        <Tooltip content="Go Forward">
-          <button onClick={goForward} disabled={!canGoForward} className={btnClass(canGoForward)}>
-            <ArrowRight strokeWidth={2} className="w-4 h-4" />
-          </button>
-        </Tooltip>
-      </div>
 
-      {/* Reload & Dashboard Controls */}
-      <div className="flex items-center gap-1.5 shrink-0 ml-1">
-        <Tooltip content="Reload">
-          <button onClick={() => { }} className={btnClass(true)}>
-            <RotateCw strokeWidth={2} className="w-3.5 h-3.5" />
-          </button>
-        </Tooltip>
+          <Tooltip content="Go Back (Alt+Left)">
+            <button onClick={goBack} disabled={!canGoBack} className={btnClass(canGoBack)}>
+              <ArrowLeft strokeWidth={2} className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Go Forward">
+            <button onClick={goForward} disabled={!canGoForward} className={btnClass(canGoForward)}>
+              <ArrowRight strokeWidth={2} className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        </div>
 
+        <div className="flex items-center gap-1.5 ml-1">
+          <Tooltip content="Reload">
+            <button onClick={() => { }} className={btnClass(true)}>
+              <RotateCw strokeWidth={2} className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Toggle Sidebar (Ctrl+S)">
+            <button onClick={toggleSidebar} className={btnClass(true)}>
+              <PanelLeft strokeWidth={2} className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Divider (only if not dashboard or if we want it always) */}
       <div className="w-px h-5 bg-[var(--bone-6)] mx-3" />
 
       {/* Tabs */}
-      <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-none h-full px-2">
+      <div className="flex-1 flex items-center gap-1 h-full px-2 min-w-0">
         {openTabIds.map((tabId) => {
           const entity = entities.find(e => e.id === tabId);
-          if (!entity && tabId !== 'dashboard') return null;
-          
-          const title = tabId === 'dashboard' ? 'Dashboard' : entity?.title;
-          const icon = tabId === 'dashboard' ? 'LayoutDashboard' : entity?.icon;
           const isActive = activeTabId === tabId;
-          const Icon = icon ? getEntityIcon(icon) : null;
+          
+          let title = entity?.title;
+          let Icon: any = null;
+
+          if (tabId === 'dashboard') {
+            title = 'Dashboard';
+            Icon = LayoutDashboard;
+          } else if (tabId === 'chat') {
+            const activeConv = chatConversations.find(c => c.id === activeChatId);
+            title = isTempChat ? 'Temporary Chat' : (activeConv?.title || 'Chat');
+            Icon = MessageSquare;
+          } else if (tabId === 'tracker') {
+            title = 'Calendar';
+            Icon = Calendar;
+          } else if (entity) {
+            if (entity.icon) {
+              Icon = getEntityIcon(entity.icon);
+            } else {
+              // Fallback based on entity type
+              switch (entity.type) {
+                case 'note': Icon = FileText; break;
+                case 'canvas': Icon = Frame; break;
+                case 'mixed': Icon = Layers; break;
+                default: Icon = FileText;
+              }
+            }
+          }
+
+          if (!title && tabId !== 'dashboard' && tabId !== 'chat' && tabId !== 'tracker') return null;
+          
           const path = getPathForEntity(tabId);
 
           return (
@@ -202,27 +243,27 @@ export const HeaderBar = memo(function HeaderBar() {
               key={tabId}
               onMouseEnter={(e) => handleTabMouseEnter(e, tabId, path)}
               onMouseLeave={handleTabMouseLeave}
-              className="h-full flex items-center"
+              className="h-full flex items-center flex-shrink min-w-0"
             >
               <div
                 onClick={() => setActiveTab(tabId)}
                 className={clsx(
-                  "flex items-center gap-1.5 h-6 rounded-[var(--radius-small)] cursor-pointer transition-all select-none min-w-0 max-w-[160px] flex-shrink flex-grow-0",
+                  "flex items-center gap-1 h-6 rounded-[var(--radius-small)] cursor-pointer select-none min-w-0 max-w-[160px] flex-shrink",
                   openTabIds.length > 1 ? "pl-2.5 pr-1" : "px-2.5",
                   isActive 
                     ? "bg-[var(--bone-6)] text-[var(--bone-100)]" 
-                    : "text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
+                    : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
                   "group"
                 )}
               >
-                {Icon && <Icon strokeWidth={2} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")} />}
-                <span className="text-[13px] font-medium truncate flex-1 min-w-0 overflow-hidden whitespace-nowrap">{title}</span>
+                {Icon && <Icon strokeWidth={2} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]")} />}
+                <span className="text-[13px] font-normal truncate flex-1 min-w-0 overflow-hidden whitespace-nowrap">{stripHtml(title || '')}</span>
                 
                 {openTabIds.length > 1 && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); removeTab(tabId); }}
                     className={clsx(
-                      "ml-0.5 opacity-0 group-hover:opacity-100 hover:bg-[var(--bone-10)] rounded-[4px] p-0.5 transition-all",
+                      "ml-0 opacity-0 group-hover:opacity-100 hover:bg-[var(--bone-10)] rounded-[4px] p-0.5 shrink-0",
                       isActive && tabId === 'dashboard' && "opacity-100" // Always show for active dashboard if closable
                     )}
                   >
@@ -237,7 +278,7 @@ export const HeaderBar = memo(function HeaderBar() {
         <Tooltip content="New Tab">
           <button 
             onClick={(e) => { e.stopPropagation(); addTab('dashboard'); }} 
-            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] shrink-0 ml-1"
+            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] shrink-0 ml-1"
           >
             <Plus strokeWidth={2} className="w-3.5 h-3.5" />
           </button>
@@ -256,29 +297,40 @@ export const HeaderBar = memo(function HeaderBar() {
               left: Math.max(8, hoveredTab.rect.left)
             }}
           >
-            <div className="bg-panel/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl p-1.5 min-w-[180px] animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="bg-panel/95 backdrop-blur-xl border border-[var(--bone-12)] rounded-xl shadow-2xl p-1.5 min-w-[180px]">
               <div className="flex flex-col gap-0.5">
                 {hoveredTab.path.length > 1 && hoveredTab.path.slice(0, -1).map((p) => (
                   <button 
                     key={p.id} 
                     onClick={() => { setActiveEntityId(p.id); setHoveredTab(null); }}
-                    className="flex items-center gap-2 text-[11px] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] px-2 py-1.5 rounded-md transition-colors group/item"
+                    className="flex items-center gap-2 text-[11px] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] px-2 py-1.5 rounded-md group/item"
                   >
                     {p.icon && (() => { const PIcon = getEntityIcon(p.icon); return <PIcon strokeWidth={2} className="w-3.5 h-3.5 opacity-60 group-hover/item:opacity-100" />; })()}
-                    <span className="text-fade">{p.title}</span>
+                    <span className="text-fade">{stripHtml(p.title || '')}</span>
                     <ChevronRight strokeWidth={2} className="w-3 h-3 ml-auto opacity-20 group-hover/item:opacity-40" />
                   </button>
                 ))}
                 
-                {hoveredTab.path.length > 1 && <div className="h-px bg-border/50 my-1 mx-1" />}
+                {hoveredTab.path.length > 1 && <div className="h-px bg-[var(--bone-12)] my-1 mx-1" />}
+
                 
                 <div className="flex items-center gap-2 text-[11px] font-semibold text-[var(--bone-100)] px-2 py-1.5">
                   {(() => { 
                     const last = hoveredTab.path[hoveredTab.path.length - 1];
-                    const LastIcon = last.id === 'tracker' ? getEntityIcon('Columns') : (last.icon ? getEntityIcon(last.icon) : (entities.find(e => e.id === last.id)?.type === 'canvas' ? getEntityIcon('Frame') : getEntityIcon('FileText')));
+                    let LastIcon: any = FileText;
+                    
+                    if (last.id === 'tracker') LastIcon = Calendar;
+                    else if (last.id === 'chat') LastIcon = MessageSquare;
+                    else if (last.icon) LastIcon = getEntityIcon(last.icon);
+                    else {
+                      const entity = entities.find(e => e.id === last.id);
+                      if (entity?.type === 'canvas') LastIcon = Frame;
+                      else if (entity?.type === 'mixed') LastIcon = Layers;
+                    }
+                    
                     return <LastIcon strokeWidth={2} className="w-3.5 h-3.5" />;
                   })()}
-                  <span className="text-fade">{hoveredTab.path[hoveredTab.path.length - 1].title}</span>
+                  <span className="text-fade">{stripHtml(hoveredTab.path[hoveredTab.path.length - 1].title || '')}</span>
                   {hoveredTab.path.length <= 1 && (
                     <span className="ml-auto text-[10px] font-normal opacity-40">
                       {hoveredTab.id === 'dashboard' ? 'Dashboard' : 'Page'}
@@ -311,7 +363,7 @@ export const HeaderBar = memo(function HeaderBar() {
                   <button 
                     onClick={() => toggleEntityCloudSync(activeEntity.id)}
                     className={clsx(
-                      "flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-small)] transition-all bg-[var(--bone-6)]",
+                      "flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-small)] bg-[var(--bone-6)]",
                       isSynced 
                         ? "text-accent" 
                         : "text-[var(--bone-40)] hover:text-[var(--bone-100)]"
@@ -334,7 +386,7 @@ export const HeaderBar = memo(function HeaderBar() {
       })()}
 
       {/* Right side actions */}
-      {!isDashboard && (
+      {!isDashboard && activeEntityId !== 'chat' && (
         <div className="ml-auto flex items-center gap-0.5">
           {ACTIONS.map(action => {
             const isNoteOrMixed = entities.find(e => e.id === activeEntityId)?.type === 'note' || entities.find(e => e.id === activeEntityId)?.type === 'mixed';
@@ -368,7 +420,7 @@ export const HeaderBar = memo(function HeaderBar() {
                       </div>
                       )
                     ) : (
-                      <action.icon strokeWidth={2} className={`w-4 h-4 ${action.id === 'favorite' && isFavorite ? 'animate-bounce-once' : ''}`} />
+                      <action.icon strokeWidth={2} className="w-4 h-4" />
                     )}
                 </button>
               </Tooltip>

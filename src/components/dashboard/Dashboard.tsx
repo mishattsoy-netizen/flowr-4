@@ -38,7 +38,7 @@ export function Dashboard() {
 
   const title = (
     <div>
-      <h1 className="text-4xl font-display text-foreground mb-1">Welcome back, Misha</h1>
+      <h1 className="text-4xl font-display font-medium text-foreground mb-1">Welcome back, Misha</h1>
       <p className="text-muted-foreground text-sm font-medium">
         {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}
       </p>

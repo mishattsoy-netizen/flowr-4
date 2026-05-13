@@ -55,7 +55,7 @@ const PROVIDER_INFO: Record<string, ProviderInfo> = {
   siliconflow: { name: 'SiliconFlow', color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20', dot: 'bg-indigo-400' },
   cloudflare:  { name: 'Cloudflare',  color: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20',  dot: 'bg-amber-400'  },
   core:        { name: 'Core',        color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20', dot: 'bg-emerald-400' },
-  general:     { name: 'General',     color: 'text-bone-60',    bg: 'bg-bone-60/10',    border: 'border-bone-60/20',    dot: 'bg-bone-60'    },
+  general:     { name: 'General',     color: 'text-bone-70',    bg: 'bg-bone-70/10',    border: 'border-bone-70/20',    dot: 'bg-bone-70'    },
 }
 
 export default function VaultProviderWidget({
@@ -202,7 +202,7 @@ export default function VaultProviderWidget({
   }
 
   return (
-    <div className="bg-panel rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative gap-4 overflow-hidden">
+    <div className="bg-panel border border-[var(--bone-12)] rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative gap-4 overflow-hidden">
       {/* Provider Header */}
       <div className="px-2 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -212,9 +212,25 @@ export default function VaultProviderWidget({
           </h3>
         </div>
         <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-tight">
-          {keys.length} {keys.length === 1 ? 'key' : 'keys'} in {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'}
+          {(() => {
+            if (provider !== 'cloudflare') return `${keys.length} ${keys.length === 1 ? 'key' : 'keys'} in ${accounts.length} ${accounts.length === 1 ? 'account' : 'accounts'}`;
+            const tokenCount = keys.filter(k => !k.key_id.endsWith('_ID')).length;
+            const idCount = keys.filter(k => k.key_id.endsWith('_ID')).length;
+            const parts: string[] = [];
+            if (tokenCount > 0) parts.push(`${tokenCount} token${tokenCount !== 1 ? 's' : ''}`);
+            if (idCount > 0) parts.push(`${idCount} ID`);
+            return parts.join(' + ') + ` in ${accounts.length} ${accounts.length === 1 ? 'account' : 'accounts'}`;
+          })()}
         </span>
       </div>
+
+      {/* Cloudflare helper note */}
+      {provider === 'cloudflare' && accounts.length > 0 && (
+        <div className="px-3 py-1.5 rounded-medium bg-amber-500/5 border border-amber-500/10 text-[10px] text-bone-70/70 leading-relaxed">
+          <span className="font-bold text-amber-400/80 uppercase tracking-wider text-[9px]">Cloudflare Setup: </span>
+          One <span className="text-sky-400 font-bold">Account ID</span> + one or more <span className="text-amber-400 font-bold">API Tokens</span> per account. The ID is a fixed identifier, tokens are actual credentials.
+        </div>
+      )}
 
       {/* Accounts List - Scrollable space if too long */}
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto no-scrollbar">
@@ -226,13 +242,13 @@ export default function VaultProviderWidget({
             <div key={account.id} className={cn(
               "flex flex-col rounded-medium border shadow-md transition-all duration-300 shrink-0",
               account.is_active 
-                ? "border-white/[0.08] bg-background/40 backdrop-blur-sm" 
-                : "border-white/[0.03] bg-background/10 opacity-60 grayscale-[40%]"
+                ? "border-[var(--bone-6)] bg-background/40 backdrop-blur-sm" 
+                : "border-[var(--bone-6)] bg-background/10 opacity-60 grayscale-[40%]"
             )}>
               {/* Account Header */}
               <div className={cn(
                 "flex items-center justify-between px-4 py-2 group border-b",
-                account.is_active ? "bg-gradient-to-r from-white/[0.03] via-transparent to-transparent border-white/[0.06]" : "bg-transparent border-white/[0.02]"
+                account.is_active ? "bg-gradient-to-r from-white/[0.03] via-transparent to-transparent border-[var(--bone-6)]" : "bg-transparent border-[var(--bone-6)]"
               )}>
                 {isEditingAccount ? (
                   <div className="flex-1 flex items-center gap-2 mr-2 animate-in slide-in-from-left-2 duration-200">
@@ -245,14 +261,14 @@ export default function VaultProviderWidget({
                       className="w-full bg-background/60 border border-accent/30 rounded-small px-3 py-1 text-[12px] font-sans text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all"
                     />
                     <button onClick={() => handleUpdateAccount(account.id)} className="p-1 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingAccountId(null)} className="p-1 bg-white/5 text-bone-60 rounded-full hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingAccountId(null)} className="p-1 bg-white/5 text-bone-70 rounded-full hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
                   <div className="flex-1 min-w-0 flex items-center gap-3 py-0.5">
-                    <div className={cn("w-2 h-2 rounded-full shrink-0", account.is_active ? info.dot : "bg-bone-60/20")} />
+                    <div className={cn("w-2 h-2 rounded-full shrink-0", account.is_active ? info.dot : "bg-bone-70/20")} />
                     <span className="text-[11px] font-bold text-bone-100 tracking-wider uppercase truncate">{account.name}</span>
                     {!account.is_active && (
-                      <span className="text-[8px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-bone-60/60 font-bold uppercase tracking-widest">Disabled</span>
+                      <span className="text-[8px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-bone-70/60 font-bold uppercase tracking-widest">Disabled</span>
                     )}
                   </div>
                 )}
@@ -261,13 +277,13 @@ export default function VaultProviderWidget({
                 {!isEditingAccount && (
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-1 group-hover:translate-x-0">
                     <div className="flex items-center bg-black/40 backdrop-blur-md rounded-full border border-white/[0.08] p-0.5 mr-1">
-                      <button onClick={() => handleMoveAccount(accountIdx, 'up')} disabled={accountIdx === 0} className="text-bone-60 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowUp className="w-2.5 h-2.5" /></button>
+                      <button onClick={() => handleMoveAccount(accountIdx, 'up')} disabled={accountIdx === 0} className="text-bone-70 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowUp className="w-2.5 h-2.5" /></button>
                       <div className="w-px h-3 bg-white/[0.08]" />
-                      <button onClick={() => handleMoveAccount(accountIdx, 'down')} disabled={accountIdx === accounts.length - 1} className="text-bone-60 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowDown className="w-2.5 h-2.5" /></button>
+                      <button onClick={() => handleMoveAccount(accountIdx, 'down')} disabled={accountIdx === accounts.length - 1} className="text-bone-70 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowDown className="w-2.5 h-2.5" /></button>
                     </div>
-                    <button onClick={() => handleToggleAccount(account.id, account.is_active)} className={cn("p-1.5 rounded-full transition-colors", account.is_active ? "text-bone-60 hover:text-rose-400 hover:bg-rose-400/10" : "text-bone-60 hover:text-emerald-400 hover:bg-emerald-400/10")} title={account.is_active ? "Disable" : "Enable"}><Power className="w-3 h-3" /></button>
-                    <button onClick={() => { setEditingAccountId(account.id); setEditingAccountName(account.name) }} className="p-1.5 rounded-full text-bone-60 hover:text-sky-400 hover:bg-sky-400/10 transition-colors" title="Rename"><Pencil className="w-3 h-3" /></button>
-                    <button onClick={() => handleDeleteAccount(account.id)} className="p-1.5 rounded-full text-bone-60 hover:text-rose-500 hover:bg-rose-500/10 transition-colors" title="Delete Account"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => handleToggleAccount(account.id, account.is_active)} className={cn("p-1.5 rounded-full transition-colors", account.is_active ? "text-bone-70 hover:text-rose-400 hover:bg-rose-400/10" : "text-bone-70 hover:text-emerald-400 hover:bg-emerald-400/10")} title={account.is_active ? "Disable" : "Enable"}><Power className="w-3 h-3" /></button>
+                    <button onClick={() => { setEditingAccountId(account.id); setEditingAccountName(account.name) }} className="p-1.5 rounded-full text-bone-70 hover:text-sky-400 hover:bg-sky-400/10 transition-colors" title="Rename"><Pencil className="w-3 h-3" /></button>
+                    <button onClick={() => handleDeleteAccount(account.id)} className="p-1.5 rounded-full text-bone-70 hover:text-rose-500 hover:bg-rose-500/10 transition-colors" title="Delete Account"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 )}
               </div>
@@ -284,13 +300,19 @@ export default function VaultProviderWidget({
                       "group flex items-center gap-3 px-3 py-1.5 rounded-medium transition-all duration-150",
                       isEditing 
                         ? "bg-accent/5 border border-accent/20" 
-                        : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.05] shadow-sm",
+                        : "bg-white/[0.01] border border-[var(--bone-6)] hover:bg-white/[0.04] hover:border-white/[0.05] shadow-sm",
                       !k.is_active && "opacity-40 grayscale-[50%]"
                     )}>
                       {/* Clean Counter */}
-                      <div className="relative shrink-0 w-4">
-                        <span className="text-[10px] font-mono font-bold text-bone-60/30">{String(keyIdx + 1).padStart(2, '0')}</span>
+                      <div className="relative shrink-0 flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono font-bold text-bone-70/30">{String(keyIdx + 1).padStart(2, '0')}</span>
                         {!k.is_active && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-px bg-rose-500/50 rotate-45" />}
+                        {provider === 'cloudflare' && k.key_id.endsWith('_ID') && (
+                          <span className="text-[7px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30 leading-none">ID</span>
+                        )}
+                        {provider === 'cloudflare' && !k.key_id.endsWith('_ID') && (
+                          <span className="text-[7px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 leading-none">TOKEN</span>
+                        )}
                       </div>
                       
                       {/* Value Track */}
@@ -308,13 +330,13 @@ export default function VaultProviderWidget({
                             />
                           </div>
                         ) : isRevealing ? (
-                          <div className="flex-1 text-[11px] font-mono text-bone-60/50 flex items-center gap-2"><RotateCcw className="w-2.5 h-2.5 animate-spin" />Loading...</div>
+                          <div className="flex-1 text-[11px] font-mono text-bone-70/50 flex items-center gap-2"><RotateCcw className="w-2.5 h-2.5 animate-spin" />Loading...</div>
                         ) : revealedVal ? (
                           <div 
                             onClick={() => k.is_active && handleCopyKey(k.id, revealedVal)}
                             className={cn(
                               "flex-1 text-[12px] font-mono truncate font-medium relative",
-                              !k.is_active ? "text-bone-60/30 cursor-not-allowed" : "cursor-copy transition-all",
+                              !k.is_active ? "text-bone-70/30 cursor-not-allowed" : "cursor-copy transition-all",
                               revealedVal && k.is_active && (copiedKeyId === k.id ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "text-accent drop-shadow-[0_0_5px_rgba(var(--accent-rgb),0.3)] hover:brightness-125")
                             )}
                             title={k.is_active ? "Click to copy" : "Key is disabled"}
@@ -327,7 +349,7 @@ export default function VaultProviderWidget({
                             )}
                           </div>
                         ) : (
-                          <div className="flex-1 text-[10px] font-mono text-bone-60/15 tracking-[0.1em]">
+                          <div className="flex-1 text-[10px] font-mono text-bone-70/15 tracking-[0.1em]">
                             {k.is_active ? '•'.repeat(24) : 'OFFLINE'}
                           </div>
                         )}
@@ -337,17 +359,17 @@ export default function VaultProviderWidget({
                       {isEditing ? (
                         <div className="flex items-center gap-1 shrink-0">
                           <button onClick={() => handleUpdateKey(k.key_id)} disabled={!editingKeyValue} className="p-1 rounded-full bg-accent/10 text-accent hover:bg-accent/20 transition-colors"><Check className="w-3 h-3" /></button>
-                          <button onClick={() => setEditingKeyId(null)} className="p-1 rounded-full bg-white/5 text-bone-60 hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
+                          <button onClick={() => setEditingKeyId(null)} className="p-1 rounded-full bg-white/5 text-bone-70 hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-150 translate-x-1 group-hover:translate-x-0">
                           <div className="flex items-center bg-black/30 rounded-full border border-white/5 p-0.5 mr-1">
-                            <button onClick={() => handleMoveKey(account.id, keyIdx, 'up')} disabled={keyIdx === 0} className="text-bone-60 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowUp className="w-2.5 h-2.5" /></button>
+                            <button onClick={() => handleMoveKey(account.id, keyIdx, 'up')} disabled={keyIdx === 0} className="text-bone-70 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowUp className="w-2.5 h-2.5" /></button>
                             <div className="w-px h-2.5 bg-white/5" />
-                            <button onClick={() => handleMoveKey(account.id, keyIdx, 'down')} disabled={keyIdx === accountKeys.length - 1} className="text-bone-60 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowDown className="w-2.5 h-2.5" /></button>
+                            <button onClick={() => handleMoveKey(account.id, keyIdx, 'down')} disabled={keyIdx === accountKeys.length - 1} className="text-bone-70 hover:text-bone-100 disabled:opacity-20 p-1 transition-colors"><ArrowDown className="w-2.5 h-2.5" /></button>
                           </div>
-                          <button onClick={() => handleToggleKey(k.key_id, k.is_active)} className={cn("p-1.5 rounded-full transition-colors", k.is_active ? "text-bone-60 hover:text-rose-400 hover:bg-rose-400/10" : "text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20")} title={k.is_active ? "Disable Key" : "Enable Key"}><Power className="w-3 h-3" /></button>
-                          <button onClick={() => k.is_active && handleRevealKey(k.key_id)} disabled={!k.is_active} className={cn("p-1.5 rounded-full transition-all", !k.is_active ? "opacity-20 cursor-not-allowed" : (revealedVal ? "text-accent bg-accent/10" : "text-bone-60 hover:bg-white/5 hover:text-bone-100"))}>
+                          <button onClick={() => handleToggleKey(k.key_id, k.is_active)} className={cn("p-1.5 rounded-full transition-colors", k.is_active ? "text-bone-70 hover:text-rose-400 hover:bg-rose-400/10" : "text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20")} title={k.is_active ? "Disable Key" : "Enable Key"}><Power className="w-3 h-3" /></button>
+                          <button onClick={() => k.is_active && handleRevealKey(k.key_id)} disabled={!k.is_active} className={cn("p-1.5 rounded-full transition-all", !k.is_active ? "opacity-20 cursor-not-allowed" : (revealedVal ? "text-accent bg-accent/10" : "text-bone-70 hover:bg-white/5 hover:text-bone-100"))}>
                             {revealedVal ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                           </button>
                           {revealedVal && (
@@ -355,8 +377,8 @@ export default function VaultProviderWidget({
                               <Copy className="w-3 h-3" />
                             </button>
                           )}
-                          <button onClick={() => { setEditingKeyId(k.id); setEditingKeyValue('') }} className="p-1.5 rounded-full text-bone-60 hover:bg-sky-500/10 hover:text-sky-400 transition-colors"><Pencil className="w-3 h-3" /></button>
-                          <button onClick={() => handleDeleteKey(k.key_id)} className="p-1.5 rounded-full text-bone-60 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => { setEditingKeyId(k.id); setEditingKeyValue('') }} className="p-1.5 rounded-full text-bone-70 hover:bg-sky-500/10 hover:text-sky-400 transition-colors"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => handleDeleteKey(k.key_id)} className="p-1.5 rounded-full text-bone-70 hover:bg-rose-500/10 hover:text-rose-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       )}
                     </div>
@@ -376,13 +398,13 @@ export default function VaultProviderWidget({
                       className="flex-1 bg-black/40 border border-accent/20 rounded-small px-2 py-1 text-[11px] font-mono text-accent focus:outline-none focus:border-accent"
                     />
                     <button onClick={() => handleAddKey(account.id)} disabled={!newKeyValue} className="p-1 bg-accent/20 text-accent rounded-full hover:bg-accent/30 transition-colors"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setAddingKeyToAccountId(null)} className="p-1 text-bone-60 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setAddingKeyToAccountId(null)} className="p-1 text-bone-70 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setAddingKeyToAccountId(account.id); setNewKeyValue('') }}
                     disabled={accountKeys.length >= 5}
-                    className="group/btn relative text-[9px] flex items-center justify-center gap-2 text-bone-60/50 hover:text-accent font-bold tracking-wider py-1.5 rounded border border-dashed border-white/[0.04] hover:border-accent/20 hover:bg-accent/[0.02] transition-all disabled:opacity-30 disabled:pointer-events-none overflow-hidden mt-0.5"
+                    className="group/btn relative text-[9px] flex items-center justify-center gap-2 text-bone-70/50 hover:text-accent font-bold tracking-wider py-1.5 rounded border border-dashed border-white/[0.04] hover:border-accent/20 hover:bg-accent/[0.02] transition-all disabled:opacity-30 disabled:pointer-events-none overflow-hidden mt-0.5"
                   >
                     <Plus className="w-3 h-3" /> {accountKeys.length >= 5 ? 'THRESHOLD REACHED' : 'Append Key'}
                   </button>
@@ -394,7 +416,7 @@ export default function VaultProviderWidget({
       </div>
 
       {/* Add Account Form - Anchored to bottom */}
-      <div className="pt-2 mt-auto shrink-0 border-t border-white/[0.02]">
+      <div className="pt-2 mt-auto shrink-0 border-t border-[var(--bone-6)]">
         {isAddingAccount ? (
           <div className="flex items-center gap-3 p-3 rounded-medium border border-accent/20 bg-accent/5 animate-in slide-in-from-bottom-1 duration-200">
             <input
@@ -407,12 +429,12 @@ export default function VaultProviderWidget({
               className="flex-1 bg-background/80 border border-accent/20 rounded-medium px-3 py-1.5 text-[12px] font-sans text-foreground focus:outline-none focus:border-accent"
             />
             <button onClick={handleAddAccount} disabled={!newAccountName} className="p-1.5 bg-accent text-black rounded hover:brightness-110 transition-all"><Check className="w-3.5 h-3.5" /></button>
-            <button onClick={() => setIsAddingAccount(false)} className="p-1.5 bg-white/5 text-bone-60 rounded hover:bg-white/10 transition-colors"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setIsAddingAccount(false)} className="p-1.5 bg-white/5 text-bone-70 rounded hover:bg-white/10 transition-colors"><X className="w-3.5 h-3.5" /></button>
           </div>
         ) : (
           <button
             onClick={() => { setIsAddingAccount(true); setNewAccountName('') }}
-            className="group/addac w-full flex items-center justify-center gap-2 text-[10px] text-bone-60/50 hover:text-bone-100 hover:bg-white/[0.02] font-bold tracking-[0.05em] py-2 rounded-medium border border-dashed border-white/[0.05] hover:border-white/[0.1] uppercase transition-all duration-200"
+            className="group/addac w-full flex items-center justify-center gap-2 text-[10px] text-bone-70/50 hover:text-bone-100 hover:bg-white/[0.02] font-bold tracking-[0.05em] py-2 rounded-medium border border-dashed border-white/[0.05] hover:border-white/[0.1] uppercase transition-all duration-200"
           >
             <Plus className="w-3.5 h-3.5 group-hover/addac:rotate-90 transition-transform duration-200" /> Provision Account
           </button>

@@ -1,5 +1,5 @@
-// All types and interfaces for the Flowr store.
 // No imports — this is the foundation layer.
+import type { ChatConversation, ChatMessage as ChatMessageRecord } from '@/lib/chat';
 
 // Life types
 export interface Habit { id: string; title: string; frequency: string; icon?: string; color?: string; workspaceId?: string; }
@@ -251,6 +251,8 @@ export interface AIMessage {
   tokens_used?: number;
   pipelineSteps?: PipelineStep[];
   image_description?: string;
+  image_prompt?: string;
+  status?: string;
 }
 
 export interface AISessionContext {
@@ -412,7 +414,16 @@ export interface AppState {
   activeReplyMessage: AIMessage | null;
   thinkingEnabled: boolean;
   advisorEnabled: boolean;
+  assistantInput: string;
   showPaidModels: boolean;
+  isInitialSync: boolean;
+
+  // Chat page state
+  activeChatId: string | null;
+  isTempChat: boolean;
+  tempChatMessages: AIMessage[];
+  chatHistoryOpen: boolean;
+  chatConversations: ChatConversation[];
 
   // Actions
   setDashboardLayout: (layout: WidgetConfig[]) => void;
@@ -454,6 +465,7 @@ export interface AppState {
   setReplyMessage: (msg: AIMessage | null) => void;
   setAIClassificationModelId: (id: string) => void;
   setShowPaidModels: (show: boolean) => void;
+  setAssistantInput: (input: string) => void;
   setAISessionContext: (context: AISessionContext | null) => void;
   fetchAISessionContext: (chatId: string) => Promise<void>;
   sendAIMessage: (content: string, attachments?: AIAttachment[]) => Promise<void>;
@@ -540,5 +552,18 @@ export interface AppState {
   pasteBlock: (entityId: string, afterBlockId: string) => void;
   setSelectedSidebarIds: (ids: string[]) => void;
   clearSelectedSidebarIds: () => void;
+
+  // Chat page actions
+  setActiveChatId: (id: string | null) => void;
+  setIsTempChat: (temp: boolean) => void;
+  setChatHistoryOpen: (open: boolean) => void;
+  startTempChat: () => void;
+  startNewChat: () => Promise<void>;
+  loadConversation: (id: string) => Promise<void>;
+  deleteChatConversation: (id: string) => Promise<void>;
+  renameChatConversation: (id: string, title: string) => Promise<void>;
+  loadChatConversations: () => Promise<void>;
+  openChatInPage: () => void;
+  setInitialSync: (isInitialSync: boolean) => void;
 }
 

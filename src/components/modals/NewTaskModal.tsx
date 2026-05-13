@@ -209,7 +209,7 @@ export function NewTaskModal() {
       onClick={handleSaveAndClose}
     >
       <div
-        className="bg-panel border border-[var(--bone-15)] w-full max-w-[480px] rounded-[12px] shadow-2xl overflow-hidden flex flex-col relative"
+        className="bg-panel border border-[var(--bone-12)] w-full max-w-[480px] rounded-[12px] shadow-2xl overflow-hidden flex flex-col relative"
         onClick={e => e.stopPropagation()}
       >
         {/* Decorative Color Bar Top (Thin & Integrated) */}
@@ -247,7 +247,7 @@ export function NewTaskModal() {
           {/* Square Styled Close Button */}
           <button 
             onClick={closeModal}
-            className="w-8 h-8 flex items-center justify-center rounded-[8px] border border-[var(--bone-15)] bg-[var(--bone-8)] text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-12)] transition-all shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-[8px] border border-[var(--bone-6)] bg-[var(--bone-8)] text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-12)] transition-all shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -257,7 +257,7 @@ export function NewTaskModal() {
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-5 scrollbar-none max-h-[75vh]">
           
           {/* 1. Description Box */}
-          <div className="bg-[var(--bone-2)] border border-[var(--bone-10)] rounded-[12px] p-4 min-h-[100px] transition-colors focus-within:border-[var(--bone-20)]">
+          <div className="bg-[var(--bone-2)] border border-[var(--bone-6)] rounded-[12px] p-4 min-h-[100px] transition-colors focus-within:border-[var(--bone-20)]">
             <textarea
               placeholder="Write description or notes..."
               value={description}
@@ -285,7 +285,7 @@ export function NewTaskModal() {
                       <div className="w-1.5 h-1.5 bg-white rounded-full" />
                     </div>
                   ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-[var(--bone-30)] group-hover:border-[var(--bone-60)] transition-colors" />
+                    <div className="w-4 h-4 rounded-full border-2 border-[var(--bone-30)] group-hover:border-[var(--bone-70)] transition-colors" />
                   )}
                 </button>
                 <span className={clsx(
@@ -305,7 +305,7 @@ export function NewTaskModal() {
 
             {/* Add Subtask Inline Composer */}
             <div className="flex gap-2">
-              <div className="flex-1 bg-[var(--bone-5)] border border-[var(--bone-10)] rounded-[12px] px-4 py-3 focus-within:border-[var(--bone-20)] transition-colors">
+              <div className="flex-1 bg-[var(--bone-5)] border border-[var(--bone-6)] rounded-[12px] px-4 py-3 focus-within:border-[var(--bone-20)] transition-colors">
                 <input
                   type="text"
                   placeholder="Add new subtask..."
@@ -317,7 +317,7 @@ export function NewTaskModal() {
               </div>
               <button
                 onClick={handleAddSubtask}
-                className="w-12 h-12 flex items-center justify-center bg-[var(--bone-5)] border border-[var(--bone-10)] rounded-[12px] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-all"
+                className="w-12 h-12 flex items-center justify-center bg-[var(--bone-5)] border border-[var(--bone-6)] rounded-[12px] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-all"
               >
                 <Plus className="w-5 h-5" />
               </button>
@@ -358,7 +358,7 @@ export function NewTaskModal() {
                       "flex-1 py-3 rounded-[12px] text-[10px] font-bold uppercase border transition-all",
                       priority === p 
                         ? "bg-[var(--bone-10)] border-[var(--bone-25)] text-[var(--bone-100)] shadow-sm" 
-                        : "bg-[var(--bone-2)] border border-[var(--bone-10)] text-[var(--bone-40)] hover:bg-[var(--bone-5)]"
+                        : "bg-[var(--bone-2)] border border-[var(--bone-6)] text-[var(--bone-40)] hover:bg-[var(--bone-5)]"
                     )}
                   >
                     {p}
@@ -378,19 +378,19 @@ export function NewTaskModal() {
               </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="w-full flex items-center justify-between bg-[var(--bone-2)] border border-[var(--bone-10)] rounded-[12px] px-4 py-3 text-sm text-[var(--bone-90)] hover:bg-[var(--bone-5)] transition-colors">
+                  <button className="w-full flex items-center justify-between bg-[var(--bone-2)] border border-[var(--bone-6)] rounded-[12px] px-4 py-3 text-sm text-[var(--bone-90)] hover:bg-[var(--bone-5)] transition-colors">
                     <span className="truncate">
                       {workspaceId ? workspaces.find(w => w.id === workspaceId)?.title || "Assigned" : "Unsorted"}
                     </span>
                     <Plus className="w-3.5 h-3.5 opacity-30 rotate-45" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-1.5 bg-panel border border-[var(--bone-15)] shadow-2xl rounded-[12px] backdrop-blur-3xl" align="start">
+                <PopoverContent className="w-[240px] p-1.5 bg-panel border border-[var(--bone-6)] shadow-2xl rounded-[12px] backdrop-blur-3xl" align="start">
                   <button
                     onClick={() => setWorkspaceId(null)}
                     className={clsx(
                       "w-full px-3 py-2 text-left text-sm rounded-[8px] transition-colors",
-                      !workspaceId ? "bg-[var(--bone-10)] text-[var(--bone-100)] font-medium" : "text-[var(--bone-60)] hover:bg-[var(--bone-5)]"
+                      !workspaceId ? "bg-[var(--bone-10)] text-[var(--bone-100)] font-medium" : "text-[var(--bone-70)] hover:bg-[var(--bone-5)]"
                     )}
                   >
                     Unsorted
@@ -401,7 +401,7 @@ export function NewTaskModal() {
                       onClick={() => setWorkspaceId(w.id)}
                       className={clsx(
                         "w-full px-3 py-2 text-left text-sm rounded-[8px] transition-colors mt-0.5",
-                        workspaceId === w.id ? "bg-[var(--bone-10)] text-[var(--bone-100)] font-medium" : "text-[var(--bone-60)] hover:bg-[var(--bone-5)]"
+                        workspaceId === w.id ? "bg-[var(--bone-10)] text-[var(--bone-100)] font-medium" : "text-[var(--bone-70)] hover:bg-[var(--bone-5)]"
                       )}
                     >
                       {w.title}

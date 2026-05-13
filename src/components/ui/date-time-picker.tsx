@@ -104,7 +104,7 @@ export function DatePickerTime({
                         "w-full px-2 py-1.5 text-sm rounded-md text-left transition-colors",
                         time?.startsWith(h.toString().padStart(2, '0')) 
                           ? "bg-accent/10 border border-accent/30 text-accent font-semibold" 
-                          : "text-[var(--bone-60)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
+                          : "text-[var(--bone-70)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
                       )}
                     >
                       {h.toString().padStart(2, '0')}
@@ -123,7 +123,7 @@ export function DatePickerTime({
                         "w-full px-2 py-1.5 text-sm rounded-md text-left transition-colors",
                         time?.includes(`:${m}`) 
                           ? "bg-accent/10 border border-accent/30 text-accent font-semibold" 
-                          : "text-[var(--bone-60)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
+                          : "text-[var(--bone-70)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
                       )}
                     >
                       {m}
@@ -142,7 +142,7 @@ export function DatePickerTime({
                         "w-full px-2 py-1.5 text-sm rounded-md text-left transition-colors",
                         time?.endsWith(p) 
                           ? "bg-accent/10 border border-accent/30 text-accent font-semibold" 
-                          : "text-[var(--bone-60)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
+                          : "text-[var(--bone-70)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)]"
                       )}
                     >
                       {p}

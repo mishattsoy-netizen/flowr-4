@@ -4,6 +4,7 @@ import { Entity, useStore } from '@/data/store';
 import { useMemo, useState, useRef } from 'react';
 import { Plus, CheckCircle2, Circle } from 'lucide-react';
 import clsx from 'clsx';
+import { stripHtml } from '@/lib/utils';
 
 type ViewMode = 'list' | 'by-status';
 
@@ -99,14 +100,14 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
                 <button onClick={() => toggleTask(t.id)} className="shrink-0 text-[var(--bone-20)] hover:text-accent transition-colors">
                   <Circle className="w-4 h-4" />
                 </button>
-                <span className="flex-1 text-sm text-foreground font-medium">{t.title}</span>
-                {t.dueDate && <span className="text-[10px] font-bold text-bone-60 uppercase tracking-wider shrink-0">{formatDate(t.dueDate)}</span>}
+                <span className="flex-1 text-sm text-foreground font-medium">{stripHtml(t.title || '')}</span>
+                {t.dueDate && <span className="text-[10px] font-bold text-bone-70 uppercase tracking-wider shrink-0">{formatDate(t.dueDate)}</span>}
               </div>
             ))}
             {completed.slice(0, 3).map(t => (
               <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-medium)] opacity-40">
                 <button onClick={() => toggleTask(t.id)} className="shrink-0 text-accent"><CheckCircle2 className="w-4 h-4" /></button>
-                <span className="flex-1 text-sm text-muted-foreground line-through">{t.title}</span>
+                <span className="flex-1 text-sm text-muted-foreground line-through">{stripHtml(t.title || '')}</span>
               </div>
             ))}
           </div>
@@ -114,11 +115,11 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
           <div className="space-y-3">
             {Object.entries(grouped!).filter(([, items]) => items.length > 0).map(([group, items]) => (
               <div key={group}>
-                <div className="text-[10px] font-semibold text-bone-60 uppercase tracking-widest mb-1 px-1">{group}</div>
+                <div className="text-[10px] font-semibold text-bone-70 uppercase tracking-widest mb-1 px-1">{group}</div>
                 {items.map(t => (
                   <div key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)]">
                     <button onClick={() => toggleTask(t.id)} className="shrink-0 text-[var(--bone-20)] hover:text-accent"><Circle className="w-3.5 h-3.5" /></button>
-                    <span className="text-sm text-foreground">{t.title}</span>
+                    <span className="text-sm text-foreground">{stripHtml(t.title || '')}</span>
                   </div>
                 ))}
               </div>

@@ -52,7 +52,7 @@ export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, on
       ref={ref}
       data-border-flash={borderFlash ? 'true' : undefined}
       className={clsx(
-        'h-full relative group/bento-widget transition-all duration-300 rounded-[var(--radius-big)]',
+        'h-full relative group/bento-widget transition-all duration-300 rounded-[var(--radius-big)] border border-[var(--bone-12)]',
         editMode ? 'overflow-visible' : 'overflow-hidden',
         editMode && 'cursor-grab active:cursor-grabbing select-none',
         isSwapTarget && 'ring-2 ring-[var(--bone-100)] scale-[1.02] shadow-lg',
@@ -71,7 +71,7 @@ export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, on
         <button
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onRemove(); }}
-           className="absolute -top-1 left-0 z-50 w-5 h-5 flex items-center justify-center rounded-full bg-background border border-border text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 transition-colors"
+          className="absolute -top-1 left-0 z-50 w-5 h-5 flex items-center justify-center rounded-full bg-background border border-border text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 transition-colors"
         >
           <X className="w-3 h-3" />
         </button>

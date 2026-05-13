@@ -8,31 +8,31 @@
   "statusMessages": {
     "CODING": {
       "emoji": "",
-      "label": "Coding"
+      "label": "Coding..."
     },
     "VISION": {
       "emoji": "",
-      "label": "Inspecting"
+      "label": "Inspecting..."
     },
     "ADVISOR": {
       "emoji": "",
-      "label": "Asking question"
+      "label": "Asking question..."
     },
     "THINKING": {
       "emoji": "",
-      "label": "Thinking"
+      "label": "Thinking..."
     },
     "IMAGE_GEN": {
       "emoji": "",
-      "label": "Drawing"
+      "label": "Drawing..."
     },
     "CLASSIFIER": {
       "emoji": "",
-      "label": "Analyzing"
+      "label": "Analyzing..."
     },
     "WEB_SEARCH": {
       "emoji": "",
-      "label": "Searching"
+      "label": "Searching..."
     },
     "AUDIO_VOICE": {
       "emoji": "",
@@ -40,27 +40,27 @@
     },
     "FAST_SIMPLE": {
       "emoji": "",
-      "label": "Writing"
+      "label": "Writing..."
     },
     "ORCHESTRATOR": {
       "emoji": "",
-      "label": "Planning"
+      "label": "Planning..."
     },
     "TOOL_CALLING": {
       "emoji": "",
-      "label": "Using tools"
+      "label": "Using tools..."
     },
     "DEEP_RESEARCH": {
       "emoji": "",
-      "label": "Researching"
+      "label": "Researching..."
     },
     "MEDIUM_THINKING": {
       "emoji": "",
-      "label": "Writing"
+      "label": "Writing..."
     },
     "COMPLEX_THINKING": {
       "emoji": "",
-      "label": "Writing"
+      "label": "Writing..."
     }
   },
   "historyEnabledCategories": [
@@ -68,8 +68,6 @@
     "MEDIUM_THINKING",
     "CODING",
     "TOOL_CALLING",
-    "WEB_SEARCH",
-    "DEEP_RESEARCH",
     "ADVISOR",
     "IMAGE_GEN",
     "IMAGE_UPSCALE",
@@ -77,5 +75,14 @@
     "AUDIO_VOICE",
     "CLASSIFIER",
     "FAST_SIMPLE"
+  ],
+  "globalPromptEnabledCategories": [
+    "COMPLEX_THINKING",
+    "MEDIUM_THINKING",
+    "CODING",
+    "ADVISOR",
+    "AUDIO_VOICE",
+    "FAST_SIMPLE",
+    "VISION"
   ]
 }

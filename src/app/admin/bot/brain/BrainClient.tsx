@@ -34,7 +34,7 @@ const ACTION_ICONS: Record<string, { icon: any; color: string }> = {
   vault_updated:       { icon: Key,          color: 'text-yellow-400' },
 }
 
-const DEFAULT_ICON = { icon: ClipboardList, color: 'text-bone-60' }
+const DEFAULT_ICON = { icon: ClipboardList, color: 'text-bone-70' }
 
 interface Props { initialEntries: BrainEntry[] }
 
@@ -297,7 +297,7 @@ export default function BrainClient({ initialEntries }: Props) {
       >
         <div className="max-w-[1200px] mx-auto px-8 py-5 pb-24">
           <div className="mb-6">
-            <h1 className="text-4xl font-display text-foreground mb-1">
+            <h1 className="text-4xl font-display font-medium text-foreground mb-1">
               Bot Brain
             </h1>
             <p className="text-muted-foreground text-sm font-medium">
@@ -313,7 +313,7 @@ export default function BrainClient({ initialEntries }: Props) {
                   'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all',
                   !selected
                     ? 'bg-accent text-white shadow-md shadow-accent/20'
-                    : 'bg-white/5 text-bone-60 hover:text-foreground hover:bg-white/10 border border-white/5'
+                    : 'bg-white/5 text-bone-70 hover:text-foreground hover:bg-white/10 border border-[var(--bone-6)]'
                 )}
               >
                 All ({entries.length})
@@ -329,8 +329,8 @@ export default function BrainClient({ initialEntries }: Props) {
                     className={cn(
                       'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border',
                       isSelected
-                        ? 'bg-white/10 text-foreground border-white/20 shadow-sm'
-                        : 'bg-white/5 text-bone-60 hover:text-foreground hover:bg-white/10 border-white/5'
+                        ? 'bg-white/10 text-foreground border-[var(--bone-15)] shadow-sm'
+                        : 'bg-white/5 text-bone-70 hover:text-foreground hover:bg-white/10 border-[var(--bone-6)]'
                     )}
                   >
                     {meta.label} ({count})
@@ -349,18 +349,18 @@ export default function BrainClient({ initialEntries }: Props) {
             </div>
 
             {showAdd && (
-              <div className="bg-[var(--bone-6)] border border-white/5 rounded-xl p-5 space-y-4 animate-in slide-in-from-top-2 duration-300 shadow-xl">
+              <div className="bg-[var(--bone-6)] border border-[var(--bone-12)] rounded-xl p-5 space-y-4 animate-in slide-in-from-top-2 duration-300 shadow-xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-bold text-foreground tracking-tight">New Brain Entry</h3>
                   <button onClick={() => setShowAdd(false)}>
-                    <X className="w-5 h-5 text-bone-60 hover:text-foreground transition-colors" />
+                    <X className="w-5 h-5 text-bone-70 hover:text-foreground transition-colors" />
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <select
                     value={newCategory}
                     onChange={e => setNewCategory(e.target.value as BrainCategory)}
-                    className="bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-foreground focus:ring-1 focus:ring-accent/20 outline-none transition-all"
+                    className="bg-background border border-[var(--bone-6)] rounded-xl px-4 py-2 text-sm text-foreground focus:ring-1 focus:ring-accent/20 outline-none transition-all"
                   >
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{CATEGORY_META[c].label}</option>
@@ -370,7 +370,7 @@ export default function BrainClient({ initialEntries }: Props) {
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
                     placeholder="Short title (e.g. Don't over-use bullets)"
-                    className="md:col-span-3 bg-background border border-white/10 rounded-xl px-4 py-2 text-sm text-foreground placeholder:text-bone-60/30 focus:border-accent/50 outline-none transition-all"
+                    className="md:col-span-3 bg-background border border-[var(--bone-6)] rounded-xl px-4 py-2 text-sm text-foreground placeholder:text-bone-70/30 focus:border-accent/50 outline-none transition-all"
                   />
                 </div>
                 <textarea
@@ -378,12 +378,12 @@ export default function BrainClient({ initialEntries }: Props) {
                   onChange={e => setNewContent(e.target.value)}
                   placeholder="Detailed content..."
                   rows={4}
-                  className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-bone-60/30 resize-none focus:border-accent/50 outline-none transition-all leading-relaxed"
+                  className="w-full bg-background border border-[var(--bone-6)] rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-bone-70/30 resize-none focus:border-accent/50 outline-none transition-all leading-relaxed"
                 />
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setShowAdd(false)}
-                    className="px-6 py-2 text-xs font-bold uppercase tracking-widest text-bone-60 hover:text-foreground transition-colors"
+                    className="px-6 py-2 text-xs font-bold uppercase tracking-widest text-bone-70 hover:text-foreground transition-colors"
                   >
                     Cancel
                   </button>
@@ -402,9 +402,9 @@ export default function BrainClient({ initialEntries }: Props) {
               {visibleEntries.length === 0 && !showAdd && (
                 <div className="py-24 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-2xl">
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-4 opacity-40">
-                    <Brain className="w-6 h-6 text-bone-60" />
+                    <Brain className="w-6 h-6 text-bone-70" />
                   </div>
-                  <p className="text-bone-60 text-sm font-medium tracking-wide">No intelligence entries found in this category.</p>
+                  <p className="text-bone-70 text-sm font-medium tracking-wide">No intelligence entries found in this category.</p>
                 </div>
               )}
               {visibleEntries.map(entry => {
@@ -413,7 +413,7 @@ export default function BrainClient({ initialEntries }: Props) {
                   <div
                     key={entry.id}
                     className={cn(
-                      'bg-[var(--bone-6)] border border-white/5 hover:border-white/10 rounded-xl p-4 flex gap-4 items-start group transition-all duration-300',
+                      'bg-[var(--bone-6)] border border-[var(--bone-12)] hover:border-white/10 rounded-xl p-4 flex gap-4 items-start group transition-all duration-300',
                       !entry.is_active && 'opacity-40'
                     )}
                   >
@@ -431,13 +431,13 @@ export default function BrainClient({ initialEntries }: Props) {
                           {meta.label}
                         </span>
                         {!entry.is_active && (
-                          <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-bone-60 font-bold uppercase tracking-widest border border-white/10">
+                          <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-bone-70 font-bold uppercase tracking-widest border border-[var(--bone-6)]">
                             disabled
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed font-medium">{entry.content}</p>
-                      <div className="mt-4 flex items-center gap-4 text-[9px] font-bold text-bone-60/40 uppercase tracking-[0.15em]">
+                      <div className="mt-4 flex items-center gap-4 text-[9px] font-bold text-bone-70/40 uppercase tracking-[0.15em]">
                         <span className="flex items-center gap-1.5"><Globe className="w-3 h-3" /> {entry.source.replace('_', ' ')}</span>
                         <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {new Date(entry.updated_at || entry.created_at).toLocaleDateString()}</span>
                       </div>
@@ -450,14 +450,14 @@ export default function BrainClient({ initialEntries }: Props) {
                           'w-8 h-8 flex items-center justify-center rounded-lg transition-all border',
                           entry.is_active
                             ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
-                            : 'bg-white/5 text-bone-60 border-white/10 hover:text-green-400 hover:border-green-500/20'
+                            : 'bg-white/5 text-bone-70 border-white/10 hover:text-green-400 hover:border-green-500/20'
                         )}
                       >
                         <Zap className={cn("w-3.5 h-3.5", entry.is_active && "fill-current")} />
                       </button>
                       <button
                         onClick={() => handleDelete(entry.id, entry.title)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-bone-60 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/10 transition-all"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-[var(--bone-6)] text-bone-70 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/10 transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -472,7 +472,7 @@ export default function BrainClient({ initialEntries }: Props) {
 
       {/* RIGHT SIDEBAR PANEL - FIXED DOCKED CHATBOT */}
       <div
-        className="fixed top-0 right-0 bottom-0 bg-sidebar border-l border-white/5 flex flex-col overflow-hidden z-[100] group/sidebar"
+        className="fixed top-0 right-0 bottom-0 bg-sidebar border-l border-[var(--bone-6)] flex flex-col overflow-hidden z-[100] group/sidebar"
         style={{ width: sidebarWidth }}
       >
         {/* Resize Handler - Synced with Shell.tsx */}
@@ -485,31 +485,31 @@ export default function BrainClient({ initialEntries }: Props) {
         >
           <div className={cn(
             "absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] transition-all duration-300",
-            isResizing ? "bg-[var(--bone-60)] opacity-100" : "bg-[var(--bone-30)] opacity-0 group-hover:opacity-100"
+            isResizing ? "bg-[var(--bone-70)] opacity-100" : "bg-[var(--bone-30)] opacity-0 group-hover:opacity-100"
           )} />
         </div>
 
         {/* Sidebar Header */}
-        <div className="py-3 border-b border-white/5 flex items-center justify-between shrink-0 bg-sidebar px-6">
+        <div className="py-3 border-b border-[var(--bone-6)] flex items-center justify-between shrink-0 bg-sidebar px-6">
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
-              <h1 className="text-[22px] font-semibold tracking-tight text-foreground leading-none" style={{ fontFamily: '"Crimson Text", serif' }}>
+              <h1 className="text-[20px] font-semibold tracking-tight text-foreground leading-none" style={{ fontFamily: '"Literata", serif', letterSpacing: '-0.01em' }}>
                 AI Manager
               </h1>
               <div className="w-1.5 h-1.5 rounded-full mt-1 bg-[#22C55E] shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
             </div>
-            <p className="text-[10px] font-bold text-bone-60 tracking-[0.1em] uppercase mt-1 opacity-60">
+            <p className="text-[10px] font-bold text-bone-70 tracking-[0.1em] uppercase mt-1 opacity-60">
               Brain Intelligence
             </p>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="flex p-0.5 bg-white/5 rounded-lg border border-white/10">
+            <div className="flex p-0.5 bg-white/5 rounded-lg border border-[var(--bone-6)]">
               <button
                 onClick={() => setActiveTab('manager')}
                 className={cn(
                   'px-3.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all',
-                  activeTab === 'manager' ? 'bg-white/10 text-foreground shadow-sm' : 'text-bone-60 hover:text-foreground'
+                  activeTab === 'manager' ? 'bg-white/10 text-foreground shadow-sm' : 'text-bone-70 hover:text-foreground'
                 )}
               >
                 Chat
@@ -518,7 +518,7 @@ export default function BrainClient({ initialEntries }: Props) {
                 onClick={() => setActiveTab('logs')}
                 className={cn(
                   'px-3.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all',
-                  activeTab === 'logs' ? 'bg-white/10 text-foreground shadow-sm' : 'text-bone-60 hover:text-foreground'
+                  activeTab === 'logs' ? 'bg-white/10 text-foreground shadow-sm' : 'text-bone-70 hover:text-foreground'
                 )}
               >
                 Logs
@@ -527,7 +527,7 @@ export default function BrainClient({ initialEntries }: Props) {
             {activeTab === 'logs' && (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-bone-60 hover:text-red-400 hover:bg-red-400/10 transition-all border border-transparent hover:border-red-400/20"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-bone-70 hover:text-red-400 hover:bg-red-400/10 transition-all border border-transparent hover:border-red-400/20"
                 title="Clear logs"
               >
                 <Trash2 className="w-4 h-4" />
@@ -547,7 +547,7 @@ export default function BrainClient({ initialEntries }: Props) {
                       <Brain className="w-7 h-7 text-accent" />
                     </div>
                     <h3 className="text-base font-bold text-foreground mb-2 tracking-tight">Intelligence Manager</h3>
-                    <p className="text-xs text-bone-60 leading-relaxed max-w-[220px] font-medium opacity-80">
+                    <p className="text-xs text-bone-70 leading-relaxed max-w-[220px] font-medium opacity-80">
                       I can help you analyze, merge, or refine your bot's learned behavior patterns.
                     </p>
                   </div>
@@ -572,7 +572,7 @@ export default function BrainClient({ initialEntries }: Props) {
                           className={cn(
                             "leading-relaxed font-medium text-sm tracking-wide",
                             msg.role === 'user' 
-                              ? "px-4 py-3 bg-[var(--bone-6)] border border-white/5 text-foreground/95" 
+                              ? "px-4 py-3 bg-[var(--bone-6)] border border-[var(--bone-12)] text-foreground/95" 
                               : "px-0 py-1 text-foreground/95"
                           )}
                           style={msg.role === 'user' ? { borderRadius: '18px 18px 4px 18px' } : undefined}
@@ -585,11 +585,11 @@ export default function BrainClient({ initialEntries }: Props) {
                             {msg.actions.map((action, aIdx) => {
                               const meta = CATEGORY_META[action.category] || { label: action.category, color: 'var(--bone-30)' }
                               return (
-                                <div key={aIdx} className="bg-white/[0.04] border border-white/5 rounded-2xl p-5 flex flex-col gap-4 group/card hover:border-white/20 transition-all duration-300">
+                                <div key={aIdx} className="bg-white/[0.04] border border-[var(--bone-12)] rounded-2xl p-5 flex flex-col gap-4 group/card hover:border-white/20 transition-all duration-300">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(var(--accent-rgb),0.6)]" style={{ background: meta.color }} />
-                                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-bone-60 opacity-80">Suggested {meta.label}</span>
+                                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-bone-70 opacity-80">Suggested {meta.label}</span>
                                     </div>
                                     {action.applied && (
                                       <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-400 uppercase tracking-[0.2em]">
@@ -600,7 +600,7 @@ export default function BrainClient({ initialEntries }: Props) {
                                   
                                   <div className="space-y-2">
                                     <h4 className="text-[15px] font-bold text-foreground tracking-tight leading-snug">{action.title}</h4>
-                                    <p className="text-[13px] text-bone-60/90 leading-relaxed font-medium line-clamp-4 opacity-90">{action.content}</p>
+                                    <p className="text-[13px] text-bone-70/90 leading-relaxed font-medium line-clamp-4 opacity-90">{action.content}</p>
                                   </div>
                                   
                                   <div className="flex items-center justify-end pt-2">
@@ -630,27 +630,27 @@ export default function BrainClient({ initialEntries }: Props) {
                           <Sparkles className="w-3 h-3 text-accent animate-pulse" />
                        </div>
                     </div>
-                    <span className="text-sm font-medium text-bone-60 animate-pulse tracking-wide italic opacity-70">AI is analyzing brain state...</span>
+                    <span className="text-sm font-medium text-bone-70 animate-pulse tracking-wide italic opacity-70">AI is analyzing brain state...</span>
                   </div>
                 )}
               </div>
 
               {/* Chat Input Area */}
-              <div className="px-6 pb-8 pt-4 shrink-0 bg-sidebar border-t border-white/5 relative">
+              <div className="px-6 pb-8 pt-4 shrink-0 bg-sidebar border-t border-[var(--bone-6)] relative">
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-4">
                   {templates.map((t, idx) => (
                     <button
                       key={idx}
                       disabled={isAiLoading}
                       onClick={() => handleChatSubmit(t.prompt)}
-                      className="text-[9.5px] px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-bone-60 hover:text-foreground border border-white/10 rounded-full font-bold uppercase tracking-[0.15em] transition-all select-none shrink-0"
+                      className="text-[9.5px] px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-bone-70 hover:text-foreground border border-[var(--bone-6)] rounded-full font-bold uppercase tracking-[0.15em] transition-all select-none shrink-0"
                     >
                       {t.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="bg-white/[0.05] border border-white/5 rounded-[22px] p-2.5 flex items-center gap-2.5 focus-within:border-accent/40 transition-all">
+                <div className="bg-white/[0.05] border border-[var(--bone-6)] rounded-[22px] p-2.5 flex items-center gap-2.5 focus-within:border-accent/40 transition-all">
                   <form
                     onSubmit={e => { e.preventDefault(); handleChatSubmit(chatInput) }}
                     className="flex-1 flex items-center gap-2.5"
@@ -660,7 +660,7 @@ export default function BrainClient({ initialEntries }: Props) {
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       placeholder="Ask the manager anything..."
-                      className="flex-1 bg-transparent border-none px-4 py-2 text-sm text-foreground placeholder:text-bone-60/25 outline-none font-medium"
+                      className="flex-1 bg-transparent border-none px-4 py-2 text-sm text-foreground placeholder:text-bone-70/25 outline-none font-medium"
                     />
                     <button
                       disabled={isAiLoading || !chatInput.trim()}
@@ -679,14 +679,14 @@ export default function BrainClient({ initialEntries }: Props) {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-2">
               {logs.length === 0 && !logsLoading && (
                 <div className="py-24 text-center">
-                  <p className="text-[13px] text-bone-60 font-medium tracking-wide opacity-40 italic">Activity history is empty.</p>
+                  <p className="text-[13px] text-bone-70 font-medium tracking-wide opacity-40 italic">Activity history is empty.</p>
                 </div>
               )}
               <div className="space-y-2">
                 {logs.map(log => {
                   const { icon: Icon, color } = ACTION_ICONS[log.action_type] ?? DEFAULT_ICON
                   return (
-                    <div key={log.id} className="flex gap-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02] group hover:border-white/10 transition-all duration-300 shadow-sm">
+                    <div key={log.id} className="flex gap-4 p-4 rounded-2xl border border-[var(--bone-12)] bg-white/[0.02] group hover:border-white/10 transition-all duration-300 shadow-sm">
                       <div className="mt-0.5 shrink-0">
                         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 shadow-inner transition-colors", color)}>
                           <Icon className="w-4.5 h-4.5" strokeWidth={2.5} />
@@ -694,7 +694,7 @@ export default function BrainClient({ initialEntries }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] text-foreground/90 leading-snug font-medium break-words tracking-tight">{log.description}</p>
-                        <p className="text-[10px] text-bone-60/30 mt-2 font-bold uppercase tracking-[0.2em]">
+                        <p className="text-[10px] text-bone-70/30 mt-2 font-bold uppercase tracking-[0.2em]">
                           {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                         </p>
                       </div>
@@ -707,7 +707,7 @@ export default function BrainClient({ initialEntries }: Props) {
                 <button
                   onClick={() => fetchLogs(false)}
                   disabled={logsLoading}
-                  className="w-full py-6 mt-2 text-[10px] font-bold text-bone-60 hover:text-foreground uppercase tracking-[0.25em] transition-all opacity-40 hover:opacity-100 active:scale-[0.98]"
+                  className="w-full py-6 mt-2 text-[10px] font-bold text-bone-70 hover:text-foreground uppercase tracking-[0.25em] transition-all opacity-40 hover:opacity-100 active:scale-[0.98]"
                 >
                   {logsLoading ? 'Loading archive...' : 'View Older Records'}
                 </button>
@@ -720,13 +720,13 @@ export default function BrainClient({ initialEntries }: Props) {
       {showClearConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setShowClearConfirm(false)} />
-          <div className="relative bg-[#0F0F0F] border border-white/10 rounded-[24px] w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-300 overflow-hidden">
+          <div className="relative bg-[#0F0F0F] border border-[var(--bone-12)] rounded-[24px] w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-300 overflow-hidden">
             <div className="p-8 text-center">
               <div className="w-16 h-16 rounded-[20px] bg-rose-500/10 flex items-center justify-center mx-auto mb-6 border border-rose-500/20">
                 <Trash2 className="w-8 h-8 text-rose-500" />
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2 tracking-tight">Clear Activity Logs?</h3>
-              <p className="text-sm text-bone-60 leading-relaxed font-medium">
+              <p className="text-sm text-bone-70 leading-relaxed font-medium">
                 This will permanently delete all recorded intelligence actions. This cannot be undone.
               </p>
             </div>
@@ -734,7 +734,7 @@ export default function BrainClient({ initialEntries }: Props) {
             <div className="flex items-center gap-3 p-8 pt-0">
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 py-3.5 rounded-2xl border border-white/10 text-xs font-bold text-bone-60 hover:text-foreground transition-all uppercase tracking-widest"
+                className="flex-1 py-3.5 rounded-2xl border border-white/10 text-xs font-bold text-bone-70 hover:text-foreground transition-all uppercase tracking-widest"
               >
                 Cancel
               </button>

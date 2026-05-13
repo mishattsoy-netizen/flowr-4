@@ -35,8 +35,8 @@ export default function RowOptionsDropdown({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center justify-center w-6 h-6 rounded-sm transition-all duration-0 hover:bg-white/5 focus:outline-none",
-          isOpen ? "text-bone-100 bg-white/5" : "text-bone-60 hover:text-bone-100"
+          "flex items-center justify-center w-6 h-6 rounded-sm hover:bg-white/5 focus:outline-none",
+          isOpen ? "text-bone-100 bg-white/5" : "text-bone-70 hover:text-bone-100"
         )}
         title="Options"
       >
@@ -45,7 +45,7 @@ export default function RowOptionsDropdown({
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed popup-glass-small z-[9999] min-w-[120px] p-1.5 flex flex-col gap-[3px] shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed popup-glass-small z-[9999] min-w-[120px] p-1.5 flex flex-col gap-[3px] shadow-2xl border border-[var(--bone-12)]"
           style={{
             top: (ref.current?.getBoundingClientRect().bottom ?? 0) + 120 > window.innerHeight ? 'auto' : (ref.current?.getBoundingClientRect().bottom ?? 0) + 4,
             bottom: (ref.current?.getBoundingClientRect().bottom ?? 0) + 120 > window.innerHeight ? window.innerHeight - (ref.current?.getBoundingClientRect().top ?? 0) + 4 : 'auto',
@@ -60,13 +60,13 @@ export default function RowOptionsDropdown({
               onToggle()
               setIsOpen(false)
             }}
-            className="popup-item gap-2 px-2.5 py-1.5 rounded-sm hover:bg-white/5 flex items-center text-left text-[11px] font-bold text-bone-80 hover:text-bone-100 transition-all w-full"
+            className="popup-item gap-2 px-2.5 py-1.5 rounded-sm hover:bg-white/5 flex items-center text-left text-[11px] font-bold text-bone-80 hover:text-bone-100 w-full"
           >
             <Power className={cn("w-3.5 h-3.5 shrink-0", isEnabled ? "text-accent" : "text-bone-40")} />
             <span>{isEnabled ? 'Disable' : 'Enable'}</span>
           </button>
 
-          <div className="h-[1px] bg-white/5 my-[2px]" />
+          <div className="h-[1px] bg-[var(--bone-6)] my-[2px]" />
 
           {/* Delete Option */}
           <button
@@ -75,7 +75,7 @@ export default function RowOptionsDropdown({
               onDelete()
               setIsOpen(false)
             }}
-            className="popup-item gap-2 px-2.5 py-1.5 rounded-sm hover:bg-rose-500/10 hover:text-rose-400 text-rose-500/80 flex items-center text-left text-[11px] font-bold transition-all w-full"
+            className="popup-item gap-2 px-2.5 py-1.5 rounded-sm hover:bg-rose-500/10 hover:text-rose-400 text-rose-500/80 flex items-center text-left text-[11px] font-bold w-full"
           >
             <Trash2 className="w-3.5 h-3.5 shrink-0" />
             <span>Delete</span>

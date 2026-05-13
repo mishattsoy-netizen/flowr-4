@@ -294,9 +294,9 @@ export default function DiscoverClient({
 
   // Keys for selected provider
   const prefix = PROVIDER_KEY_PREFIX[provider] ?? provider.toUpperCase()
-  const cfSpecial = ['CLOUDFLARE_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']
+  // For Cloudflare, show all keys under CLOUDFLARE prefix (tokens + Account IDs)
   const providerKeys = provider === 'cloudflare'
-    ? vaultKeys.filter(k => cfSpecial.includes(k.key_id))
+    ? vaultKeys.filter(k => k.key_id.toUpperCase().startsWith('CLOUDFLARE'))
     : vaultKeys.filter(k => k.key_id.toUpperCase().startsWith(prefix))
 
   // When provider changes, reset key selection and results

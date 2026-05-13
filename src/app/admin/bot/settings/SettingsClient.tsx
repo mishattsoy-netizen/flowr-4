@@ -13,11 +13,11 @@ import PipelineStatusPanel from '@/components/admin/PipelineStatusPanel'
 import OrchestratorPanel from '@/components/admin/OrchestratorPanel'
 
 const TABS: { key: SettingsCategory; label: string; description: string }[] = [
-  { key: 'core_rules',       label: 'Core Rules',      description: 'Hard constraints — what the bot must always or never do' },
-  { key: 'personality',      label: 'Personality',     description: 'Tone, warmth, humor — what the bot feels like to talk to' },
-  { key: 'answer_style',     label: 'Answer Style',    description: 'Length, formatting, when to use lists vs prose' },
-  { key: 'thinking_pattern', label: 'Thinking',        description: 'How the bot approaches complex vs simple questions' },
-  { key: 'restrictions',     label: 'Restrictions',    description: 'Topics and behaviors that are off-limits' },
+  { key: 'core_rules', label: 'Core Rules', description: 'Hard constraints — what the bot must always or never do' },
+  { key: 'personality', label: 'Personality', description: 'Tone, warmth, humor — what the bot feels like to talk to' },
+  { key: 'answer_style', label: 'Answer Style', description: 'Length, formatting, when to use lists vs prose' },
+  { key: 'thinking_pattern', label: 'Thinking', description: 'How the bot approaches complex vs simple questions' },
+  { key: 'restrictions', label: 'Restrictions', description: 'Topics and behaviors that are off-limits' },
 ]
 
 interface Props {
@@ -118,45 +118,45 @@ export default function SettingsClient({
   return (
     <div className="space-y-4 animate-in fade-in duration-500 font-sans select-none">
       <div>
-        <h1 className="text-4xl font-display font-normal tracking-tight text-foreground mb-1 select-none">Global Settings</h1>
+        <h1 className="text-4xl font-display font-medium tracking-tight text-foreground mb-1 select-none">Global Settings</h1>
         <p className="text-muted-foreground text-sm font-medium select-none">
           Author the bot's global identity — personality, rules, and behavior for all users.
         </p>
       </div>
 
       {/* Global Prompt Injection */}
-       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
+      <div className="flex items-center justify-between p-4 bg-panel border border-bone-12 rounded-big transition-all">
         <div>
           <p className="text-sm font-semibold tracking-wide text-foreground">Global Prompt Injection</p>
-          <p className="text-xs text-bone-60 mt-0.5">Brain + Settings are active on every chat request</p>
+          <p className="text-xs text-bone-70 mt-0.5">Brain + Settings are active on every chat request</p>
         </div>
-        <Toggle 
+        <Toggle
           checked={globalOn}
           onChange={handleGlobalToggle}
         />
       </div>
 
       {/* Local Ollama */}
-       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
+      <div className="flex items-center justify-between p-4 bg-panel border border-bone-12 rounded-big transition-all">
         <div>
           <p className="text-sm font-semibold tracking-wide text-foreground">Local Ollama</p>
-          <p className="text-xs text-bone-60 mt-0.5">Your local Ollama instance is active for all users</p>
+          <p className="text-xs text-bone-70 mt-0.5">Your local Ollama instance is active for all users</p>
         </div>
-        <Toggle 
+        <Toggle
           checked={ollamaOn}
           onChange={handleOllamaToggle}
         />
       </div>
 
       {/* Backend Model */}
-       <div className="flex items-center justify-between p-4 bg-panel rounded-big transition-all">
+      <div className="flex items-center justify-between p-4 bg-panel border border-bone-12 rounded-big transition-all">
         <div className="flex items-start gap-3">
           <div className="text-accent mt-0.5 shrink-0 opacity-60">
             <Cpu className="w-4 h-4" />
           </div>
           <div>
             <p className="text-sm font-semibold tracking-wide text-foreground">Backend Model</p>
-            <p className="text-xs text-bone-60 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
+            <p className="text-xs text-bone-70 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
           </div>
         </div>
         <div className="relative w-[280px]">
@@ -169,20 +169,20 @@ export default function SettingsClient({
       </div>
 
       {/* Tabs with toggle switches */}
-      <div className="flex flex-wrap gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--bone-6)]">
         {TABS.map(tab => (
           <div
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
               "flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer select-none transition-all",
-               activeTab === tab.key
-                 ? "bg-[var(--bone-10)] text-foreground"
-                 : "bg-panel text-muted-foreground hover:bg-white/[0.06]"
+              activeTab === tab.key
+                ? "bg-[var(--bone-10)] text-foreground"
+                : "bg-panel text-muted-foreground hover:bg-white/[0.06]"
             )}
           >
             <span className="font-semibold tracking-wide select-none">{tab.label}</span>
-            <Toggle 
+            <Toggle
               size="sm"
               checked={activeStates[tab.key]}
               onChange={(val) => handleBlockToggle(tab.key, val)}
@@ -192,16 +192,16 @@ export default function SettingsClient({
       </div>
 
       {/* Editor card */}
-      <div className="bg-panel rounded-big p-5 space-y-4">
+      <div className="bg-panel border border-bone-12 rounded-big p-5 space-y-4">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-foreground select-none">{activeTab_.label}</h3>
-          <p className="text-xs text-bone-60 mt-0.5 select-none">{activeTab_.description}</p>
+          <p className="text-xs text-bone-70 mt-0.5 select-none">{activeTab_.description}</p>
         </div>
         <textarea
           value={currentDraft}
           onChange={e => setDrafts(d => ({ ...d, [activeTab]: e.target.value }))}
           rows={11}
-          className="w-full bg-background border border-white/[0.04] rounded-medium px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/30 resize-y font-mono leading-relaxed focus:outline-none focus:border-accent transition-all"
+          className="w-full bg-background border border-[var(--bone-6)] rounded-medium px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/30 resize-y font-mono leading-relaxed focus:outline-none focus:border-accent transition-all"
           placeholder={`Write the ${activeTab_.label.toLowerCase()} prompt here...`}
         />
         <div className="flex items-center justify-between">
@@ -217,7 +217,7 @@ export default function SettingsClient({
       </div>
 
       {/* Compiled prompt panel */}
-      <div className="bg-panel rounded-big p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-panel border border-bone-12 rounded-big p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="text-accent opacity-60">
             <Settings className="w-4 h-4" />
@@ -234,7 +234,7 @@ export default function SettingsClient({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPreview(v => !v)}
-            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-white/[0.02] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all select-none"
+            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-[var(--bone-6)] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all select-none"
           >
             {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             {showPreview ? 'Hide' : 'Preview'}
@@ -242,7 +242,7 @@ export default function SettingsClient({
           <button
             onClick={handleCopy}
             disabled={!compiledContent}
-            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-white/[0.02] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all select-none"
+            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-[var(--bone-6)] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all select-none"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? 'Copied' : 'Copy'}
@@ -250,7 +250,7 @@ export default function SettingsClient({
           <button
             onClick={handleSync}
             disabled={syncStatus === 'syncing'}
-            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-white/[0.02] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all disabled:opacity-50 select-none"
+            className="flex items-center gap-1 px-3 h-8 bg-white/[0.05] border border-[var(--bone-6)] text-muted-foreground hover:text-foreground rounded-medium text-xs font-medium transition-all disabled:opacity-50 select-none"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", syncStatus === 'syncing' && "animate-spin")} />
             {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'done' ? '✓ Synced' : 'Sync Brain'}
@@ -259,13 +259,13 @@ export default function SettingsClient({
       </div>
 
       {showPreview && (
-        <pre className="bg-background border border-white/[0.03] rounded-big p-4 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto mt-2">
+        <pre className="bg-background border border-[var(--bone-6)] rounded-big p-4 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto mt-2">
           {compiledContent || '(not yet compiled — click Sync Brain)'}
         </pre>
       )}
 
       <div className="h-4" />
-      <div className="border-t border-white/5 pt-6">
+      <div className="border-t border-[var(--bone-6)] pt-6">
         <h2 className="text-lg font-bold text-bone-100 uppercase tracking-widest mb-4 opacity-60">Pipeline & Chain Configuration</h2>
         <div className="flex flex-col gap-6">
           <OrchestratorPanel settings={initialPipelineSettings} />

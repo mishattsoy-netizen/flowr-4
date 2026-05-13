@@ -120,7 +120,7 @@ export function FolderView({ entity }: FolderViewProps) {
                 tempTitleRef.current = entity.title;
                 setEditingEntityId(entity.id, 'view');
               }}
-              className="group text-4xl font-display text-foreground mb-1 flex items-center gap-3"
+              className="group text-4xl font-display font-medium text-foreground mb-1 flex items-center gap-3"
             >
               {(entity.type === 'collection' || entity.type === 'workspace') ? (
                 <button
@@ -256,7 +256,7 @@ export function FolderView({ entity }: FolderViewProps) {
                         "group relative flex items-center gap-3 px-4 py-3 rounded-[var(--radius-medium)] border ",
                         (editingEntity?.id === folder.id && editingEntity.source === 'view') 
                           ? "border-accent bg-accent/5" 
-                          : "border-transparent bg-transparent text-[var(--bone-60)] hover:text-foreground hover:bg-[var(--color-background)] hover:border-transparent"
+                          : "border-transparent bg-transparent text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--color-background)] hover:border-transparent"
                       )}
                     >
                       <Folder className="w-5 h-5 text-[var(--bone-30)] group-hover:text-accent shrink-0 " />
@@ -276,7 +276,7 @@ export function FolderView({ entity }: FolderViewProps) {
                             className="bg-transparent border-none outline-none text-sm font-medium text-foreground w-full"
                           />
                         ) : (
-                          <p className="text-sm font-medium text-[var(--bone-60)] group-hover:text-[var(--bone-100)] truncate">{folder.title}</p>
+                          <p className="text-sm font-medium text-[var(--bone-70)] group-hover:text-[var(--bone-100)] truncate">{folder.title}</p>
                         )}
                       </div>
 
@@ -288,7 +288,7 @@ export function FolderView({ entity }: FolderViewProps) {
                               "absolute right-3 w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                               contextMenu?.entityId === folder.id 
                                 ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--bone-15)]" 
-                                : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] group-hover:text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                                : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] group-hover:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                             )}
                           >
                             <MoreHorizontal strokeWidth={2} className="w-4 h-4" />
@@ -319,7 +319,7 @@ export function FolderView({ entity }: FolderViewProps) {
                         "group flex items-center justify-between px-4 py-2 rounded-[var(--radius-medium)] ",
                         (editingEntity?.id === file.id && editingEntity.source === 'view') 
                           ? "bg-accent/5 text-[var(--bone-100)]" 
-                          : "text-[var(--bone-60)] hover:text-foreground hover:bg-[var(--color-background)] border-transparent hover:border-transparent"
+                          : "text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--color-background)] border-transparent hover:border-transparent"
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">

@@ -133,7 +133,7 @@ export default function OpenRouterRoutingProviderSelector({
               value={newProvider}
               onChange={(e) => setNewProvider(e.target.value)}
               placeholder="Custom slug..."
-              className="bg-black/30 border border-white/5 rounded-sm px-1.5 py-1 text-[10px] text-bone-100 placeholder:text-bone-60/20 focus:outline-none focus:border-accent/40 w-full h-6 leading-none"
+              className="bg-black/30 border border-white/5 rounded-sm px-1.5 py-1 text-[10px] text-bone-100 placeholder:text-bone-70/20 focus:outline-none focus:border-accent/40 w-full h-6 leading-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddCustom()
               }}

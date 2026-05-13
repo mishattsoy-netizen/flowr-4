@@ -14,6 +14,8 @@ import { useEffect } from "react";
  */
 
 function checkOverflow(el: Element) {
+  // Trigger fade only when text actually overflows.
+  // Using a strict check avoids unnecessary fades on elements that fit perfectly.
   const overflowing = el.scrollWidth > el.clientWidth;
   if (overflowing) {
     el.setAttribute("data-overflow", "true");
@@ -31,21 +33,21 @@ export default function FadeTextObserver() {
     });
 
     function observeElement(el: Element) {
-      if (el.classList.contains("text-fade")) {
+      if (el.classList.contains("text-fade") || el.classList.contains("truncate") || el.classList.contains("text-ellipsis")) {
         checkOverflow(el);
         resizeObserver.observe(el);
       }
     }
 
     function unobserveElement(el: Element) {
-      if (el.classList.contains("text-fade")) {
+      if (el.classList.contains("text-fade") || el.classList.contains("truncate") || el.classList.contains("text-ellipsis")) {
         resizeObserver.unobserve(el);
         el.removeAttribute("data-overflow");
       }
     }
 
-    // Observe all existing .text-fade elements
-    document.querySelectorAll(".text-fade").forEach(observeElement);
+    // Observe all existing elements
+    document.querySelectorAll(".text-fade, .truncate, .text-ellipsis").forEach(observeElement);
 
     // Watch for new .text-fade elements being added/removed
     const mutationObserver = new MutationObserver((mutations) => {
@@ -55,14 +57,14 @@ export default function FadeTextObserver() {
           const el = node as Element;
           observeElement(el);
           // Also check children
-          el.querySelectorAll(".text-fade").forEach(observeElement);
+          el.querySelectorAll(".text-fade, .truncate, .text-ellipsis").forEach(observeElement);
         });
 
         mutation.removedNodes.forEach((node) => {
           if (node.nodeType !== Node.ELEMENT_NODE) return;
           const el = node as Element;
           unobserveElement(el);
-          el.querySelectorAll(".text-fade").forEach(unobserveElement);
+          el.querySelectorAll(".text-fade, .truncate, .text-ellipsis").forEach(unobserveElement);
         });
 
         // Handle attribute changes (e.g. class toggled onto existing element)
@@ -71,7 +73,7 @@ export default function FadeTextObserver() {
           mutation.attributeName === "class"
         ) {
           const el = mutation.target as Element;
-          if (el.classList.contains("text-fade")) {
+          if (el.classList.contains("text-fade") || el.classList.contains("truncate") || el.classList.contains("text-ellipsis")) {
             observeElement(el);
           } else {
             unobserveElement(el);

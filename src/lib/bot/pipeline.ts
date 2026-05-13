@@ -68,13 +68,13 @@ async function runSingleChain(
       } else if (provider === 'groq') {
         const { runGroq } = await import('./providers/groq')
         response = await runGroq(modelConfig.id, prompt, systemPrompt, undefined, routeContext, [])
-      } else if (provider === 'vault') {
+      } else if (provider === 'vault' || provider === 'tavily' || provider === 'core') {
         if (modelConfig.id.includes('tavily')) {
           const { runWebSearchChain } = await import('./providers/tavily')
-          response = await runWebSearchChain(prompt, routeContext)
+          response = await runWebSearchChain(prompt, routeContext, systemPrompt)
         } else if (modelConfig.id.includes('duckduckgo')) {
           const { runDuckDuckGoSearchChain } = await import('./providers/duckduckgo')
-          response = await runDuckDuckGoSearchChain(prompt, routeContext)
+          response = await runDuckDuckGoSearchChain(prompt, routeContext, systemPrompt)
         }
       } else if (provider === 'huggingface') {
         if (chainType === 'IMAGE_GEN') {
@@ -143,12 +143,47 @@ export async function executePipeline(
     const goal = plan.stepGoals[i] || `Process ${chainType} for this request`
     const { statusMessages } = await getPipelineSettings()
     const customStatus = statusMessages[chainType]
-    const label = customStatus ? `${customStatus.emoji} ${customStatus.label}`.trim() : 'Working'
+    const label = customStatus ? `${customStatus.emoji} ${customStatus.label}`.trim() : 'Working...'
 
     const accumulatedSoFar = formatAccumulatedContext(completedSteps)
+    
+    // If we already have search data, skip redundant search steps
+    if (chainType === 'WEB_SEARCH' || chainType === 'DEEP_RESEARCH' || label?.toLowerCase().includes('search')) {
+      const hasSearchData = 
+        accumulatedSoFar.includes('[SEARCH DATA]') || 
+        accumulatedSoFar.includes('[SEARCH RESULTS') || 
+        accumulatedSoFar.includes('RESEARCH FINDINGS:')
+      
+      if (hasSearchData) {
+        logger.info(`Pipeline: Skipping redundant search for ${chainType} - data already present.`)
+        completedSteps.push({ 
+          chain: chainType, 
+          goal: goal, 
+          status: 'done', 
+          label: label || 'Search Skipped',
+          output: '[Redundant search skipped - data already present]'
+        })
+        continue
+      }
+    }
+
+    const pipelineSettings = await getPipelineSettings()
+    const { globalPromptEnabledCategories } = pipelineSettings
+
     let internalPrompt = await getInternalPrompt(chainType, context?.mode ?? 'default')
+
+    // Inject global bot prompt if enabled for this category
+    const isGlobalPromptEnabled = !globalPromptEnabledCategories || globalPromptEnabledCategories.includes(chainType as any)
+    if (isGlobalPromptEnabled) {
+      const { getCompiledPrompt } = await import('./compilePrompt')
+      const globalPrompt = await getCompiledPrompt(context?.mode ?? 'default')
+      if (globalPrompt) {
+        internalPrompt = globalPrompt + "\n\n" + internalPrompt
+      }
+    }
+
     if (context?.vision_notes) {
-      internalPrompt = `${context.vision_notes}\n\n${internalPrompt}`
+      internalPrompt = `[VISION DATA]\n${context.vision_notes}\n\n${internalPrompt}`
     }
 
     let stepPrompt = accumulatedSoFar
@@ -223,11 +258,14 @@ export async function executePipeline(
       if (upscaleResult.buffer !== imageBuffer) {
         imageBuffer = upscaleResult.buffer
         if (upscaleResult.modelChain) {
+          const { statusMessages: upscaleStatusMessages } = await getPipelineSettings()
+          const upscaleCustom = upscaleStatusMessages['IMAGE_UPSCALE']
+          const upscaleLabel = upscaleCustom ? `${upscaleCustom.emoji} ${upscaleCustom.label}`.trim() : 'Upscaling'
           completedSteps.push({
             chain: 'IMAGE_UPSCALE',
             goal: 'Upscaling image to high resolution (2K+)',
             status: 'done',
-            label: '✨ Enhancing',
+            label: upscaleLabel,
             output: `[Image upscaled using ${upscaleResult.modelChain}]`
           })
         }

@@ -56,7 +56,7 @@ function SortableItem({ id, children }: SortableItemProps) {
       <div 
         {...attributes} 
         {...listeners}
-        className="absolute top-2.5 right-2.5 z-50 p-1 rounded-sm bg-white/5 text-bone-60/20 group-hover:text-bone-60/80 hover:bg-white/10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all duration-200"
+        className="absolute top-2.5 right-2.5 z-50 p-1 rounded-sm bg-white/5 text-bone-70/20 group-hover:text-bone-70/80 hover:bg-white/10 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all duration-200"
       >
         <GripVertical className="w-2.5 h-2.5" />
       </div>

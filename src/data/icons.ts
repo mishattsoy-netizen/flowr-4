@@ -6,6 +6,7 @@ import {
   Briefcase, Building2, GraduationCap, Library, Target, Shield, Crown, Gem,
   Star, Rocket, Flame, Compass, Feather, Anchor, Moon, Sun,
   TrendingUp, BarChart, LineChart, Terminal, Bot, Share2, Brush, BookOpen, User, Users, Wallet, Trophy,
+  FileText, Frame, Layers,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -17,6 +18,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Briefcase, Building2, GraduationCap, Library, Target, Shield, Crown, Gem,
   Star, Rocket, Flame, Compass, Feather, Anchor, Moon, Sun,
   TrendingUp, BarChart, LineChart, Terminal, Bot, Share2, Brush, BookOpen, User, Users, Wallet, Trophy,
+  FileText, Frame, Layers,
 };
 
 export type IconName = keyof typeof ICON_MAP;

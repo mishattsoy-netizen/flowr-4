@@ -20,11 +20,11 @@ const LogoSimple = ({ className }: { className?: string }) => (
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-border">
+    <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-[var(--bone-12)]">
       <div className="flex items-center justify-between px-4 py-5 border-b border-[var(--bone-6)] transition-all duration-0">
         <div className="flex items-center gap-3 group">
           <LogoSimple className="w-7 h-7" />
-          <h1 className="text-2xl font-display font-normal text-foreground tracking-tight leading-none">Admin</h1>
+          <h1 className="text-2xl font-display font-semibold text-foreground tracking-tight leading-none">Admin</h1>
         </div>
       </div>
 
@@ -62,10 +62,10 @@ export default function Sidebar() {
       <div className="p-3 border-t border-[var(--bone-6)] flex items-center mt-auto justify-between">
         <Link
           href="/"
-          className="sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px] text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+          className="sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px] text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
         >
           <div className="w-7 shrink-0 flex items-center justify-center">
-            <ArrowLeft className="w-3.5 h-3.5 text-[var(--bone-60)] group-hover:text-[var(--bone-100)]" strokeWidth={2} />
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" strokeWidth={2} />
           </div>
           <span className="ml-0 flex-1 text-left tracking-wide">Back to Terminal</span>
         </Link>
@@ -78,7 +78,7 @@ function PlatformSection({ title, children }: { title: string; children: React.R
   return (
     <div className="flex flex-col">
       <div className="ml-0 mr-[2px] px-3 py-[3px] flex items-center justify-between group select-none rounded-[var(--radius-8)] transition-colors duration-0">
-        <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-60)]">{title}</span>
+        <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-70)]">{title}</span>
       </div>
       <div className="flex flex-col gap-[3px] mt-[3px] mb-2 pr-[4px] mr-[2px]">
         {children}
@@ -98,11 +98,11 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon: any; chil
         "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px]",
         isActive
           ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide"
-          : "text-[var(--bone-60)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+          : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
       )}
     >
       <div className="w-7 shrink-0 flex items-center justify-center">
-        <Icon className={cn("w-3.5 h-3.5", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-60)] group-hover:text-[var(--bone-100)]")} strokeWidth={2} />
+        <Icon className={cn("w-3.5 h-3.5", isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]")} strokeWidth={2} />
       </div>
       <span className="ml-0 flex-1 text-left tracking-wide">{children}</span>
     </Link>

@@ -84,14 +84,14 @@ export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
           <div className="flex items-center gap-1">
             <button
               onClick={() => onUpdateData({ ...data, hour12: !hour12 })}
-              className="px-2 py-0.5 text-[10px] font-semibold rounded-[4px] bg-[var(--bone-6)] text-[var(--bone-60)] hover:text-[var(--bone-100)] transition-colors"
+              className="px-2 py-0.5 text-[10px] font-semibold rounded-[4px] bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)] transition-colors"
             >
               {hour12 ? '12h' : '24h'}
             </button>
             <select
               value={timezone}
               onChange={(e) => onUpdateData({ ...data, timezone: e.target.value })}
-              className="text-[10px] bg-[var(--bone-6)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-60)] outline-none"
+              className="text-[10px] bg-[var(--bone-6)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-70)] outline-none"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -147,7 +147,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
               y1="50"
               x2={50 + 32 * Math.sin((minuteAngle * Math.PI) / 180)}
               y2={50 - 32 * Math.cos((minuteAngle * Math.PI) / 180)}
-              stroke="var(--bone-60)"
+              stroke="var(--bone-70)"
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -160,7 +160,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
               strokeWidth="0.8"
               strokeLinecap="round"
             />
-            <circle cx="50" cy="50" r="2" fill="var(--bone-60)" />
+            <circle cx="50" cy="50" r="2" fill="var(--bone-70)" />
           </svg>
         )}
       </div>

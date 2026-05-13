@@ -8,20 +8,46 @@ import { MixedPage } from './editor/MixedPage';
 import { FolderView } from './folder/FolderView';
 import { WorkspacePage } from './workspace/WorkspacePage';
 import { TrackerPage } from './tracker/TrackerPage';
+import ChatPage from './chat/ChatPage';
+import { DashboardSkeleton } from './dashboard/DashboardSkeleton';
+import { ChatMainSkeleton } from './chat/ChatSkeleton';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 
 import { memo } from 'react';
 
-export const WorkspaceRouter = memo(function WorkspaceRouter() {
+export const WorkspaceRouter = memo(function WorkspaceRouter({ initialEntityId }: { initialEntityId?: string }) {
   const activeEntityId = useStore(state => state.activeEntityId);
   const entities = useStore(state => state.entities);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  const [inferredEntityId, setInferredEntityId] = useState<string | null>(initialEntityId || null);
+
+  useEffect(() => {
+    setIsMounted(true);
+
+    if (!inferredEntityId) {
+      const attr = document.documentElement.getAttribute('data-initial-entity');
+      if (attr) setInferredEntityId(attr);
+    }
+
+    // Zustand hydration check
+    if (useStore.persist.hasHydrated()) {
+      setStoreHydrated(true);
+    } else {
+      const unsub = useStore.persist.onFinishHydration(() => {
+        setStoreHydrated(true);
+        unsub();
+      });
+      return unsub;
+    }
+  }, []);
 
   useEffect(() => {
     if (containerRef.current) {
-      if (activeEntityId === 'tracker') {
+      if (activeEntityId === 'tracker' || activeEntityId === 'chat') {
         gsap.set(containerRef.current, { autoAlpha: 1, y: 0, x: 0, clearProps: 'transform' });
       } else {
         gsap.set(containerRef.current, { autoAlpha: 1, y: 0 });
@@ -32,12 +58,21 @@ export const WorkspaceRouter = memo(function WorkspaceRouter() {
   const renderContent = () => {
 
 
+    if (!isMounted || !storeHydrated) {
+      if (inferredEntityId === 'chat') return <ChatMainSkeleton />;
+      return <DashboardSkeleton />;
+    }
+
     if (activeEntityId === 'dashboard') {
       return <Dashboard />;
     }
 
     if (activeEntityId === 'tracker') {
       return <TrackerPage />;
+    }
+
+    if (activeEntityId === 'chat') {
+      return <ChatPage />;
     }
 
     const activeEntity = entities.find(e => e.id === activeEntityId);

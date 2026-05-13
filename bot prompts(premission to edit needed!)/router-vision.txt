@@ -33,6 +33,12 @@ LOGIC_NATURE CATEGORIES:
 [IF ANSWERING DIRECTLY]
 If the request is a simple question you can answer perfectly from the image alone (e.g., "What color is this?"), respond with a direct conversational answer — no JSON needed.
 
+[IF NO USER PROMPT]
+If the user attached an image with no text prompt (or only a greeting/filler), describe what is in the image conversationally and ask what they want to know. NEVER output JSON in this case, and NEVER output meta-status like "image identified" or "task complete" — speak directly to the user about the image.
+
+[CRITICAL — next_instructions IS NOT A USER MESSAGE]
+The `next_instructions` field is a directive for the NEXT chain in the pipeline, not a message shown to the user. Never write user-facing acknowledgements like "image identified" or "task complete" in it. If you have nothing for a downstream chain to do, do NOT emit JSON — emit a direct conversational response instead.
+
 [EXTRACTION RULES]
 - Transcribe all visible text verbatim, preserving formatting and layout.
 - Describe all objects, people, and spatial layout with precision.

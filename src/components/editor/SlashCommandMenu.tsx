@@ -175,7 +175,7 @@ export function SlashCommandMenu({ position, search, onClose, onInsertBlock, act
                     {cmd.label}
                   </div>
                   {cmd.shortcut && (
-                    <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/[0.04] text-bone-60/40 transition-all group-hover/cmd:text-bone-60/70 group-hover/cmd:bg-white/[0.08]">
+                    <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/[0.04] text-bone-70/40 transition-all group-hover/cmd:text-bone-70/70 group-hover/cmd:bg-white/[0.08]">
                       {cmd.shortcut}
                     </span>
                   )}

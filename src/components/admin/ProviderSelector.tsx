@@ -37,7 +37,7 @@ export default function ProviderSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const dotColor = PROVIDER_DOTS[value.toLowerCase()] || 'bg-bone-60'
+  const dotColor = PROVIDER_DOTS[value.toLowerCase()] || 'bg-bone-70'
 
   return (
     <div className={cn("relative shrink-0 flex items-center justify-center select-none", className)} ref={ref}>
@@ -52,7 +52,7 @@ export default function ProviderSelector({
       >
         <div className={cn(
           "w-2 h-2 rounded-full shrink-0 transition-all duration-0",
-          isEnabled ? dotColor : "bg-bone-60"
+          isEnabled ? dotColor : "bg-bone-70"
         )} />
       </button>
 
@@ -60,7 +60,7 @@ export default function ProviderSelector({
         <div 
           ref={menuRef}
           className={cn(
-            "fixed bg-panel border border-white/10 rounded-medium shadow-2xl z-[9999] min-w-[120px] max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100 py-1 flex flex-col gap-0.5",
+            "fixed bg-panel border border-[var(--bone-12)] rounded-medium shadow-2xl z-[9999] min-w-[120px] max-h-64 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100 py-1 flex flex-col gap-0.5",
             (ref.current?.getBoundingClientRect().bottom ?? 0) + 200 > window.innerHeight ? "origin-bottom" : "origin-top"
           )}
           style={{
@@ -70,8 +70,8 @@ export default function ProviderSelector({
           }}
         >
           {providers.map((p) => {
-            const pDot = PROVIDER_DOTS[p.toLowerCase()] || 'bg-bone-60'
-            const pColor = PROVIDER_COLORS[p.toLowerCase()] || 'text-bone-60'
+            const pDot = PROVIDER_DOTS[p.toLowerCase()] || 'bg-bone-70'
+            const pColor = PROVIDER_COLORS[p.toLowerCase()] || 'text-bone-70'
             return (
               <button
                 type="button"
@@ -84,7 +84,7 @@ export default function ProviderSelector({
                   "w-full flex items-center justify-start gap-2.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-0 select-none",
                   value.toLowerCase() === p.toLowerCase() 
                     ? "bg-white/[0.12] text-foreground" 
-                    : "text-bone-60 hover:text-foreground hover:bg-white/5"
+                    : "text-bone-70 hover:text-foreground hover:bg-white/5"
                 )}
               >
                 <div className={cn("w-2 h-2 rounded-full shrink-0", pDot)} />

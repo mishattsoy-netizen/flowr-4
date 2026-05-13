@@ -409,7 +409,7 @@ html[data-interface-size="big"] {
   background-color: var(--color-panel);
 }
 
-/* ─── Nested Widget Handling ─── */
+/* â”€â”€â”€ Nested Widget Handling â”€â”€â”€ */
 .nested-in-stack section,
 .nested-in-stack .group\/widget {
   background-color: transparent !important;
@@ -595,6 +595,15 @@ html {
   -ms-overflow-style: none;
 }
 
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -616,7 +625,7 @@ html {
 }
 
 
-/* ─── Editor Utilities ─────────────────────────────────── */
+/* â”€â”€â”€ Editor Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .toolbar-btn {
   display: flex;
@@ -690,7 +699,7 @@ html {
   padding: 0 2px;
 }
 
-/* ─── Sidebar Layout Transitions ──────────────────────── */
+/* â”€â”€â”€ Sidebar Layout Transitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .shell-container {
   display: grid;
   grid-template-columns: 1fr;
@@ -699,8 +708,8 @@ html {
 
 @media (min-width: 768px) {
   .shell-container {
-    grid-template-columns: var(--sidebar-w, 64px) 1fr;
-    transition: grid-template-columns 100ms ease-out;
+    grid-template-columns: var(--sidebar-w, 280px) 1fr;
+    
   }
 }
 
@@ -866,7 +875,7 @@ html {
   animation: thinking-pulse 2s ease-in-out infinite;
 }
 
-/* ─── Toggle Switch (Uiverse.io by ClawHack1) adapted for Flowr ─── */
+/* â”€â”€â”€ Toggle Switch (Uiverse.io by ClawHack1) adapted for Flowr â”€â”€â”€ */
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -970,7 +979,7 @@ html {
   cursor: grabbing !important;
 }
 
-/* ─── Widget Dragging Lock ─── */
+/* â”€â”€â”€ Widget Dragging Lock â”€â”€â”€ */
 body.is-dragging-widget {
   cursor: grabbing !important;
   user-select: none !important;
@@ -1049,7 +1058,7 @@ body.is-dragging-widget [data-widget-id] * {
   padding: 0 !important;
 }
 
-/* ─── Multi-Block Selection & Dragging ─── */
+/* â”€â”€â”€ Multi-Block Selection & Dragging â”€â”€â”€ */
 
 .note-editor-bg {
   cursor: text;
@@ -1249,3 +1258,5 @@ body.is-dragging-widget [data-widget-id] * {
     animation: skeleton-shimmer 2s infinite linear;
   }
 }
+
+.widget-skeleton { @apply skeleton-shimmer-container rounded-big bg-[var(--bone-5)]; }

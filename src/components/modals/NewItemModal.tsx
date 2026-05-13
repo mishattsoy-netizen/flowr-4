@@ -71,7 +71,7 @@ export function NewItemModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={closeModal}>
       <div
-        className="bg-panel/90 backdrop-blur-xl border border-border/30 rounded-[var(--radius-medium)] p-6 w-[420px] "
+        className="bg-panel/90 backdrop-blur-xl border border-[var(--bone-12)] rounded-[var(--radius-medium)] p-6 w-[420px] "
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -95,7 +95,7 @@ export function NewItemModal() {
                   disabled ? "opacity-30 cursor-not-allowed bg-transparent border-transparent text-muted-foreground" :
                     selectedType === t.type
                       ? "bg-accent/10 border-accent/30 text-foreground hover:bg-accent/20 hover:border-accent/60"
-                      : "border-border/30 bg-transparent text-muted-foreground hover:bg-accent/20 hover:border-accent/60 hover:text-foreground"
+                      : "border-[var(--bone-6)] bg-transparent text-muted-foreground hover:bg-accent/20 hover:border-accent/60 hover:text-foreground"
                 )}
               >
                 <div className={clsx(selectedType === t.type ? "text-accent" : "text-muted-foreground group-hover:text-accent")}>
@@ -115,7 +115,7 @@ export function NewItemModal() {
             placeholder="Item title (optional)"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full bg-transparent border border-border/30 rounded-[var(--radius-medium)] pl-3 pr-9 py-2 text-sm text-foreground placeholder-muted-foreground hover:bg-hover focus:bg-transparent focus:border-accent outline-none"
+            className="w-full bg-transparent border border-[var(--bone-6)] rounded-[var(--radius-medium)] pl-3 pr-9 py-2 text-sm text-foreground placeholder-muted-foreground hover:bg-hover focus:bg-transparent focus:border-accent outline-none"
           />
           {title && (
             <button
@@ -136,7 +136,7 @@ export function NewItemModal() {
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={closeModal}
-            className="px-4 py-2 border border-border/30 text-sm rounded-[var(--radius-medium)] text-muted-foreground hover:text-foreground hover:bg-hover"
+            className="px-4 py-2 border border-[var(--bone-6)] text-sm rounded-[var(--radius-medium)] text-muted-foreground hover:text-foreground hover:bg-hover"
           >
             Cancel
           </button>

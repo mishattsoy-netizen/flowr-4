@@ -26,7 +26,7 @@ export function RenameModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay " onClick={closeModal}>
       <div
-        className="bg-panel border border-border/50 rounded-[1.25rem] p-5 w-[360px] "
+        className="bg-panel border border-[var(--bone-6)] rounded-[1.25rem] p-5 w-[360px] "
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -44,7 +44,7 @@ export function RenameModal() {
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-transparent border border-border/50 rounded-full pl-3 pr-9 py-2 text-sm text-foreground placeholder-muted-foreground hover:bg-hover focus:bg-transparent focus:border-accent outline-none "
+            className="w-full bg-transparent border border-[var(--bone-6)] rounded-full pl-3 pr-9 py-2 text-sm text-foreground placeholder-muted-foreground hover:bg-hover focus:bg-transparent focus:border-accent outline-none "
           />
           {name && (
             <button 

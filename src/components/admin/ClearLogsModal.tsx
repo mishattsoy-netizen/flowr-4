@@ -69,7 +69,7 @@ export default function ClearLogsModal({
                 </div>
                 <h2 className="text-[14px] font-display text-foreground">Clear Logs</h2>
               </div>
-              <button onClick={close} className="text-bone-60 hover:text-foreground transition-colors">
+              <button onClick={close} className="text-bone-70 hover:text-foreground transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -90,7 +90,7 @@ export default function ClearLogsModal({
                     <p className={cn('text-[12px] font-bold', mode === 'ids' ? 'text-accent' : 'text-foreground')}>
                       Selected rows
                     </p>
-                    <p className="text-[10px] text-bone-60 opacity-50 mt-0.5">
+                    <p className="text-[10px] text-bone-70 opacity-50 mt-0.5">
                       Delete {selectedIds.length} selected log{selectedIds.length !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -124,7 +124,7 @@ export default function ClearLogsModal({
                     )}>
                       {opt.label}
                     </p>
-                    <p className="text-[10px] text-bone-60 opacity-50 mt-0.5">{opt.desc}</p>
+                    <p className="text-[10px] text-bone-70 opacity-50 mt-0.5">{opt.desc}</p>
                   </div>
                   <div className={cn(
                     'w-4 h-4 rounded-full border-2 shrink-0 transition-all',
@@ -146,7 +146,7 @@ export default function ClearLogsModal({
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="delete"
-                    className="w-full bg-background/60 border border-white/10 rounded-[5px] px-3 py-2 text-[12px] font-mono text-foreground focus:outline-none focus:border-rose-500/40 placeholder:text-bone-60/20"
+                    className="w-full bg-background/60 border border-[var(--bone-12)] rounded-[5px] px-3 py-2 text-[12px] font-mono text-foreground focus:outline-none focus:border-rose-500/40 placeholder:text-bone-70/20"
                   />
                 </div>
               )}
@@ -156,7 +156,7 @@ export default function ClearLogsModal({
             <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-white/5">
               <button
                 onClick={close}
-                className="px-4 py-1.5 rounded-[5px] border border-white/10 text-[11px] font-bold text-bone-60 hover:text-foreground transition-all uppercase tracking-wider"
+                className="px-4 py-1.5 rounded-[5px] border border-[var(--bone-12)] text-[11px] font-bold text-bone-70 hover:text-foreground transition-all uppercase tracking-wider"
               >
                 Cancel
               </button>

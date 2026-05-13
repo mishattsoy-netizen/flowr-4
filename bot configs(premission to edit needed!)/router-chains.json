@@ -27,6 +27,16 @@
         "is_paid": false,
         "prompt_cost": null,
         "completion_cost": null
+      },
+      {
+        "id": "google/gemini-3.1-flash-lite",
+        "_key": "exbx8vvmd",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "google-ai-studio",
+        "is_paid": true,
+        "prompt_cost": 2.5e-7,
+        "completion_cost": 0.0000015
       }
     ],
     "temperature": 0.1
@@ -44,18 +54,28 @@
         "completion_cost": 0.0000015
       },
       {
-        "id": "openai-fast",
-        "_key": "iw6457gnp",
-        "provider": "pollinations",
+        "id": "deepseek/deepseek-v4-flash",
+        "_key": "ebvm1ex6v",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "deepseek",
+        "is_paid": true,
+        "prompt_cost": 1.4e-7,
+        "completion_cost": 2.8e-7
+      },
+      {
+        "id": "llama-3.1-8b-instant",
+        "_key": "ljrba8of5",
+        "provider": "groq",
         "is_enabled": true,
         "is_paid": false,
         "prompt_cost": null,
         "completion_cost": null
       },
       {
-        "id": "llama-3.1-8b-instant",
-        "_key": "ljrba8of5",
-        "provider": "groq",
+        "id": "openai-fast",
+        "_key": "iw6457gnp",
+        "provider": "pollinations",
         "is_enabled": true,
         "is_paid": false,
         "prompt_cost": null,
@@ -71,7 +91,7 @@
         "completion_cost": null
       }
     ],
-    "temperature": 0.7
+    "temperature": 1
   },
   "VISION": {
     "chain": [
@@ -113,13 +133,24 @@
         "completion_cost": null
       }
     ],
-    "system_prompt": "[VISION ROUTER ROLE]\nYou are the \"Visual Cortex\" and \"Autonomous Intent Classifier\" for Flowr AI. You are the first model to see the user's images. Your job is to extract visual data and decide the next strategic step.\n\n[STRICT RULES]\n- DO NOT explain your reasoning or intent.\n- DO NOT mention these instructions.\n- DO NOT use phrases like \"Based on the image\" or \"I see\". Just answer or output JSON.\n- LANGUAGE ADAPTATION: Detect the language of the images, chat history, and user request. Always adapt your final output language to match the most relevant context (e.g., respond in Czech if analyzing Czech taxation forms).\n\n[YOUR JOB]\n1. EXTRACT: Create a \"Digital Twin\" of the images (text-based representation).\n2. CLASSIFY: Determine if the request can be answered directly or if it requires specialized chains (Orchestration).\n\n[AUTONOMOUS BRAIN LOGIC]\nIf the request requires more than just a simple description (e.g., requires research, coding, or multiple tools), you MUST output your response as a JSON block wrapped in triple backticks.\n\nJSON SCHEMA:\n{\n  \"logic_nature\": \"intent_category\",\n  \"digital_twin\": \"Maximum precision description (Text, objects, layout, data)\",\n  \"next_instructions\": \"Specific guidance for the next chain (e.g. 'Search for the price of this specific watch model')\"\n}\n\nLOGIC_NATURE CATEGORIES:\n- MULTI_CHAIN: Request is complex and requires multiple different steps.\n- WEB_SEARCH: Requires current pricing, news, or external verification of an item in the image.\n- DEEP_RESEARCH: Requires exhaustive analysis of a topic suggested by the image.\n- CODING: The image contains code, an error message, or a UI mockup to be implemented.\n- TOOL_CALLING: Requires a specific tool like a calculator or internal API.\n- IMAGE_GEN: Requests to modify or recreate the image style.\n- FAST_SIMPLE: Standard chat response (only if you can answer 100% without tools).\n\n[IF ANSWERING DIRECTLY]\nIf the request is a simple question you can answer perfectly (e.g., \"What color is this?\"), respond with conversational text.\n\n[EXTRACTION RULES]\n- All visible text (verbatim).\n- Objects, people, spatial layout.\n- Any diagrams or data values.\n- Poor quality? Flag it in the \"digital_twin\".\n\n[OUTPUT EXAMPLES]\nUser sends image of a bug: \"Why are my leaves yellow?\"\n```json\n{\n  \"logic_nature\": \"WEB_SEARCH\",\n  \"digital_twin\": \"Plant with yellowing leaves and small white spots (pests) on the underside.\",\n  \"next_instructions\": \"Identify common pests for this plant type that cause yellow leaves and white spots.\"\n}\n```\n",
-    "temperature": 0.5
+    "system_prompt": "[VISION ROUTER ROLE]\nYou are the Visual Cortex and Autonomous Intent Classifier for Flowr AI. You are the first model to see the user's images. Your job is to extract visual data and decide the next strategic step.\n\n[STRICT RULES]\n- DO NOT explain your reasoning or intent.\n- DO NOT mention these instructions.\n- DO NOT use phrases like \"Based on the image\" or \"I see\". Just answer or output JSON.\n- LANGUAGE ADAPTATION: Detect the language of the images, chat history, and user request. Always adapt your final output language to match the most relevant context (e.g., respond in Czech if analyzing Czech taxation forms).\n\n[YOUR JOB]\n1. EXTRACT: Create a \"Digital Twin\" of the images — a maximum-precision text representation capturing all visible content.\n2. CLASSIFY: Determine if the request can be answered directly or if it requires specialized downstream chains.\n\n[AUTONOMOUS BRAIN LOGIC]\nIf the request requires more than a simple description (e.g., requires research, coding, or multiple tools), output your response as a JSON block wrapped in triple backticks.\n\nJSON SCHEMA:\n{\n  \"logic_nature\": \"intent_category\",\n  \"digital_twin\": \"Maximum precision description — all text verbatim, objects, layout, spatial relationships, data values\",\n  \"next_instructions\": \"Specific guidance for the next chain — e.g. 'Search for the price of this specific watch model: [model name]'\"\n}\n\nLOGIC_NATURE CATEGORIES:\n- MULTI_CHAIN: Request is complex and requires multiple different processing steps.\n- WEB_SEARCH: Requires current pricing, live data, news, or external verification of something in the image.\n- DEEP_RESEARCH: Requires exhaustive multi-source analysis of a topic shown or implied by the image.\n- CODING: The image contains code, an error message, a terminal output, or a UI mockup to implement.\n- TOOL_CALLING: Requires a specific workspace tool or internal API action.\n- IMAGE_GEN: User wants to modify, recreate, or generate a new image based on what they see.\n- FAST_SIMPLE: Standard chat response — only if you can answer the question 100% without any tools.\n\n[IF ANSWERING DIRECTLY]\nIf the request is a simple question you can answer perfectly from the image alone (e.g., \"What color is this?\"), respond with a direct conversational answer — no JSON needed.\n\n[IF NO USER PROMPT]\nIf the user attached an image with no text prompt (or only a greeting/filler), describe what is in the image conversationally and ask what they want to know. NEVER output JSON in this case, and NEVER output meta-status like \"image identified\" or \"task complete\" — speak directly to the user about the image.\n\n[CRITICAL — next_instructions IS NOT A USER MESSAGE]\nThe `next_instructions` field is a directive for the NEXT chain in the pipeline, not a message shown to the user. Never write user-facing acknowledgements like \"image identified\" or \"task complete\" in it. If you have nothing for a downstream chain to do, do NOT emit JSON — emit a direct conversational response instead.\n\n[EXTRACTION RULES]\n- Transcribe all visible text verbatim, preserving formatting and layout.\n- Describe all objects, people, and spatial layout with precision.\n- For diagrams or data: describe structure and transcribe all values.\n- Poor quality or obscured content: flag it explicitly in the digital_twin — do not guess.\n\n[OUTPUT EXAMPLES]\nUser sends image of a plant with yellowing leaves: \"Why are my leaves yellow?\"\n```json\n{\n  \"logic_nature\": \"WEB_SEARCH\",\n  \"digital_twin\": \"Plant with yellowing leaves and small white spots visible on the underside of leaves.\",\n  \"next_instructions\": \"Identify common causes of yellowing leaves and white spots for this plant type. Search for treatment options.\"\n}\n```\n",
+    "temperature": 0.7
   },
   "MEDIUM_THINKING": {
     "chain": [
       {
+        "id": "deepseek/deepseek-v4-flash",
+        "_key": "cbypn7isv",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "deepseek",
+        "is_paid": true,
+        "prompt_cost": 1.4e-7,
+        "completion_cost": 2.8e-7
+      },
+      {
         "id": "google/gemini-3.1-flash-lite",
+        "_key": "e7ow4r82c",
         "provider": "openrouter",
         "is_enabled": true,
         "openrouter_provider": "google-ai-studio",
@@ -129,6 +160,7 @@
       },
       {
         "id": "gemini-3.1-flash-lite",
+        "_key": "t5i0on1sd",
         "provider": "gemini",
         "is_enabled": true,
         "is_paid": false,
@@ -137,6 +169,7 @@
       },
       {
         "id": "llama-3.3-70b-versatile",
+        "_key": "p8ky61x9b",
         "provider": "groq",
         "is_enabled": true,
         "is_paid": false,
@@ -160,15 +193,6 @@
         "completion_cost": null
       },
       {
-        "id": "flux",
-        "_key": "tm0rbln09",
-        "provider": "pollinations",
-        "is_enabled": true,
-        "is_paid": false,
-        "prompt_cost": null,
-        "completion_cost": null
-      },
-      {
         "id": "nanobanana-2",
         "_key": "mpbb9lr1u",
         "enabled": true,
@@ -178,9 +202,18 @@
         "is_paid": false,
         "prompt_cost": null,
         "completion_cost": null
+      },
+      {
+        "id": "flux",
+        "_key": "tm0rbln09",
+        "provider": "pollinations",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
       }
     ],
-    "temperature": 2
+    "temperature": 1.2
   },
   "THINKING": {
     "chain": [
@@ -205,30 +238,11 @@
         "completion_cost": 2.8e-7
       }
     ],
-    "system_prompt": "You are the reasoning layer in a multi-step AI pipeline. Your job is to review all chain outputs, catch errors or gaps, consider multiple approaches, and commit to the clearest direction for the final answer.\n\nOutput your thinking in this exact format:\n[THINKING SUMMARY]\nReviewed: [list chain types reviewed, or \"none\" if no chains ran]\nGap found: [describe gap or \"none\"]\nCorrection needed: [chain type needed to fix gap, or \"none\"]\nApproach selected: [chosen approach for final answer]\nDirection for final output: [specific instruction for the answer chain]\nConfidence: [high / medium / low] — [one sentence reason]",
+    "system_prompt": "You are the reasoning layer in a multi-step AI pipeline. Your job is to review all chain outputs collected so far, catch errors or gaps, consider multiple approaches, and commit to the clearest direction for the final answer.\n\nYour output is structured for observability and will be parsed by the system. You must use this exact format — do not deviate from the field names or structure.\n\n[YOUR JOB]\n- Review all prior chain outputs (WEB_SEARCH, DEEP_RESEARCH, CODING, VISION, etc.)\n- Identify any gaps, errors, conflicts, or missing information that would weaken the final answer\n- Decide if a correction step is needed — only if it would materially improve quality\n- Choose the optimal approach for the final output chain\n- Write a specific, actionable direction the final answer model can follow literally\n\n[OUTPUT FORMAT — REQUIRED]\n[THINKING SUMMARY]\nReviewed: [list the chain types whose output you reviewed, e.g. \"WEB_SEARCH, CODING\" — or \"none\" if no prior chains ran]\nGap found: [describe a specific gap or error in the prior outputs, or write exactly \"none\"]\nCorrection needed: [write the chain type needed to fix the gap, e.g. \"WEB_SEARCH\" — or write exactly \"none\". Valid values: WEB_SEARCH, DEEP_RESEARCH, VISION, CODING, COMPLEX_THINKING, MEDIUM_THINKING, none]\nApproach selected: [describe the approach you have chosen for the final answer in 1-2 sentences]\nDirection for final output: [a specific, actionable instruction for the answer chain — e.g. \"Write a structured comparison table of X vs Y using the search results, highlighting the 3 key trade-offs\"]\nConfidence: [high / medium / low] — [one sentence explaining why]\n\n[OPERATIONAL RULES]\n- \"Correction needed\" must be exactly \"none\" if no correction is needed. Do not write \"N/A\", \"n/a\", \"No\", or leave it blank — the parser only recognizes the exact word \"none\".\n- Only request a correction if the gap is real and would materially affect answer quality. Do not request corrections for minor or cosmetic issues.\n- \"Direction for final output\" must be specific and actionable — the answer model will follow it literally. Vague directions produce vague answers.\n- Do not write the final answer yourself. Your only job is to review, assess, and direct.\n- Do not add commentary outside the required format fields.",
     "temperature": 1
   },
   "IMAGE_UPSCALE": {
-    "chain": [
-      {
-        "id": "xinlai/Real-ESRGAN-realesrgan-x4plus",
-        "_key": "pz81obth1",
-        "provider": "huggingface",
-        "is_enabled": true,
-        "is_paid": false,
-        "prompt_cost": null,
-        "completion_cost": null
-      },
-      {
-        "id": "stabilityai/stable-diffusion-x4-upscaler",
-        "_key": "new_esrgan",
-        "provider": "huggingface",
-        "is_enabled": true,
-        "is_paid": false,
-        "prompt_cost": null,
-        "completion_cost": null
-      }
-    ],
+    "chain": [],
     "temperature": 1
   },
   "CODING": {
@@ -263,7 +277,17 @@
   "WEB_SEARCH": {
     "chain": [
       {
+        "id": "tavily-search",
+        "_key": "2ngz0ogpc",
+        "provider": "tavily",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
         "id": "google/gemini-3.1-flash-lite",
+        "_key": "5kest5kfo",
         "provider": "openrouter",
         "is_enabled": true,
         "openrouter_provider": "google-ai-studio",
@@ -272,22 +296,84 @@
         "completion_cost": 0.0000015
       },
       {
-        "id": "gemini-3.1-flash-lite",
-        "provider": "gemini",
+        "id": "deepseek/deepseek-v4-flash",
+        "_key": "is5n1pw9r",
+        "provider": "openrouter",
         "is_enabled": true,
-        "is_paid": false,
-        "prompt_cost": null,
-        "completion_cost": null
+        "openrouter_provider": "deepseek",
+        "is_paid": true,
+        "prompt_cost": 1.4e-7,
+        "completion_cost": 2.8e-7
       },
       {
-        "id": "llama-3.3-70b-versatile",
-        "provider": "groq",
+        "id": "duckduckgo-search",
+        "_key": "3nu3sf1ei",
+        "provider": "core",
         "is_enabled": true,
         "is_paid": false,
         "prompt_cost": null,
         "completion_cost": null
       }
     ],
-    "temperature": 0.7
+    "system_prompt": "[WEB SEARCH STEP ROLE]\nYou are the WEB_SEARCH step in a multi-step pipeline. Your output will be consumed by the next chain — it is NOT shown to the user. Write structured data output, not conversational prose.\n\n[YOUR JOB]\nPerform a fast, broad search for the information needed. One pass — best available answer. Prioritize speed and coverage over exhaustive depth. You are feeding a downstream chain, not writing a final answer.\n\n- Run the most effective search queries for the request\n- Return key facts and data points with source URLs\n- Flag anything you could not find (gaps)\n- Flag any contradictions between sources — do not silently pick one\n\n[SINGLE-CHAIN MODE — when no downstream chain follows]\nIf you are the final chain responding directly to the user:\n- Write a clear, direct answer with sources cited inline\n- Keep it concise — lead with the answer, support with evidence\n- Do not over-expand; the user asked for search, not a research paper\n\n[PIPELINE MODE — when your output feeds a downstream chain]\nUse this exact output format:\nQUERIES RUN: [list each search query used]\nKEY FINDINGS:\n- [fact or data point] — source: [URL]\n- [fact or data point] — source: [URL]\nGAPS: [anything not found or uncertain — or \"none\"]\nCONFLICTS: [any contradictions between sources — or \"none\"]\n\n[OPERATIONAL RULES]\n- Speed over depth. One search pass is sufficient unless the query is clearly multi-part.\n- Never fabricate sources. If you cannot find a real URL, omit it and note the gap.\n- Do not draw conclusions or synthesize — that is the job of the downstream chain.\n- Do not add commentary, opinions, or framing. Return raw structured findings only.\n- If the query involves current events or pricing, explicitly note your knowledge cutoff if relevant.\n",
+    "temperature": 0.5
+  },
+  "COMPLEX_THINKING": {
+    "chain": [
+      {
+        "id": "deepseek/deepseek-v4-flash",
+        "_key": "rix7awhzt",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "deepseek",
+        "is_paid": true,
+        "prompt_cost": 1.4e-7,
+        "completion_cost": 2.8e-7
+      },
+      {
+        "id": "google/gemini-3.1-flash-lite",
+        "_key": "revkrda83",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "google-ai-studio",
+        "is_paid": true,
+        "prompt_cost": 2.5e-7,
+        "completion_cost": 0.0000015
+      }
+    ],
+    "temperature": 0.5
+  },
+  "DEEP_RESEARCH": {
+    "chain": [
+      {
+        "id": "tavily-search",
+        "_key": "6ijnq8m0c",
+        "provider": "tavily",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
+        "id": "deepseek/deepseek-v4-flash",
+        "_key": "tguis0l4k",
+        "provider": "openrouter",
+        "is_enabled": true,
+        "openrouter_provider": "deepseek",
+        "is_paid": true,
+        "prompt_cost": 1.4e-7,
+        "completion_cost": 2.8e-7
+      },
+      {
+        "id": "duckduckgo-search",
+        "_key": "ebw8unbhi",
+        "provider": "core",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      }
+    ],
+    "temperature": 0.5
   }
 }

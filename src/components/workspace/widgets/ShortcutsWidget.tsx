@@ -90,7 +90,7 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
               <select 
                 value={newValue}
                 onChange={e => setNewValue(e.target.value)}
-                className="w-full bg-[var(--color-panel)] border border-[var(--bone-3)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
+                className="w-full bg-[var(--color-panel)] border border-[var(--bone-12)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
               >
                 <option value="">Select Page...</option>
                 {entities.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
@@ -100,7 +100,7 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
                 placeholder="https://..."
                 value={newValue}
                 onChange={e => setNewValue(e.target.value)}
-                className="w-full bg-[var(--color-panel)] border border-[var(--bone-3)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
+                className="w-full bg-[var(--color-panel)] border border-[var(--bone-12)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
               />
             )}
             
@@ -108,8 +108,9 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
               placeholder="Label (optional)"
               value={newLabel}
               onChange={e => setNewLabel(e.target.value)}
-              className="w-full bg-[var(--color-panel)] border border-[var(--bone-3)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
+              className="w-full bg-[var(--color-panel)] border border-[var(--bone-12)] rounded-md px-2 py-1.5 text-xs outline-none text-foreground"
             />
+
             
             <div className="flex gap-2 justify-end">
               <button onClick={() => setIsAdding(false)} className="text-[10px] text-muted-foreground">Cancel</button>
@@ -142,12 +143,12 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
                         window.open(s.value, '_blank');
                       }
                     }}
-                    className="w-full aspect-square flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-[var(--bone-5)] border border-[var(--bone-3)] hover:border-accent/40 hover:bg-[var(--bone-6)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                    className="w-full aspect-square flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-[var(--bone-5)] border border-[var(--bone-12)] hover:border-accent/40 hover:bg-[var(--bone-6)] hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[var(--bone-10)] flex items-center justify-center text-accent group-hover/shortcut:scale-110 group-hover/shortcut:bg-[var(--bone-15)] transition-all duration-300">
                       <Icon strokeWidth={2} className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-medium text-[var(--bone-60)] group-hover/shortcut:text-[var(--bone-100)] truncate w-full px-1 text-center transition-colors">
+                    <span className="text-[10px] font-medium text-[var(--bone-70)] group-hover/shortcut:text-[var(--bone-100)] truncate w-full px-1 text-center transition-colors">
                       {s.label}
                     </span>
                   </button>
@@ -166,7 +167,7 @@ export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: S
             <Layout strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">Get started with Shortcuts</p>
-              <p className="text-xs text-bone-60 opacity-25 mt-1 leading-snug text-balance">Add quick links to your favorite apps, sites, and documents.</p>
+              <p className="text-xs text-bone-70 opacity-25 mt-1 leading-snug text-balance">Add quick links to your favorite apps, sites, and documents.</p>
             </div>
             <button
               onClick={() => setIsAdding(true)}

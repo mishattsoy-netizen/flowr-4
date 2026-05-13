@@ -6,6 +6,7 @@ import { Clock, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import type { EntityType } from '@/data/store.types';
+import { stripHtml } from '@/lib/utils';
 
 function formatAge(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -59,11 +60,11 @@ export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter 
           return (
             <button key={entity.id} onClick={() => setActiveEntityId(entity.id)}
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--bone-6)] transition-all group/item text-left">
-              <div className="w-8 h-8 rounded-lg bg-[var(--bone-10)] border border-[var(--bone-3)] flex items-center justify-center text-[var(--bone-60)] group-hover/item:text-accent group-hover/item:border-accent/30 transition-all shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-[var(--bone-10)] border border-[var(--bone-3)] flex items-center justify-center text-[var(--bone-70)] group-hover/item:text-accent group-hover/item:border-accent/30 transition-all shadow-sm">
                 <Icon strokeWidth={2} className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-foreground truncate">{entity.title}</div>
+                <div className="text-[13px] font-medium text-foreground truncate">{stripHtml(entity.title || '')}</div>
                 <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                   <span>{formatAge(entity.lastModified)} ago</span>
                   {ws && <><span>·</span><span className="truncate max-w-[80px]">{ws.name}</span></>}
@@ -77,7 +78,7 @@ export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter 
             <Clock strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">No recent activities</p>
-              <p className="text-xs text-bone-60 opacity-25 mt-1 leading-snug text-balance">Pages you create or edit will show up here for quick access.</p>
+              <p className="text-xs text-bone-70 opacity-25 mt-1 leading-snug text-balance">Pages you create or edit will show up here for quick access.</p>
             </div>
             <button
               onClick={() => openModal({ kind: 'newItem' })}

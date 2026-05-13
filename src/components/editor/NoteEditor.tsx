@@ -424,6 +424,15 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     }
   }, [isEditingTitle]);
 
+  /* Auto-resize the title textarea so it grows to fit wrapped text */
+  const autoResizeTitle = useCallback(() => {
+    const el = titleRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+  }, []);
+
   const [history, setHistory] = useState<EditorBlock[][]>(() => [blocks]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -770,7 +779,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
       };
       const { newList, found } = findAndIndent(prev);
       if (found) {
-        updateEntityContent(entity.id, newList);
+        setTimeout(() => updateEntityContent(entity.id, newList), 0);
         return newList;
       }
       return prev;
@@ -804,7 +813,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
       };
       const newList = process(prev);
       if (found) {
-        updateEntityContent(entity.id, newList);
+        setTimeout(() => updateEntityContent(entity.id, newList), 0);
         return newList;
       }
       return prev;
@@ -1115,7 +1124,8 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
           menuOpen={activeOptionsMenu?.blockId === block.id}
         />
       ];
-      if (block.children && block.children.length > 0 && !block.isFolded) {
+      const isListBlock = ['bulletList', 'numberedList', 'dashedList', 'checklist'].includes(block.type);
+      if (!isListBlock && block.children && block.children.length > 0 && !block.isFolded) {
         rendered.push(
           <div key={`${block.id}-children`} className="pl-8">
             {renderBlocksRecursive(block.children, depth + 1)}
@@ -1164,6 +1174,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
                   {isEditingTitle ? (
                     <textarea
                       ref={titleRef}
+                      rows={1}
                       autoFocus
                       value={tempTitle}
                       onChange={e => {
@@ -1180,8 +1191,8 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
                           setEditingEntityId(null); 
                         }
                       }}
-                      className="text-5xl font-display font-medium bg-transparent border-none outline-none flex-1 text-foreground px-0 py-0 resize-none overflow-hidden leading-tight block align-top"
-                      style={{ height: '60px' }}
+                      className="text-5xl font-display font-medium bg-transparent border-none outline-none flex-1 text-foreground px-0 py-0 resize-none leading-tight block align-top"
+                      onInput={autoResizeTitle}
                     />
                   ) : (
                     <>

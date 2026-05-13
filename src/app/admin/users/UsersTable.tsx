@@ -37,7 +37,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
 
   if (users.length === 0) {
     return (
-      <div className="p-12 text-center text-bone-60">
+      <div className="p-12 text-center text-bone-70">
         <p className="text-sm font-bold tracking-tight">No users registered yet.</p>
         <p className="text-[10px] mt-2 font-bold opacity-30 tracking-tight">Awaiting first bot interaction</p>
       </div>
@@ -45,10 +45,10 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
   }
 
   return (
-    <div className="overflow-x-auto bg-panel rounded-big border border-border">
+    <div className="overflow-x-auto bg-panel rounded-big border border-[var(--bone-12)]">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-white/5 border-b border-border">
+          <tr className="bg-white/5 border-b border-[var(--bone-12)]">
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">User details</th>
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">Preset / Plan</th>
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">Daily usage</th>
@@ -57,12 +57,12 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.03]">
+        <tbody className="divide-y divide-[var(--bone-6)]">
           {users.map((user) => (
             <tr key={user.telegram_id} className="hover:bg-[var(--bone-6)] transition-all duration-200 group cursor-pointer">
               <td className="px-8 py-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center text-[11px] font-bold text-muted-foreground group-hover:text-foreground group-hover:border-accent/30 transition-all">
+                  <div className="w-10 h-10 rounded-xl bg-background border border-[var(--bone-6)] flex items-center justify-center text-[11px] font-bold text-muted-foreground group-hover:text-foreground group-hover:border-accent/30 transition-all">
                     {user.username?.[0]?.toUpperCase() || '#'}
                   </div>
                   <div>
@@ -72,7 +72,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
                 </div>
               </td>
               <td className="px-8 py-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-muted-foreground tracking-widest uppercase group-hover:text-foreground group-hover:border-white/10 transition-all">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-background border border-[var(--bone-6)] text-[10px] font-bold text-muted-foreground tracking-widest uppercase group-hover:text-foreground group-hover:border-[var(--bone-6)] transition-all">
                   {user.limit_presets?.name || 'Standard'}
                 </div>
               </td>
@@ -85,7 +85,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
                     </span>
                     <span className="font-mono opacity-20">{Math.round(((user.messages_used_today || 0) / (user.limit_presets?.daily_msg_limit || 50)) * 100)}%</span>
                   </div>
-                  <div className="w-32 h-1 bg-background rounded-full overflow-hidden border border-white/5">
+                  <div className="w-32 h-1 bg-background rounded-full overflow-hidden border border-[var(--bone-6)]">
                     <div 
                       className="h-full bg-accent/40" 
                       style={{ width: `${Math.min(100, ((user.messages_used_today || 0) / (user.limit_presets?.daily_msg_limit || 50)) * 100)}%` }}
@@ -113,7 +113,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
                 </div>
               </td>
               <td className="px-8 py-4">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-muted-foreground tracking-tighter group-hover:text-foreground group-hover:border-white/10 transition-all">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-background border border-[var(--bone-6)] text-[10px] font-bold text-muted-foreground tracking-tighter group-hover:text-foreground group-hover:border-[var(--bone-6)] transition-all">
                   {user.workspace_id || 'Not Linked'}
                 </div>
               </td>
@@ -121,11 +121,11 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
                 <div className="flex items-center justify-end gap-2">
                   <button 
                     onClick={() => handleDelete(user.telegram_id)}
-                    className="p-2 text-muted-foreground hover:text-red-400 bg-background border border-white/5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                    className="p-2 text-muted-foreground hover:text-red-400 bg-background border border-[var(--bone-6)] rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                  <button className="p-2 text-muted-foreground hover:text-foreground bg-background border border-white/5 rounded-lg transition-all">
+                  <button className="p-2 text-muted-foreground hover:text-foreground bg-background border border-[var(--bone-6)] rounded-lg transition-all">
                     <MoreVertical className="w-3.5 h-3.5" />
                   </button>
                 </div>

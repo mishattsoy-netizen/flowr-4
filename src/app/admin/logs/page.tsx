@@ -9,7 +9,7 @@ export default async function LogsPage() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display text-foreground mb-1">Message Logs</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Message Logs</h1>
         <p className="text-muted-foreground text-sm font-medium">
           All interactions across app and Telegram — <span className="text-foreground font-bold">{total.toLocaleString()}</span> total exchanges.
         </p>
