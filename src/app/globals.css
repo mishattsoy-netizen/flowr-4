@@ -1,13 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&display=swap');
 @import "tailwindcss";
 
 /* Global font weight tracking - adds 0.025em letter-spacing to all font weights */
-.font-thin,
-.font-extralight,
-.font-light,
-.font-normal {
-  font-weight: 500 !important;
-}
 
 .font-thin,
 .font-extralight,
@@ -47,6 +41,7 @@
 :root {
   --color-background: #141413;
   --color-panel: #262624;
+  --color-dark: #191917;
   --bone-5: rgba(233, 233, 226, 0.05);
   --bone-2: rgba(233, 233, 226, 0.02);
   --bone-3: rgba(233, 233, 226, 0.03);
@@ -55,24 +50,23 @@
   --bone-12: rgba(233, 233, 226, 0.12);
   --bone-15: rgba(233, 233, 226, 0.15);
   --bone-30: rgba(233, 233, 226, 0.30);
-  --bone-60: rgba(233, 233, 226, 0.60);
   --bone-70: rgba(233, 233, 226, 0.70);
   --bone-100: #E9E9E2;
   --white-overlay: rgba(255, 255, 255, 0.03);
   --black-overlay: rgba(0, 0, 0, 0.06);
   --border-inner: var(--bone-10);
-  --border-outer: var(--bone-15);
+  --border-outer: var(--bone-12);
   --border-hover: var(--bone-30);
   --icon-default: var(--bone-30);
-  --icon-active: var(--bone-60);
-  --dim-foreground: var(--bone-60);
+  --icon-active: var(--bone-70);
+  --dim-foreground: var(--bone-70);
   --foreground: var(--bone-100);
-  --accent: #d38f36;
+  --accent: #d67a3c;
   /* Orange accent color */
   --on-accent: #242423;
   /* Neutral color for items on bone-fill */
   --color-danger: #ff6060;
-  --radius-big: 20px;
+  --radius-big: 24px;
   --radius-regular: 12px;
   --radius-medium: 8px;
   --radius-8: 8px;
@@ -85,7 +79,7 @@
 
 @layer base {
   body {
-    font-weight: 500;
+    font-weight: 400;
   }
 }
 
@@ -139,7 +133,7 @@ html[data-interface-size="big"] {
   --color-bone-12: var(--bone-12);
   --color-bone-15: var(--bone-15);
   --color-bone-30: var(--bone-30);
-  --color-bone-60: var(--bone-60);
+  --color-bone-70: var(--bone-70);
   --color-bone-100: var(--bone-100);
   --color-bone-hover: var(--bone-5);
   --color-accent: var(--accent);
@@ -160,20 +154,17 @@ html[data-interface-size="big"] {
 }
 
 @utility widget {
-  @apply bg-panel border border-white/5 rounded-big p-6;
-  transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
+  @apply bg-panel border border-[var(--bone-12)] rounded-big p-6;
   box-shadow: none;
 }
 
 @utility widget-accent {
   @apply bg-accent/5 border border-accent/20 rounded-big p-6;
-  transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
   box-shadow: none;
 }
 
 @utility instrument-hover {
-  transition: background-color 200ms, border-color 200ms, box-shadow 200ms, transform 200ms ease-out;
-  @apply duration-200;
+  @apply duration-0;
 
   &:hover {
     box-shadow: none;
@@ -188,7 +179,8 @@ html[data-interface-size="big"] {
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
 }
 
 @utility font-ui {
@@ -207,17 +199,43 @@ html[data-interface-size="big"] {
   text-shadow: 1px 1px 0px rgba(66, 133, 244, 0.3), -1px -1px 0px rgba(234, 67, 53, 0.3);
 }
 
-@utility font-crimson {
-  font-family: 'Crimson Text', serif;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+@utility font-serif {
+  font-family: 'Literata', serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+}
+
+/* Global Literata Tracking Override */
+[style*="Literata"],
+.font-display,
+.font-serif {
+  letter-spacing: -0.01em !important;
+  font-optical-sizing: auto !important;
 }
 
 @utility text-fade {
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  text-overflow: clip !important;
 }
+
+/* Global override for tailwind truncate to use fade-out instead of ellipsis */
+.truncate,
+.text-ellipsis {
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+/* Apply fade-out only when text overflows (detected by FadeTextObserver) */
+.text-fade[data-overflow="true"],
+.truncate[data-overflow="true"],
+.text-ellipsis[data-overflow="true"] {
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%) !important;
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%) !important;
+}
+
 
 @utility font-widget-header {
   font-family: var(--font-sans);
@@ -295,7 +313,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-bento {
-  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-15)] text-[var(--bone-60)] bg-[var(--white-overlay)];
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide border border-[var(--bone-15)] text-[var(--bone-70)] bg-[var(--white-overlay)];
 
   &:hover {
     @apply border-[var(--bone-30)] text-[var(--bone-100)] bg-[var(--bone-6)];
@@ -307,7 +325,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-bento-active {
-  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-100)] text-[var(--bone-100)] bg-transparent;
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide border border-[var(--bone-100)] text-[var(--bone-100)] bg-transparent;
 
   svg {
     @apply w-4 h-4;
@@ -315,7 +333,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-bento-danger {
-  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide transition-all border border-[var(--bone-15)] text-[var(--bone-30)] bg-transparent;
+  @apply flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold tracking-wide border border-[var(--bone-15)] text-[var(--bone-30)] bg-transparent;
 
   &:hover {
     @apply border-danger/30 text-danger bg-danger/5;
@@ -327,7 +345,7 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-bone-5 {
-  @apply flex items-center justify-center bg-[var(--bone-5)] text-[var(--bone-60)] px-3 py-1.5 rounded-[var(--radius-medium)];
+  @apply flex items-center justify-center bg-[var(--bone-5)] text-[var(--bone-70)] px-3 py-1.5 rounded-[var(--radius-medium)];
 
   &:hover {
     @apply bg-[var(--bone-10)] text-[var(--bone-100)];
@@ -335,31 +353,31 @@ html[data-interface-size="big"] {
 }
 
 .sidebar-item-row {
-  @apply active:scale-[0.99] transition-all duration-75;
+  @apply active:scale-[0.99];
 }
 
 @utility btn-sidebar-utility {
-  @apply w-[22px] h-[22px] flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-none;
+  @apply w-[22px] h-[22px] flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-none;
 }
 
 @utility popup-glass-big {
   background-color: var(--color-panel);
-  @apply border border-white/10 rounded-[var(--radius-big)];
+  @apply border border-[var(--bone-12)] rounded-[var(--radius-big)];
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 @utility popup-glass-small {
   background-color: var(--color-panel);
-  @apply border border-white/10 rounded-[var(--radius-regular)];
+  @apply border border-[var(--bone-12)] rounded-[var(--radius-regular)] transition-none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @utility popup-item {
-  @apply flex items-center gap-3 w-full px-3 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-60)] hover:text-[var(--bone-100)] hover:bg-white/10 rounded-[var(--radius-medium)];
+  @apply flex items-center gap-3 w-full px-3 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-white/10 rounded-[var(--radius-medium)] transition-none;
 }
 
 @utility popup-divider {
-  @apply h-px bg-white/5 my-[3px] mx-3;
+  @apply h-px bg-[var(--bone-6)] my-[3px] mx-3;
 }
 
 @utility popup-item-danger {
@@ -374,13 +392,9 @@ html[data-interface-size="big"] {
   box-shadow: none;
 }
 
-.group\/widget {
-  transition: all 0.2s ease-in-out;
-}
+.group\/widget {}
 
-.group\/widget h2 {
-  transition: all 0.2s ease-in-out;
-}
+.group\/widget h2 {}
 
 .group\/widget:hover {
   /* border-color: var(--bone-30) !important; */
@@ -802,10 +816,14 @@ html {
 }
 
 @keyframes ai-cursor-blink {
-  0%, 49% {
+
+  0%,
+  49% {
     opacity: 1;
   }
-  50%, 100% {
+
+  50%,
+  100% {
     opacity: 0;
   }
 }
@@ -887,7 +905,8 @@ html {
 }
 
 .toggle-switch .toggle-input:checked+.toggle-label {
-  background-color: #3b82f6; /* Vibrant Blue like screenshot */
+  background-color: #3b82f6;
+  /* Vibrant Blue like screenshot */
   border-color: #3b82f6;
 }
 
@@ -914,7 +933,7 @@ html {
 }
 
 .toggle-switch:hover .toggle-label {
-  border-color: var(--bone-60);
+  border-color: var(--bone-70);
 }
 
 .toggle-switch .toggle-input:disabled+.toggle-label {
@@ -926,7 +945,7 @@ html {
 .is-dragging .sidebar-item-row:hover,
 .is-dragging button:hover {
   background-color: transparent !important;
-  color: var(--bone-60) !important;
+  color: var(--bone-70) !important;
 }
 
 /* Ensure active/selected items keep their state but don't react to hover */
@@ -1074,12 +1093,6 @@ body.is-dragging-widget [data-widget-id] * {
   border-radius: 4px;
 }
 
-@utility text-fade {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 @utility scroll-fade {
   mask-image: linear-gradient(to bottom,
       transparent 0%,
@@ -1207,5 +1220,32 @@ body.is-dragging-widget [data-widget-id] * {
 
   to {
     opacity: 0;
+  }
+}
+/* Shimmer Animation */
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@utility skeleton-shimmer-container {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bone-5);
+  
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--bone-10) 50%,
+      transparent 100%
+    );
+    animation: skeleton-shimmer 2s infinite linear;
   }
 }
