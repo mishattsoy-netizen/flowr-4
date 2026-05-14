@@ -8,11 +8,16 @@ import clsx from 'clsx';
 import { stripHtml } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDeferredLoading } from '@/hooks/use-deferred-loading';
+import type { WidgetProps } from './types';
 
 type SortBy = 'modified' | 'name';
 type ViewMode = 'flat' | 'tree';
 
-export function AllFilesWidget({ data, onUpdateData, contextId }: { data?: { sort?: SortBy; view?: ViewMode }; onUpdateData?: (d: any) => void; contextId?: string; isEditing?: boolean }) {
+interface AllFilesWidgetProps extends WidgetProps {
+  data?: { sort?: SortBy; view?: ViewMode };
+}
+
+export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidgetProps) {
   const entities = useStore(s => s.entities);
   const setActiveEntityId = useStore(s => s.setActiveEntityId);
   const openModal = useStore(s => s.openModal);

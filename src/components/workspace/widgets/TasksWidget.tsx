@@ -5,17 +5,14 @@ import { useMemo, useState, useRef } from 'react';
 import { Plus, CheckCircle2, Circle } from 'lucide-react';
 import clsx from 'clsx';
 import { stripHtml } from '@/lib/utils';
+import type { WidgetPropsWithEntity } from './types';
 
 type ViewMode = 'list' | 'by-status';
 
 const formatDate = (dateStr: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(dateStr));
 
-export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData }: {
-  entity?: Entity;
-  contextId?: string;
+export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData }: WidgetPropsWithEntity & {
   data?: { view?: ViewMode };
-  onUpdateData?: (d: any) => void;
-  isEditing?: boolean;
 }) {
   const tasks = useStore(s => s.tasks);
   const toggleTask = useStore(s => s.toggleTask);

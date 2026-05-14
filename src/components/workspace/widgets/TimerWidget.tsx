@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus } from 'lucide-react';
+import type { WidgetProps } from './types';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 
@@ -11,7 +12,12 @@ interface TimerData {
   breakDuration?: number; // minutes, default 5
 }
 
-export function TimerWidget({ data, onUpdateData, isEditing }: { data?: TimerData; onUpdateData: (d: TimerData) => void; isEditing?: boolean }) {
+interface TimerWidgetProps extends Omit<WidgetProps, 'data'> {
+  data?: TimerData;
+  onUpdateData: (d: TimerData) => void;
+}
+
+export function TimerWidget({ data, onUpdateData, isEditing }: TimerWidgetProps) {
   const mode = (data?.mode ?? 'pomodoro') as TimerMode;
   const pomoDuration = (data?.pomoDuration ?? 25) * 60;
   const breakDuration = (data?.breakDuration ?? 5) * 60;

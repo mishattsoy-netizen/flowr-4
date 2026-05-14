@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
+import type { WidgetProps } from './types';
 
 type ClockStyle = 'simple' | 'datetime' | 'analog';
 
@@ -11,10 +12,8 @@ interface ClockData {
   timezone?: string;
 }
 
-interface Props {
+interface ClockWidgetProps extends WidgetProps {
   data?: ClockData;
-  onUpdateData?: (d: ClockData) => void;
-  isEditing?: boolean;
 }
 
 const TIMEZONES = [
@@ -29,7 +28,7 @@ const TIMEZONES = [
   { label: 'Sydney', value: 'Australia/Sydney' },
 ];
 
-export function ClockWidget({ data, onUpdateData, isEditing }: Props) {
+export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps) {
   const [now, setNow] = useState(new Date());
   const style: ClockStyle = data?.style ?? 'simple';
   const hour12 = data?.hour12 ?? true;

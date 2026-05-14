@@ -5,8 +5,9 @@ import { Folder, MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Tooltip } from '@/components/layout/Tooltip';
 import clsx from 'clsx';
+import type { WidgetPropsWithEntity } from './types';
 
-export function FoldersWidget({ entity: propEntity, contextId }: { entity?: Entity; contextId?: string }) {
+export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWithEntity) {
   const entities = useStore(state => state.entities);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
   const openContextMenu = useStore(state => state.openContextMenu);

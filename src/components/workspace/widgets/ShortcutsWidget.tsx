@@ -5,6 +5,7 @@ import { Plus, X, ExternalLink, FileText, Layout } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { getEntityIcon } from '@/data/icons';
 import clsx from 'clsx';
+import type { WidgetProps } from './types';
 
 interface Shortcut {
   id: string;
@@ -14,7 +15,7 @@ interface Shortcut {
   icon?: string;
 }
 
-export function ShortcutsWidget({ data, onUpdateData }: { data?: { shortcuts?: Shortcut[] }; onUpdateData: (newData: any) => void }) {
+export function ShortcutsWidget({ data, onUpdateData }: Omit<WidgetProps, 'data'> & { data?: { shortcuts?: Shortcut[] }; onUpdateData: (newData: any) => void }) {
   const shortcuts = data?.shortcuts || [];
   const entities = useStore(state => state.entities);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);

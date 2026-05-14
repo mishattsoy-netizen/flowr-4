@@ -5,6 +5,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X } from 'lucide-react';
 import { stripHtml } from '@/lib/utils';
+import type { WidgetProps } from './types';
 
 const ALL_TABS = [
   { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
@@ -15,15 +16,12 @@ const ALL_TABS = [
 
 type TabId = typeof ALL_TABS[number]['id'];
 
-interface SmartTaskStackProps {
-  contextId?: string;
-  isEditing?: boolean;
+interface SmartTaskStackProps extends WidgetProps {
   data?: {
     stackType?: 'today-upcoming' | 'progress-overdue';
     activeTab?: string;
     hiddenTabs?: TabId[];
   };
-  onUpdateData?: (newData: any) => void;
 }
 
 const formatDate = (dateStr: string) => {

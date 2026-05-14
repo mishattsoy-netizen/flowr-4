@@ -4,13 +4,13 @@ import React, { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { X, Settings2, Plus } from 'lucide-react';
 import { widgetRegistry } from '@/components/bento/registry';
+import type { WidgetProps } from './types';
 
-interface GenericStackedWidgetProps {
+interface GenericStackedWidgetProps extends WidgetProps {
   data?: {
     widgets: string[]; // IDs of widgets from registry
     activeTabIndex?: number;
   };
-  onUpdateData?: (newData: any) => void;
 }
 
 export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidgetProps) {

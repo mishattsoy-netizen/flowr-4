@@ -6,6 +6,7 @@ import { Clock, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import type { EntityType } from '@/data/store.types';
+import type { WidgetProps } from './types';
 import { stripHtml } from '@/lib/utils';
 
 function formatAge(ts: number) {
@@ -18,7 +19,7 @@ function formatAge(ts: number) {
 
 type Filter = 'all' | 'note' | 'canvas';
 
-export function RecentWidget({ data, onUpdateData }: { data?: { filter?: Filter }; onUpdateData?: (d: any) => void; isEditing?: boolean }) {
+export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { filter?: Filter } }) {
   const recentEntityIds = useStore(s => s.recentEntityIds);
   const entities = useStore(s => s.entities);
   const workspaces = useStore(s => s.workspaces);
