@@ -198,13 +198,12 @@ export async function syncInternalPromptsFromFiles(): Promise<{ synced: string[]
   const path = await import('path')
 
   const FILE_MAP: Record<string, string> = {
-    ORCHESTRATOR:  'pipeline-orchestrator.txt',
     THINKING:      'pipeline-thinking.txt',
     VISION:        'pipeline-vision.txt',
     WEB_SEARCH:    'pipeline-web-search.txt',
-    DEEP_RESEARCH: 'pipeline-deep-research.txt',
+    RESEARCH:      'pipeline-research.txt',
     CODING:        'pipeline-coding.txt',
-    TOOL_CALLING:  'pipeline-tool-calling.txt',
+    TOOLS:         'pipeline-tools.txt',
     IMAGE_GEN:     'pipeline-image-gen.txt',
   }
 

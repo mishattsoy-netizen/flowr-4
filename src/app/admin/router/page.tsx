@@ -2,24 +2,24 @@ import { getRouterChains } from './actions'
 import { getModels } from '@/app/admin/models/actions'
 import RouterManager from '@/components/admin/RouterManager'
 import AddCategoryButton from '@/components/admin/AddCategoryButton'
-import { Cpu, Command, Share2, Zap, Wand2, Image, Mic, Brain, Camera, Code, Microscope, Network, Sparkles, Maximize2 } from 'lucide-react'
+import { Cpu, Command, Share2, Zap, Image, Mic, Brain, Camera, Code, Microscope, Sparkles, Maximize2, FileText, MessageSquareMore, GripHorizontal } from 'lucide-react'
 
 const CATEGORY_ICONS: Record<string, any> = {
-  TOOL_CALLING: Command,
-  WEB_SEARCH: Share2,
-  FAST_SIMPLE: Zap,
-  MEDIUM_THINKING: Wand2,
-  COMPLEX_THINKING: Cpu,
-  IMAGE_GEN: Image,
-  AUDIO_VOICE: Mic,
-  CLASSIFIER: Brain,
-  VISION: Camera,
+  REGULAR: MessageSquareMore,
+  COMPLEX: Cpu,
   CODING: Code,
-  DEEP_RESEARCH: Microscope,
-  ORCHESTRATOR: Network,
+  WEB_SEARCH: Share2,
+  RESEARCH: Microscope,
+  TOOLS: Command,
+  IMAGE_GEN: Image,
+  VISION: Camera,
+  AUDIO: Mic,
+  CLASSIFIER: Brain,
   THINKING: Sparkles,
   ADVISOR: Brain,
-  IMAGE_UPSCALE: Maximize2
+  IMAGE_UPSCALE: Maximize2,
+  COMPACTION: FileText,
+  // Legacy  — still displayed with fallback icon
 }
 
 export async function RouterPageContent({ platform }: { platform: 'app' | 'telegram' }) {
@@ -28,9 +28,9 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
   return (
     <div className="space-y-[10px] animate-in fade-in duration-500">
       <div className="mb-2">
-        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Router Orchestration</h1>
+        <h1 className="text-4xl font-display font-medium text-foreground mb-1">Router Matrix</h1>
         <p className="text-muted-foreground text-sm font-medium">
-          Multi-agent switching matrix — unified chain for all clients.
+          Chain routing configuration — each chain is a mini-orchestrator with input/output contracts.
         </p>
       </div>
 
@@ -47,8 +47,11 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
             />
           )
         })}
-        {!routers.some((r: any) => r.category === 'CLASSIFIER') && (
-          <AddCategoryButton platform={platform} category="CLASSIFIER" />
+        {!routers.some((r: any) => r.category === 'REGULAR') && (
+          <AddCategoryButton platform={platform} category="REGULAR" />
+        )}
+        {!routers.some((r: any) => r.category === 'COMPLEX') && (
+          <AddCategoryButton platform={platform} category="COMPLEX" />
         )}
         {!routers.some((r: any) => r.category === 'VISION') && (
           <AddCategoryButton platform={platform} category="VISION" />
@@ -56,11 +59,23 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
         {!routers.some((r: any) => r.category === 'CODING') && (
           <AddCategoryButton platform={platform} category="CODING" />
         )}
-        {!routers.some((r: any) => r.category === 'DEEP_RESEARCH') && (
-          <AddCategoryButton platform={platform} category="DEEP_RESEARCH" />
+        {!routers.some((r: any) => r.category === 'WEB_SEARCH') && (
+          <AddCategoryButton platform={platform} category="WEB_SEARCH" />
         )}
-        {!routers.some((r: any) => r.category === 'ORCHESTRATOR') && (
-          <AddCategoryButton platform={platform} category="ORCHESTRATOR" />
+        {!routers.some((r: any) => r.category === 'RESEARCH') && (
+          <AddCategoryButton platform={platform} category="RESEARCH" />
+        )}
+        {!routers.some((r: any) => r.category === 'TOOLS') && (
+          <AddCategoryButton platform={platform} category="TOOLS" />
+        )}
+        {!routers.some((r: any) => r.category === 'IMAGE_GEN') && (
+          <AddCategoryButton platform={platform} category="IMAGE_GEN" />
+        )}
+        {!routers.some((r: any) => r.category === 'AUDIO') && (
+          <AddCategoryButton platform={platform} category="AUDIO" />
+        )}
+        {!routers.some((r: any) => r.category === 'CLASSIFIER') && (
+          <AddCategoryButton platform={platform} category="CLASSIFIER" />
         )}
         {!routers.some((r: any) => r.category === 'THINKING') && (
           <AddCategoryButton platform={platform} category="THINKING" />
@@ -70,6 +85,9 @@ export async function RouterPageContent({ platform }: { platform: 'app' | 'teleg
         )}
         {!routers.some((r: any) => r.category === 'IMAGE_UPSCALE') && (
           <AddCategoryButton platform={platform} category="IMAGE_UPSCALE" />
+        )}
+        {!routers.some((r: any) => r.category === 'COMPACTION') && (
+          <AddCategoryButton platform={platform} category="COMPACTION" />
         )}
       </div>
     </div>

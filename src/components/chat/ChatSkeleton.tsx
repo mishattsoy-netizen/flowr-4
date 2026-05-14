@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
  */
 export function ChatHistorySkeleton() {
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden skeleton-pulse">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Top Buttons Skeleton */}
       <div className="flex flex-col px-3 pt-3 pb-1 shrink-0 gap-1">
         <Skeleton className="h-7 w-full rounded-[var(--radius-small)] bg-[var(--bone-6)]" />
@@ -35,7 +35,7 @@ export function ChatHistorySkeleton() {
  */
 export function ChatMainSkeleton() {
   return (
-    <div className="flex-1 flex flex-col h-full bg-background skeleton-pulse">
+    <div className="flex-1 flex flex-col h-full bg-background">
       <div className="max-w-3xl mx-auto w-full space-y-10 pt-10 px-6">
         {/* Header Skeleton */}
         <div className="flex flex-col items-center justify-center gap-4 mb-20 opacity-40">

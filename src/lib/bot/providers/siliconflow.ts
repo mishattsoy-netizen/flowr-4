@@ -70,8 +70,9 @@ export async function runSiliconFlowText(
   prompt: string,
   systemPrompt?: string,
   history: any[] = [],
-  aiApiKey?: string
-): Promise<string | null> {
+  aiApiKey?: string,
+  context?: any
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null> {
   let keys = aiApiKey ? [aiApiKey] : []
   if (keys.length === 0) {
     keys = await getProviderKeys('SILICONFLOW')
@@ -107,7 +108,7 @@ export async function runSiliconFlowText(
         body: JSON.stringify({
           model: modelId,
           messages,
-          max_tokens: 4096,
+          max_tokens: context?.max_tokens || 4096,
           stream: false
         })
       })
@@ -123,10 +124,16 @@ export async function runSiliconFlowText(
       }
 
       const data = await response.json()
-      const content = data?.choices?.[0]?.message?.content
-      if (!content) throw new Error('SiliconFlow returned empty content')
+      const msg = data?.choices?.[0]?.message
+      if (!msg?.content) throw new Error('SiliconFlow returned empty content')
 
-      return content
+      const usage = data.usage ? {
+        prompt_tokens: data.usage.prompt_tokens,
+        completion_tokens: data.usage.completion_tokens,
+        total_tokens: data.usage.total_tokens,
+      } : undefined
+
+      return { content: msg.content, usage }
     } catch (error: any) {
       logger.error(`SiliconFlow Text [${modelId}] key ${i+1} failed:`, error.message)
       if (i === keys.length - 1) return null

@@ -19,9 +19,9 @@ export async function runGoogle(
   prompt: string,
   systemPrompt?: string,
   imageBuffers?: Buffer | Buffer[],
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean; temperature?: number },
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean; temperature?: number; max_tokens?: number },
   history: any[] = []
-): Promise<string | { content: string; citations?: string[] } | null> {
+): Promise<string | { content: string; citations?: string[]; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string } | null> {
   let keys = context?.aiApiKey ? [context.aiApiKey] : []
 
   if (keys.length === 0) {
@@ -67,7 +67,8 @@ export async function runGoogle(
           systemInstruction: useSystemInstruction ? systemPrompt : undefined,
           ...(context?.useTools && useSystemInstruction ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {}),
           generationConfig: {
-            temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7
+            temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7,
+            maxOutputTokens: context?.max_tokens || undefined
           }
         }, { 
           apiVersion: forceLegacy ? 'v1' : 'v1beta' 
@@ -120,7 +121,24 @@ export async function runGoogle(
         const finalAnswer = response.text()
         if (finalAnswer) {
           if (context) (context as any).usedKeyIndex = (context as any).usedKeyIndex || i + 1
-          return finalAnswer
+          // Extract usage metadata
+          const raw = result.response
+          const meta = raw?.usageMetadata
+          const usage = meta ? {
+            prompt_tokens: meta.promptTokenCount ?? undefined,
+            completion_tokens: meta.candidatesTokenCount ?? undefined,
+            total_tokens: meta.totalTokenCount ?? undefined,
+          } : undefined
+          // Extract thinking parts (Gemini Thinking models)
+          let reasoning: string | undefined
+          try {
+            const parts = (raw as any)?.candidates?.[0]?.content?.parts
+            if (parts) {
+              const thoughtTexts = parts.filter((p: any) => p.thought).map((p: any) => p.text)
+              if (thoughtTexts.length > 0) reasoning = thoughtTexts.join('\n')
+            }
+          } catch {}
+          return { content: finalAnswer, usage, reasoning }
         }
       } catch (error: any) {
         const errorMsg = error.message || 'Unknown error'

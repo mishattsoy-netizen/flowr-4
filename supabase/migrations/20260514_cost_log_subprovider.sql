@@ -1,0 +1,1 @@
+ALTER TABLE cost_log ADD COLUMN IF NOT EXISTS subprovider TEXT;

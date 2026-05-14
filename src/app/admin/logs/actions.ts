@@ -64,7 +64,7 @@ export async function getMessageExchanges(options: {
   limit?: number
   offset?: number
 } = {}): Promise<{ exchanges: Exchange[]; total: number }> {
-  const { platform = 'all', usage_type, limit = 50, offset = 0 } = options
+  const { platform = 'all', usage_type, limit = 20, offset = 0 } = options
 
   if (!supabaseAdmin) return { exchanges: [], total: 0 }
 

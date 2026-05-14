@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../supabase'
+﻿import { supabaseAdmin } from '../supabase'
 import { logger } from '../logger'
 
 export interface MemoryItem {
@@ -68,16 +68,37 @@ export async function getWebConversationMemory(authUserId: string, limit: number
       query = query.gt('created_at', quota.memory_cleared_at);
     }
 
-    const { data, error } = await query
+    const { data: initialData, error } = await query
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    let resultData: any[] | null = null;
+    if (!error && initialData) { resultData = initialData; }
+
+    // Fallback: if chatId filter returned empty, retry without chat isolation
+    if (chatId && (!resultData || resultData.length === 0)) {
+      logger.info(`Chat isolation returned no history for ${authUserId} - retrying without chat filter`);
+      let fallbackQuery = supabaseAdmin
+        .from('message_logs')
+        .select('role, content, context_messages')
+        .eq('auth_user_id', authUserId);
+      if (quota?.memory_cleared_at) {
+        fallbackQuery = fallbackQuery.gt('created_at', quota.memory_cleared_at);
+      }
+      const { data: fallbackData } = await fallbackQuery
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (fallbackData && fallbackData.length > 0) {
+        resultData = fallbackData;
+      }
+    }
 
     if (error) {
       logger.warn(`Web memory unavailable for ${authUserId}: ${error.message}`);
       return [];
     }
 
-    const history = (data || []).reverse().map((msg: any) => {
+    const history = (resultData || []).reverse().map((msg: any) => {
       let cleanContent = msg.content || "";
       // Truncate massive base64 images in history to avoid context bloat and model hallucination
       if (cleanContent.includes('data:image/')) {
@@ -96,3 +117,4 @@ export async function getWebConversationMemory(authUserId: string, limit: number
     return []
   }
 }
+

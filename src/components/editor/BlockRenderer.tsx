@@ -599,13 +599,17 @@ export function BlockRenderer({
         className={clsx(
           "editor-block group flex flex-col relative overflow-visible transition-all duration-0 py-0.5",
           "before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']",
+          isFocused && "focused",
           isDragging && "z-50",
           isSelected && "selected-block",
         )}
         style={{ ...style, fontFamily: '"Literata"', letterSpacing: '-0.01em' }}
       >
         <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
-        <div className="flex-1 w-full px-1 py-1">
+        <div className={clsx(
+          "flex-1 flex items-start w-full relative rounded-[var(--radius-medium)] px-1 py-1 transition-all duration-0",
+          isSelected ? "bg-white/[0.01]" : "group-hover:bg-white/[0.01]"
+        )}>
           <ListBlock
             block={block}
             listNumber={listNumber}

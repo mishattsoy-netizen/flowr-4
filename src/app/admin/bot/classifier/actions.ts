@@ -5,6 +5,9 @@ import { logAdminAction } from '@/lib/admin/logAction'
 import { revalidatePath } from 'next/cache'
 import type { BotMode } from '@/data/store.types'
 
+// Keywords are shared across all modes — stored under mode='global'.
+const KEYWORDS_MODE = 'global'
+
 export async function getClassifierConfig(mode: BotMode = 'default'): Promise<{ prompt: string | null; keywords: Record<string, string[]> | null }> {
   const [promptResult, keywordsResult] = await Promise.all([
     supabase
@@ -17,7 +20,7 @@ export async function getClassifierConfig(mode: BotMode = 'default'): Promise<{ 
       .from('bot_settings')
       .select('content')
       .eq('category', 'classifier_keywords')
-      .eq('mode', 'default')
+      .eq('mode', KEYWORDS_MODE)
       .maybeSingle(),
   ])
 
@@ -50,7 +53,7 @@ export async function saveClassifierKeywords(keywords: Record<string, string[]>)
   const { error } = await supabase
     .from('bot_settings')
     .upsert(
-      { category: 'classifier_keywords', content: JSON.stringify(keywords), mode: 'default', updated_at: new Date().toISOString() },
+      { category: 'classifier_keywords', content: JSON.stringify(keywords), mode: KEYWORDS_MODE, updated_at: new Date().toISOString() },
       { onConflict: 'category,mode' }
     )
   if (error) throw error
@@ -63,7 +66,7 @@ export async function getClassifierKeywords(): Promise<Record<string, string[]>>
     .from('bot_settings')
     .select('content')
     .eq('category', 'classifier_keywords')
-    .eq('mode', 'default')
+    .eq('mode', KEYWORDS_MODE)
     .maybeSingle()
   if (error) throw new Error(error.message)
   if (!data?.content) return {}

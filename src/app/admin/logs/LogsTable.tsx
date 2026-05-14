@@ -31,14 +31,16 @@ const CHAIN_COLORS: Record<string, string> = {
   THINKING: 'text-sky-300 bg-sky-500/10 border-sky-500/20',
   FAST_SIMPLE: 'text-green-300 bg-green-500/10 border-green-500/20',
   MEDIUM_THINKING: 'text-teal-300 bg-teal-500/10 border-teal-500/20',
-  COMPLEX_THINKING: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20',
+  COMPLEX: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20',
   CODING: 'text-amber-300 bg-amber-500/10 border-amber-500/20',
   WEB_SEARCH: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
-  DEEP_RESEARCH: 'text-lime-300 bg-lime-500/10 border-lime-500/20',
+  RESEARCH: 'text-lime-300 bg-lime-500/10 border-lime-500/20',
   VISION: 'text-purple-300 bg-purple-500/10 border-purple-500/20',
   IMAGE_GEN: 'text-pink-300 bg-pink-500/10 border-pink-500/20',
   IMAGE_UPSCALE: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
-  TOOL_CALLING: 'text-orange-300 bg-orange-500/10 border-orange-500/20',
+  PROMPT_EXPANSION: 'text-green-300 bg-green-500/10 border-green-500/20',
+  IMAGE_NARRATION: 'text-purple-300 bg-purple-500/10 border-purple-500/20',
+  TOOLS: 'text-orange-300 bg-orange-500/10 border-orange-500/20',
   ADVISOR: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20',
   AI: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
   KEYWORD: 'text-amber-400 bg-amber-500/10 border-amber-500/20 font-bold',
@@ -67,8 +69,8 @@ function truncate(text: string | null, max = 100) {
 }
 
 const KNOWN_CATEGORIES = new Set([
-  'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING', 'AUDIO_VOICE',
-  'TOOL_CALLING', 'IMAGE_GEN', 'WEB_SEARCH', 'CLASSIFIER', 'VISION', 'CODING', 'DEEP_RESEARCH',
+  'FAST_SIMPLE', 'COMPLEX', 'MEDIUM_THINKING', 'AUDIO',
+  'TOOLS', 'IMAGE_GEN', 'WEB_SEARCH', 'CLASSIFIER', 'VISION', 'CODING', 'RESEARCH',
   'THINKING', 'ORCHESTRATOR', 'AI', 'KEYWORD', 'TAG',
 ])
 
@@ -104,7 +106,23 @@ function parseChain(chain: string | null, traces?: StepTrace[] | null): { classi
 // ── Step Trace Modal ─────────────────────────────────────────────────────────
 
 function StepTraceModal({ trace, onClose }: { trace: StepTrace; onClose: () => void }) {
-  const [tab, setTab] = useState<'input' | 'output'>('input')
+  const [tab, setTab] = useState<'input' | 'reasoning' | 'output'>('input')
+
+  const tokenStats = [
+    trace.prompt_tokens !== undefined ? `${trace.prompt_tokens.toLocaleString()} prompt` : null,
+    trace.completion_tokens !== undefined ? `${trace.completion_tokens.toLocaleString()} completion` : null,
+    trace.total_tokens !== undefined ? `${trace.total_tokens.toLocaleString()} total` : null,
+  ].filter(Boolean)
+
+  const cacheInfo = trace.cache_read_input_tokens !== undefined
+    ? [`cache: ${trace.cache_read_input_tokens.toLocaleString()} read`]
+    : []
+
+  const costInfo = trace.cost !== undefined
+    ? [`cost: $${trace.cost.toFixed(6)}`]
+    : []
+
+  const hasUsage = tokenStats.length > 0 || cacheInfo.length > 0 || costInfo.length > 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -136,9 +154,30 @@ function StepTraceModal({ trace, onClose }: { trace: StepTrace; onClose: () => v
           </div>
         </div>
 
+        {/* Usage Stats Bar */}
+        {hasUsage && (
+          <div className="flex items-center gap-4 px-5 py-2 border-b border-white/5 shrink-0 bg-white/[0.01]">
+            {tokenStats.length > 0 && (
+              <span className="text-[10px] font-mono text-bone-70 opacity-60">
+                {tokenStats.join('  ·  ')}
+              </span>
+            )}
+            {costInfo.length > 0 && (
+              <span className="text-[10px] font-mono text-amber-400/60">
+                {costInfo.join(' ')}
+              </span>
+            )}
+            {cacheInfo.length > 0 && (
+              <span className="text-[10px] font-mono text-sky-400/50">
+                {cacheInfo.join('  ·  ')}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 px-5 pt-3 shrink-0">
-          {(['input', 'output'] as const).map(t => (
+          {(['input', 'reasoning', 'output'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -147,7 +186,7 @@ function StepTraceModal({ trace, onClose }: { trace: StepTrace; onClose: () => v
                 tab === t ? 'bg-white/10 text-bone-100' : 'text-bone-70 opacity-40 hover:opacity-70'
               )}
             >
-              {t === 'input' ? 'Input' : 'Output'}
+              {t === 'input' ? 'Input' : t === 'reasoning' ? 'Reasoning' : 'Output'}
             </button>
           ))}
           {trace.error && (
@@ -178,6 +217,13 @@ function StepTraceModal({ trace, onClose }: { trace: StepTrace; onClose: () => v
                   {trace.input_user || <span className="opacity-30 italic">— no user prompt —</span>}
                 </pre>
               </div>
+            </div>
+          ) : tab === 'reasoning' ? (
+            <div className="flex flex-col gap-2 h-full">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-bone-70 opacity-40">Model Reasoning / Thinking</span>
+              <pre className="flex-1 text-[11px] font-mono text-amber-100/70 whitespace-pre-wrap break-words bg-white/[0.02] border border-amber-400/10 rounded-[12px] p-3 overflow-auto max-h-[60vh] select-text">
+                {trace.reasoning || <span className="opacity-30 italic">— no reasoning data for this step —</span>}
+              </pre>
             </div>
           ) : (
             <div className="flex flex-col gap-2 h-full">
@@ -355,7 +401,7 @@ export default function LogsTable({ initialExchanges, initialTotal }: { initialE
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [isPending, startTransition] = useTransition()
 
-  const PAGE_SIZE = 50
+  const PAGE_SIZE = 20
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   async function load(newFilters: Filters, newPage: number) {

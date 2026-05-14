@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { runChain } from '@/lib/bot/chainRouter'
 import { supabaseAdmin, isSupabaseEnabled } from '@/lib/supabase'
 import { logWebInteraction, logModelWebMessage } from '@/lib/bot/analytics'
+import fs from 'fs'
+import path from 'path'
 
 const DEFAULT_DAILY_LIMIT = 1000
 
@@ -113,6 +115,9 @@ export async function POST(req: NextRequest) {
               if (step.status === 'running') {
                 send({ status: step.label || step.goal })
               }
+            },
+            onChunk: (chunk: string) => {
+              send({ content: chunk })
             }
           } as any
         )
@@ -147,6 +152,18 @@ export async function POST(req: NextRequest) {
           classify: result.classification_trace,
           routing: result.routing_trace,
           step_traces: result.step_traces ?? undefined,
+          transcript: result.transcript_md,
+        }
+
+        // Write transcript file
+        try {
+          const transcriptsDir = path.join(process.cwd(), 'transcripts')
+          fs.mkdirSync(transcriptsDir, { recursive: true })
+          const fileDate = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+          const filePath = path.join(transcriptsDir, `ai-transcript-${fileDate}.md`)
+          fs.writeFileSync(filePath, result.transcript_md || '')
+        } catch (e) {
+          console.error('[Transcript] Failed to write file:', e)
         }
 
         logWebInteraction(logUserId, prompt, 'user', usageType as any, 'success', modelChain, requestId, contextMessages, result.image_description, activeChatId ?? null).catch(() => {})
@@ -167,6 +184,7 @@ export async function POST(req: NextRequest) {
           advisor_questions: result.advisor_questions,
           image_description: result.image_description,
           image_prompt: (result as any).image_prompt,
+          transcript_md: result.transcript_md,
         })
         
         send('[DONE]')

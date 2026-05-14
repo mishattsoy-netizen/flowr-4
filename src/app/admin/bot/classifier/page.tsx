@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils'
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   FAST_SIMPLE: { label: 'Fast Simple', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
   MEDIUM_THINKING: { label: 'Medium Thinking', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
-  COMPLEX_THINKING: { label: 'Complex Thinking', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
+  COMPLEX: { label: 'Complex Thinking', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
   IMAGE_GEN: { label: 'Image Generation', color: 'text-pink-400 bg-pink-400/10 border-pink-400/20' },
   WEB_SEARCH: { label: 'Web Search', color: 'text-purple-400 bg-purple-400/10 border-purple-400/20' },
-  TOOL_CALLING: { label: 'Tool Calling', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
-  AUDIO_VOICE: { label: 'Audio Voice', color: 'text-teal-400 bg-teal-400/10 border-teal-400/20' }
+  TOOLS: { label: 'Tool Calling', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
+  AUDIO: { label: 'Audio Voice', color: 'text-teal-400 bg-teal-400/10 border-teal-400/20' }
 }
 
 export default function ClassifierPage() {

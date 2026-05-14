@@ -253,6 +253,7 @@ export interface AIMessage {
   image_description?: string;
   image_prompt?: string;
   status?: string;
+  transcript_md?: string;
 }
 
 export interface AISessionContext {
@@ -453,6 +454,7 @@ export interface AppState {
   setAIAssistantOpen: (open: boolean) => void;
   clearAIChat: () => void;
   compactAIChat: () => Promise<void>;
+  saveTempChat: () => Promise<void>;
   setAIHistory: (messages: AIMessage[]) => void;
   setIsAIAssistantExtended: (extended: boolean) => void;
   setAICursor: (cursor: AICursor | null) => void;

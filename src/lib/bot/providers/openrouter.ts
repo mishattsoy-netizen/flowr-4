@@ -1,5 +1,59 @@
-import { logger } from '../../logger' // Heartbeat update to force recompile
+import { logger } from '../../logger'
 import { getProviderKeys } from '../../vault'
+
+function parseSSEStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  onChunk: (text: string) => void
+): Promise<{ content: string; citations?: any[]; reasoning?: string }> {
+  const decoder = new TextDecoder()
+  let sseBuffer = ''
+  let fullContent = ''
+  let fullReasoning = ''
+  let citations: any[] | undefined
+
+  return new Promise((resolve, reject) => {
+    function pump(): void {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          resolve({ content: fullContent, citations, reasoning: fullReasoning || undefined })
+          return
+        }
+
+        sseBuffer += decoder.decode(value, { stream: true })
+        const parts = sseBuffer.split('\n')
+        sseBuffer = parts.pop() || ''
+
+        for (const line of parts) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta
+            if (delta) {
+              if (delta.content) {
+                fullContent += delta.content
+                onChunk(delta.content)
+              }
+              if (delta.reasoning) {
+                fullReasoning += delta.reasoning
+              }
+            }
+            if (parsed.citations) {
+              citations = parsed.citations
+            }
+          } catch {
+            // Skip malformed SSE lines
+          }
+        }
+
+        pump()
+      }).catch(reject)
+    }
+
+    pump()
+  })
+}
 
 export async function runOpenRouter(
   modelId: string,
@@ -7,10 +61,10 @@ export async function runOpenRouter(
   systemPrompt?: string,
   history: any[] = [],
   aiApiKey?: string,
-  openrouterProvider?: string,
+  context?: any,
   imageBuffers?: Buffer | Buffer[]
-): Promise<{ content: string; provider?: string } | null> {
-  logger.info(`[OpenRouter Audit] Entering runOpenRouter: model=${modelId}, provider=${openrouterProvider}, hasImages=${!!imageBuffers}`)
+): Promise<{ content: string; provider?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number }; reasoning?: string } | null> {
+  logger.info(`[OpenRouter Audit] Entering runOpenRouter: model=${modelId}, provider=${context?.openrouterProvider}, hasImages=${!!imageBuffers}`)
   let keys = aiApiKey ? [aiApiKey] : []
 
   if (keys.length === 0) {
@@ -31,13 +85,18 @@ export async function runOpenRouter(
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     try {
-      if (openrouterProvider) {
-        logger.info(`OpenRouter: Forcing provider routing to: ${openrouterProvider} (Key preview: ${key.substring(0, 10)}...)`)
+      if (context?.openrouterProvider) {
+        logger.info(`OpenRouter: Forcing provider routing to: ${context.openrouterProvider} (Key preview: ${key.substring(0, 10)}...)`)
       }
 
-      const messages: { role: string; content: any }[] = []
+      const isAnthropic = modelId.startsWith('anthropic/')
+      const messages: { role: string; content: any; cache_control?: any }[] = []
       if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt })
+        messages.push({
+          role: 'system',
+          content: systemPrompt,
+          ...(isAnthropic ? { cache_control: { type: 'ephemeral' } } : {})
+        })
       }
       messages.push(...historyMessages)
       if (imageBuffers) {
@@ -59,25 +118,25 @@ export async function runOpenRouter(
         messages.push({ role: 'user', content: prompt })
       }
 
-      // Build request body with optional provider routing
+      const shouldStream = !!(context?.onChunk) && !context?._skipStreaming
       const requestBody: any = {
         model: modelId,
         messages,
-        max_tokens: 5000,
+        max_tokens: context?.max_tokens || 5000,
+        stream: shouldStream || undefined,
       }
 
-      if (openrouterProvider) {
-        const forcedSlug = (openrouterProvider || '').trim()
+      if (context?.openrouterProvider) {
+        const forcedSlug = (context.openrouterProvider || '').trim()
         logger.info(`OpenRouter: Dynamic routing requested for provider: "${forcedSlug}" (Key preview: ${key.substring(0, 10)}...)`)
 
-        // Force specific provider as selected in the UI
         requestBody.provider = {
           order: [forcedSlug],
           allow_fallbacks: true
         }
       }
 
-      // Redact base64 image data from log to keep terminal readable (full payload still sent to API)
+      // Redact base64 image data from log to keep terminal readable
       if (process.env.NODE_ENV !== 'production') {
         const logBody = JSON.parse(JSON.stringify(requestBody))
         if (Array.isArray(logBody.messages)) {
@@ -96,27 +155,30 @@ export async function runOpenRouter(
         console.log(`[DEBUG openrouter.ts] PAYLOAD:`, JSON.stringify(logBody, null, 2));
       }
 
-      logger.info(`OpenRouter: Preparing request for model ${modelId} with provider type: ${typeof openrouterProvider}, value: "${openrouterProvider}"`)
+      logger.info(`OpenRouter: Preparing request for model ${modelId} with provider type: ${typeof context?.openrouterProvider}, value: "${context?.openrouterProvider}"`)
 
+      const fetchHeaders: Record<string, string> = {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://flowr.ai',
+        'X-Title': 'Flowr AI'
+      }
+      if (isAnthropic) {
+        fetchHeaders['anthropic-beta'] = 'prompt-caching-2025-01-17'
+      }
       const response = await fetch(`https://openrouter.ai/api/v1/chat/completions?cb=${Date.now()}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://flowr.ai',
-          'X-Title': 'Flowr AI'
-        },
+        headers: fetchHeaders,
         body: JSON.stringify(requestBody),
       })
 
-      // Capture actual provider from headers if available
       const actualProvider = response.headers.get('x-openrouter-provider') || undefined
       if (actualProvider) {
         logger.info(`OpenRouter: Response received from provider: ${actualProvider}`)
       }
 
-      const status = response.status
-      if (status !== 200) {
+      // Non-OK: handle errors, including streaming-not-supported fallback
+      if (!response.ok) {
         let errBody = ''
         try {
           const errData = await response.json()
@@ -125,22 +187,51 @@ export async function runOpenRouter(
           errBody = await response.text()
         }
 
-        const isKeyExhausted = status === 401 || status === 402 || status === 403
+        // Streaming not supported by model — retry without streaming on same key
+        if (shouldStream && (response.status === 400 || response.status === 422) && errBody.toLowerCase().includes('stream')) {
+          logger.info(`Model ${modelId} does not support streaming — retrying without stream`)
+          const retryContext = { ...context, _skipStreaming: true }
+          return runOpenRouter(modelId, prompt, systemPrompt, history, key, retryContext, imageBuffers)
+        }
+
+        const isKeyExhausted = response.status === 401 || response.status === 402 || response.status === 403
         const prefix = isKeyExhausted ? 'KEY_EXHAUSTED:' : ''
-        const errorMsg = `${prefix}OpenRouter API ${status}: ${response.statusText} — ${errBody.slice(0, 200)}`
+        const errorMsg = `${prefix}OpenRouter API ${response.status}: ${response.statusText} — ${errBody.slice(0, 200)}`
 
         if (isKeyExhausted) {
-          logger.warn(`OpenRouter key index ${i + 1} exhausted (${status}). Trying next if available...`)
+          logger.warn(`OpenRouter key index ${i + 1} exhausted (${response.status}). Trying next if available...`)
           if (i === keys.length - 1) throw new Error(errorMsg)
-          continue // Try next key
+          continue
         }
 
         throw new Error(errorMsg)
       }
 
+      // Streaming response
+      if (shouldStream && response.body) {
+        const reader = response.body.getReader()
+        const { content: streamedContent, citations, reasoning: streamedReasoning } = await parseSSEStream(reader, context.onChunk)
+
+        if (!streamedContent) {
+          throw new Error('OpenRouter returned empty streamed content')
+        }
+
+        let finalContent = streamedContent
+        if (citations && Array.isArray(citations) && citations.length > 0) {
+          const citationText = citations.map((c: any, i: number) => `[${i + 1}] ${typeof c === 'string' ? c : c.url ?? JSON.stringify(c)}`).join('\n')
+          finalContent = `${streamedContent}\n\n${citationText}`
+        }
+
+        return { content: finalContent, provider: actualProvider, reasoning: streamedReasoning }
+      }
+
+      // Non-streaming response
       const data = await response.json()
-      const content = data?.choices?.[0]?.message?.content
+      const msg = data?.choices?.[0]?.message
+      const content = msg?.content
       const citations = data?.citations
+      const usage = data?.usage
+      const reasoning = msg?.reasoning
 
       if (!content) {
         throw new Error('OpenRouter returned empty content')
@@ -152,7 +243,18 @@ export async function runOpenRouter(
         finalContent = `${content}\n\n${citationText}`
       }
 
-      return { content: finalContent, provider: actualProvider }
+      return {
+        content: finalContent,
+        provider: actualProvider,
+        usage: usage ? {
+          prompt_tokens: usage.prompt_tokens,
+          completion_tokens: usage.completion_tokens,
+          total_tokens: usage.total_tokens,
+          cache_read_input_tokens: usage.cache_read_input_tokens,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        } : undefined,
+        reasoning: reasoning || undefined,
+      }
     } catch (error: any) {
       const isExhausted = error.message.includes('KEY_EXHAUSTED:')
       logger.error(`OpenRouter failure [${modelId}] key ${i + 1}:`, error.message)

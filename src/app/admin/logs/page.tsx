@@ -4,7 +4,7 @@ import LogsTable from './LogsTable'
 export const dynamic = 'force-dynamic'
 
 export default async function LogsPage() {
-  const { exchanges, total } = await getMessageExchanges({ limit: 50, offset: 0 })
+  const { exchanges, total } = await getMessageExchanges({ limit: 20, offset: 0 })
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">

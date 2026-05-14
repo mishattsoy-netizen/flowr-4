@@ -612,7 +612,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
             {aiMessages.length === 0 && !isAILoading && (
               <div className="flex-1 flex flex-col justify-end text-center pb-5 min-h-0">
                 <div className="flex items-center justify-center gap-6">
-                <StarIcon className="w-8 h-8" style={{ color: 'var(--bone-100)', fill: 'var(--bone-100)' }} />
+                  <StarIcon className="w-8 h-8" style={{ color: 'var(--bone-100)', fill: 'var(--bone-100)' }} />
                   <p className="text-[26px] font-medium text-[var(--bone-100)] leading-tight tracking-tight font-[family-name:var(--font-display)]">
                     How can I help you today?
                   </p>
@@ -696,7 +696,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                   <Sparkles className="w-3 h-3 text-bone-100" />
                   <span className="text-[10px] font-bold text-bone-100 uppercase tracking-wider">{activeIntentTag.replace(/^!/, '').replace(/_/g, ' ')}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => useStore.getState().setActiveIntentTag(null)}
                   className="ml-1 p-0.5 hover:bg-white/20 rounded-md text-bone-100 "
                 >
@@ -1021,7 +1021,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                                 <Sparkles className="w-3 h-3 text-bone-100" />
                                 <span className="text-[10px] font-bold text-bone-100 uppercase tracking-wider">{activeIntentTag.replace(/^!/, '').replace(/_/g, ' ')}</span>
                               </div>
-                              <button 
+                              <button
                                 onClick={() => useStore.getState().setActiveIntentTag(null)}
                                 className="ml-1 p-0.5 hover:bg-white/20 rounded-md text-bone-100 "
                               >
@@ -1039,33 +1039,42 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           </p>
                         </div>
 
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            setIsCompacting(true);
-                            await compactAIChat();
-                            setIsCompacting(false);
-                          }}
-                          disabled={isCompacting || displayedTokens < 500}
-                          className={clsx(
-                            "w-full py-1.5 rounded-[8px] text-[10px] font-bold tracking-tight  pointer-events-auto flex items-center justify-center gap-2",
-                            displayedTokens < 500
-                              ? "bg-white/5 text-bone-20 cursor-not-allowed opacity-50"
-                              : "bg-white/10 text-bone-100 hover:bg-white/20 active:scale-[0.98]"
-                          )}
-                        >
-                          {isCompacting ? (
-                            <>
-                              <div className="w-2.5 h-2.5 border-2 border-bone-100 border-t-transparent rounded-full animate-spin" />
-                              <span>Distilling...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Zap strokeWidth={2} className="w-3 h-3" />
-                              <span>Compact Memory</span>
-                            </>
-                          )}
-                        </button>
+                        {(() => {
+                          const msgCount = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant').length
+                          const belowMinMsgs = msgCount < 5
+                          const minTokens = (aiSessionContext?.context_limit ?? 32000) * 0.5
+                          const belowMinTokens = displayedTokens < minTokens
+                          const canCompact = !isCompacting && !belowMinMsgs && !belowMinTokens
+                          return (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setIsCompacting(true);
+                                await compactAIChat();
+                                setIsCompacting(false);
+                              }}
+                              disabled={!canCompact}
+                              className={clsx(
+                                "w-full py-1.5 rounded-[8px] text-[10px] font-bold tracking-tight pointer-events-auto flex items-center justify-center gap-2",
+                                canCompact
+                                  ? "bg-white/10 text-bone-100 hover:bg-white/20 active:scale-[0.98]"
+                                  : "bg-white/5 text-bone-20 cursor-not-allowed opacity-50"
+                              )}
+                            >
+                              {isCompacting ? (
+                                <>
+                                  <div className="w-2.5 h-2.5 border-2 border-bone-100 border-t-transparent rounded-full animate-spin" />
+                                  <span>Distilling...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Zap strokeWidth={2} className="w-3 h-3" />
+                                  <span>Compact Memory</span>
+                                </>
+                              )}
+                            </button>
+                          )
+                        })()}
                       </div>
                     </div>,
                     document.body

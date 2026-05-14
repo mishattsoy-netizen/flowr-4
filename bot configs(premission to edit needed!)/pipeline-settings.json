@@ -6,17 +6,37 @@
   "thinkingToggleDefault": false,
   "thinkingSummaryVisible": "collapsible",
   "statusMessages": {
+    "AUDIO": {
+      "emoji": "",
+      "label": ""
+    },
+    "TOOLS": {
+      "emoji": "",
+      "label": "Tooling..."
+    },
     "CODING": {
       "emoji": "",
       "label": "Coding..."
     },
     "VISION": {
       "emoji": "",
-      "label": "Inspecting..."
+      "label": "Looking..."
     },
     "ADVISOR": {
       "emoji": "",
-      "label": "Asking question..."
+      "label": "Asking..."
+    },
+    "COMPLEX": {
+      "emoji": "",
+      "label": "Writing..."
+    },
+    "REGULAR": {
+      "emoji": "",
+      "label": "Writing..."
+    },
+    "RESEARCH": {
+      "emoji": "",
+      "label": "Researching..."
     },
     "THINKING": {
       "emoji": "",
@@ -29,6 +49,10 @@
     "CLASSIFIER": {
       "emoji": "",
       "label": "Analyzing..."
+    },
+    "COMPACTION": {
+      "emoji": "",
+      "label": "Compressing..."
     },
     "WEB_SEARCH": {
       "emoji": "",
@@ -54,35 +78,54 @@
       "emoji": "",
       "label": "Researching..."
     },
-    "MEDIUM_THINKING": {
-      "emoji": "",
-      "label": "Writing..."
-    },
     "COMPLEX_THINKING": {
       "emoji": "",
       "label": "Writing..."
     }
   },
   "historyEnabledCategories": [
-    "COMPLEX_THINKING",
-    "MEDIUM_THINKING",
+    "COMPLEX",
+    "REGULAR",
     "CODING",
-    "TOOL_CALLING",
+    "TOOLS",
     "ADVISOR",
     "IMAGE_GEN",
     "IMAGE_UPSCALE",
     "VISION",
-    "AUDIO_VOICE",
+    "AUDIO",
     "CLASSIFIER",
-    "FAST_SIMPLE"
+    "REGULAR",
+    "WEB_SEARCH",
+    "RESEARCH",
+    "THINKING",
+    "COMPACTION"
   ],
   "globalPromptEnabledCategories": [
-    "COMPLEX_THINKING",
-    "MEDIUM_THINKING",
+    "COMPLEX",
+    "REGULAR",
     "CODING",
     "ADVISOR",
-    "AUDIO_VOICE",
-    "FAST_SIMPLE",
+    "AUDIO",
+    "REGULAR",
+    "WEB_SEARCH",
+    "RESEARCH",
     "VISION"
+  ],
+  "inputTokenLimit": 64000,
+  "outputTokenLimit": 12000,
+  "tokenLimitEnabledCategories": [
+    "IMAGE_GEN",
+    "REGULAR",
+    "RESEARCH",
+    "ADVISOR",
+    "COMPLEX",
+    "REGULAR",
+    "IMAGE_UPSCALE",
+    "VISION",
+    "CODING",
+    "TOOLS",
+    "AUDIO",
+    "CLASSIFIER",
+    "WEB_SEARCH"
   ]
 }

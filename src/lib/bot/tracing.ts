@@ -1,8 +1,18 @@
-const MAX_FIELD_CHARS = 12000
+const MAX_FIELD_CHARS = 80000
 
 function cap(s: string | undefined | null): string | undefined {
   if (!s) return undefined
-  return s.length > MAX_FIELD_CHARS ? s.slice(0, MAX_FIELD_CHARS) + '\n…[truncated]' : s
+  // Strip base64 images before length check — they add no signal
+  const cleaned = s.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[image]')
+  return cleaned.length > MAX_FIELD_CHARS ? cleaned.slice(0, MAX_FIELD_CHARS) + '\n…[truncated]' : cleaned
+}
+
+export interface ProviderUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  cache_read_input_tokens?: number
+  cache_creation_input_tokens?: number
 }
 
 export interface StepTrace {
@@ -20,6 +30,12 @@ export interface StepTrace {
   error?: string
   duration_ms: number
   started_at: string
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  cache_read_input_tokens?: number
+  cost?: number
+  reasoning?: string
 }
 
 export class TraceCollector {
@@ -35,6 +51,12 @@ export class TraceCollector {
       input_system?: string
       input_user?: string
       input_history_count?: number
+      prompt_tokens?: number
+      completion_tokens?: number
+      total_tokens?: number
+      cache_read_input_tokens?: number
+      cost?: number
+      reasoning?: string
     },
     fn: () => Promise<T>
   ): Promise<T> {
@@ -57,6 +79,12 @@ export class TraceCollector {
         output: cap(typeof result === 'string' ? result : (result && typeof result === 'object' && 'content' in (result as any) ? (result as any).content : undefined)),
         duration_ms: Date.now() - t0,
         started_at,
+        prompt_tokens: meta.prompt_tokens,
+        completion_tokens: meta.completion_tokens,
+        total_tokens: meta.total_tokens,
+        cache_read_input_tokens: meta.cache_read_input_tokens,
+        cost: meta.cost,
+        reasoning: cap(meta.reasoning),
       })
       return result
     } catch (err: any) {
@@ -118,6 +146,12 @@ export class TraceCollector {
       input_user?: string
       input_history_count?: number
       output?: string
+      prompt_tokens?: number
+      completion_tokens?: number
+      total_tokens?: number
+      cache_read_input_tokens?: number
+      cost?: number
+      reasoning?: string
     },
     duration_ms = 0
   ) {
@@ -135,6 +169,12 @@ export class TraceCollector {
       output: cap(meta.output),
       duration_ms,
       started_at: new Date().toISOString(),
+      prompt_tokens: meta.prompt_tokens,
+      completion_tokens: meta.completion_tokens,
+      total_tokens: meta.total_tokens,
+      cache_read_input_tokens: meta.cache_read_input_tokens,
+      cost: meta.cost,
+      reasoning: cap(meta.reasoning),
     })
   }
 

@@ -11,7 +11,7 @@ export async function runGroq(
   context?: any,
   history: any[] = [],
   imageBuffers?: Buffer | Buffer[]
-): Promise<string | null> {
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string } | null> {
   let keys = aiApiKey ? [aiApiKey] : []
   
   if (keys.length === 0) {
@@ -81,7 +81,8 @@ export async function runGroq(
             messages,
             tools: (context?.useTools && !modelId.includes('vision')) ? tools : undefined,
             tool_choice: context?.useTools ? 'auto' : undefined,
-            temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7
+            temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7,
+            max_tokens: context?.max_tokens || undefined
           })
         })
 
@@ -123,7 +124,16 @@ export async function runGroq(
         } else {
           // No more tool calls, return final content
           if (context) context.usedKeyIndex = context.usedKeyIndex || i + 1
-          return message.content || null
+          const usage = data?.usage ? {
+            prompt_tokens: data.usage.prompt_tokens,
+            completion_tokens: data.usage.completion_tokens,
+            total_tokens: data.usage.total_tokens,
+          } : undefined
+          return {
+            content: message.content,
+            usage,
+            reasoning: message.reasoning || undefined,
+          }
         }
       }
     } catch (error: any) {

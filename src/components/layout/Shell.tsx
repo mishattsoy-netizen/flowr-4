@@ -28,7 +28,6 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   const modal = useStore(state => state.modal);
   const isSidebarCollapsed = useStore(state => state.isSidebarCollapsed);
-  const isSidebarPinned = useStore(state => state.isSidebarPinned);
   const toggleSidebar = useStore(state => state.toggleSidebar);
   const activeEntityId = useStore(state => state.activeEntityId);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
@@ -66,7 +65,10 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   useEffect(() => {
     if (hasHydrated) {
-      const timer = setTimeout(() => setAllowTransitions(true), 200);
+      const timer = setTimeout(() => {
+        setAllowTransitions(true);
+        document.documentElement.classList.remove('preload');
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [hasHydrated]);
@@ -156,6 +158,12 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
   const aiSidebarWidth = useStore(state => state.aiSidebarWidth);
   const setAiSidebarWidth = useStore(state => state.setAiSidebarWidth);
 
+  // Sync --sidebar-w CSS var on <html> when sidebar width/collapse changes
+  useEffect(() => {
+    const w = isSidebarCollapsed ? 0 : sidebarWidth;
+    document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+  }, [isSidebarCollapsed, sidebarWidth]);
+
   const isResizingLeftRef = useRef(false);
   const isResizingRightRef = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -200,11 +208,8 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   const shellClass = "h-screen w-full overflow-hidden bg-background text-foreground";
 
-  const currentSidebarWidth = hasHydrated ? sidebarWidth : 0; // Use 0 to force reliance on CSS var
   const currentAiSidebarWidth = hasHydrated ? aiSidebarWidth : 400;
-
   const currentSidebarCollapsed = isSidebarCollapsed;
-  const currentSidebarPinned = isSidebarPinned;
 
   return (
     <div
@@ -216,8 +221,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
         (isResizingLeft || isResizingRight) && "resizing-active"
       )}
       style={{
-        ['--sidebar-w' as any]: hasHydrated ? (currentSidebarCollapsed ? '0px' : `${currentSidebarWidth}px`) : undefined,
-        gridTemplateColumns: `var(--sidebar-w, ${currentSidebarCollapsed ? '0px' : '280px'}) 1fr`,
+        gridTemplateColumns: 'var(--sidebar-w, 280px) 1fr',
         transition: (!allowTransitions || isResizingLeft || isResizingRight) ? 'none' : 'grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1)'
       } as React.CSSProperties}
     >
@@ -230,7 +234,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
           currentSidebarCollapsed ? "hidden md:flex" : "fixed inset-0 z-50 md:relative md:inset-auto md:flex"
         )}
         style={{
-          width: hasHydrated ? (currentSidebarCollapsed ? '0px' : `${currentSidebarWidth}px`) : 'var(--sidebar-w, 280px)',
+          width: 'var(--sidebar-w, 280px)',
           transition: (!allowTransitions || isResizingLeft || isResizingRight) ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >

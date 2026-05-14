@@ -5,8 +5,9 @@ export async function runOllama(
   prompt: string,
   systemPrompt?: string,
   history: any[] = [],
-  temperature?: number
-): Promise<string | null> {
+  temperature?: number,
+  context?: any
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null> {
   const historyMessages = history.map((h: any) => ({
     role: h.role === 'model' ? 'assistant' : 'user',
     content: h.parts?.[0]?.text || ''
@@ -25,7 +26,15 @@ export async function runOllama(
     const response = await fetch('http://localhost:11434/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modelId, messages, temperature: typeof temperature === 'number' ? temperature : 0.7, options: { num_ctx: 4096 } }),
+      body: JSON.stringify({ 
+        model: modelId, 
+        messages, 
+        temperature: typeof temperature === 'number' ? temperature : 0.7, 
+        options: { 
+          num_ctx: 4096,
+          num_predict: context?.max_tokens || undefined
+        } 
+      }),
       signal: controller.signal
     }).finally(() => clearTimeout(timeout))
 
@@ -35,7 +44,14 @@ export async function runOllama(
     }
 
     const data = await response.json()
-    return data.choices?.[0]?.message?.content || null
+    const msg = data.choices?.[0]?.message
+    if (!msg?.content) return null
+    const usage = data.usage ? {
+      prompt_tokens: data.usage.prompt_tokens,
+      completion_tokens: data.usage.completion_tokens,
+      total_tokens: data.usage.total_tokens,
+    } : undefined
+    return { content: msg.content, usage }
   } catch (error: any) {
     // Connection refused = Ollama not running — silent fallthrough
     if (error.cause?.code === 'ECONNREFUSED' || error.name === 'AbortError') {

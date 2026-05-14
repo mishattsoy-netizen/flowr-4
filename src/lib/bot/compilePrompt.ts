@@ -3,6 +3,7 @@ import type { BotMode } from '@/data/store.types'
 import fs from 'fs'
 import path from 'path'
 import { logger } from '../logger'
+import { getCachedCompiledPrompt, setCachedCompiledPrompt, invalidateCompiledPromptCache, getCachedInternalPrompts, setCachedInternalPrompts } from './promptCache'
 
 const CATEGORY_LABELS: Record<string, string> = {
   core_rules:       'CORE RULES',
@@ -66,6 +67,9 @@ export async function recompilePrompt(mode: BotMode = 'default'): Promise<void> 
     .eq('mode', mode)
 
   if (error) throw error
+
+  // Invalidate in-memory cache so next request picks up the new prompt
+  invalidateCompiledPromptCache(mode)
 }
 
 export async function recompileAllModes(): Promise<void> {
@@ -76,6 +80,10 @@ export async function recompileAllModes(): Promise<void> {
 }
 
 export async function getCompiledPrompt(mode: BotMode = 'default'): Promise<string> {
+  // 0. In-memory cache — avoids Supabase query on every request
+  const cached = getCachedCompiledPrompt(mode)
+  if (cached) return cached
+
   // 1. Supabase primary
   try {
     const { data, error } = await supabase
@@ -85,7 +93,9 @@ export async function getCompiledPrompt(mode: BotMode = 'default'): Promise<stri
       .single()
 
     if (!error && data && data.global_enabled && data.content?.trim()) {
-      return data.content.trim()
+      const content = data.content.trim()
+      setCachedCompiledPrompt(mode, content)
+      return content
     }
     if (error) logger.warn(`getCompiledPrompt: DB error [${mode}]: ${error.message}`)
   } catch (err) {
@@ -109,20 +119,12 @@ export async function getCompiledPrompt(mode: BotMode = 'default'): Promise<stri
   return ''
 }
 
-const DEFAULT_INTERNAL_PROMPTS: Record<string, string> = {
-  VISION: `PIPELINE STEP — output goes to next chain, NOT to user. Extract all visual content, text, objects, and context from the image. Return structured data only.`,
-  WEB_SEARCH: `PIPELINE STEP — output goes to next chain, NOT to user.\nPerform a fast broad search. One pass, speed over depth.\nReturn structured output:\nQUERIES RUN: [queries used]\nKEY FINDINGS:\n- [fact] — source: [URL]\nGAPS: [not found — or "none"]\nCONFLICTS: [contradictions — or "none"]\nRules: no conclusions, no fabricated sources, no prose.`,
-  DEEP_RESEARCH: `PIPELINE STEP — output goes to next chain, NOT to user.\nExhaustive multi-source research. Accuracy over speed. Cross-reference every claim.\nReturn structured output:\nTOPIC: [topic]\nFINDINGS:\n- [finding] — confidence: high/medium/low — sources: [URLs]\nCONFLICTS:\n- [position A] vs [position B] — sources: [URLs]\nGAPS: [unanswered questions — or "none"]\nRules: flag every conflict, flag every gap, no fabricated sources, no final conclusions.`,
-  CODING: `PIPELINE STEP — output goes to next chain, NOT to user. Produce the requested code. Return: code blocks, brief summary of what was written, any caveats or assumptions.`,
-  COMPLEX_THINKING: `PIPELINE STEP — output goes to next chain, NOT to user. Analyze the problem deeply. Return: conclusions, key insights, recommended approach. No prose — structured output only.`,
-  TOOL_CALLING: `PIPELINE STEP — output goes to next chain, NOT to user. Execute the requested action. Return: what was done, result or confirmation, any errors encountered.`,
-  IMAGE_GEN: `PIPELINE STEP — image has been generated. Pass concept forward as JSON. Output exactly: {"type":"image_generated","prompt_used":"<prompt>","concept":"<brief concept>"}`,
-}
-
 export async function getInternalPrompt(chainType: string, mode: BotMode = 'default'): Promise<string> {
-  let rolePrompt = ''
+  // 0. In-memory cache — avoids Supabase query on every request
+  const cached = getCachedInternalPrompts()
+  if (cached) return cached[chainType] ?? ''
 
-  // 1. Supabase settings primary
+  // 1. Supabase primary
   try {
     const { data, error } = await supabase
       .from('settings')
@@ -132,62 +134,12 @@ export async function getInternalPrompt(chainType: string, mode: BotMode = 'defa
 
     if (!error && data) {
       const customPrompts = (data.value as Record<string, string>) ?? {}
-      rolePrompt = customPrompts[chainType]
+      setCachedInternalPrompts(customPrompts)
+      return customPrompts[chainType] ?? ''
     }
   } catch (err) {
     logger.warn(`getInternalPrompt: DB error: ${err}`)
   }
 
-  // 2. Local file fallback
-  if (!rolePrompt) {
-    try {
-      const fileName = `pipeline-${chainType.toLowerCase().replace(/_/g, '-')}.txt`
-      const filePath = path.join(process.cwd(), 'bot prompts(premission to edit needed!)', fileName)
-      if (fs.existsSync(filePath)) {
-        rolePrompt = fs.readFileSync(filePath, 'utf8').trim()
-        logger.info(`Loaded fallback internal prompt from ${filePath}`)
-      }
-    } catch (err) {
-      logger.warn(`Failed to read fallback pipeline file: ${err}`)
-    }
-  }
-
-  // 3. Hardcoded default fallback
-  if (!rolePrompt) {
-    rolePrompt = DEFAULT_INTERNAL_PROMPTS[chainType] ?? `You are the ${chainType} component of this AI system. Process the input accurately according to your specific role. Deliver a high-quality response that follows all safety and formatting constraints.`
-  }
-
-  const parts: string[] = [rolePrompt]
-
-  try {
-    const [brainResult, restrictionsResult] = await Promise.all([
-      supabase
-        .from('bot_brain_entries')
-        .select('category, title, content')
-        .eq('is_active', true)
-        .in('category', ['rules', 'red_flags', 'facts'])
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('bot_settings')
-        .select('content')
-        .eq('category', 'restrictions')
-        .eq('mode', mode)
-        .maybeSingle()
-    ])
-
-    if (restrictionsResult.data?.content) {
-      parts.push(`[RESTRICTIONS]\n${restrictionsResult.data.content.trim()}`)
-    }
-
-    const brainEntries = brainResult.data ?? []
-    const factsEntries = brainEntries.filter((e: any) => e.category === 'facts')
-    if (factsEntries.length > 0) {
-      const lines = factsEntries.map((e: any) => `- ${e.title}: ${e.content}`).join('\n')
-      parts.push(`[BRAIN: FACTS & KNOWLEDGE]\n${lines}`)
-    }
-  } catch (err) {
-    logger.warn(`getInternalPrompt: partial DB failure (brain/restrictions), proceeding with core prompt only.`)
-  }
-
-  return parts.join('\n\n')
+  return ''
 }

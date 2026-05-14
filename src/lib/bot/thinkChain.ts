@@ -1,7 +1,6 @@
 import { logger } from '../logger'
 import { getRouterChain, IntentCategory } from '../router-config'
-import { executePipeline, PipelineStep, StatusCallback } from './pipeline'
-import { OrchestratorPlan } from './orchestrator'
+import type { PipelineStep, StatusCallback } from './pipeline'
 import { TraceCollector } from './tracing'
 
 export interface ThinkResult {
@@ -35,7 +34,7 @@ function parseThinkOutput(raw: string): ThinkResult {
   const confidenceMatch = raw.match(/Confidence:\s*(high|medium|low)/i)?.[1] as 'high' | 'medium' | 'low' | undefined
 
   const validChains: IntentCategory[] = [
-    'WEB_SEARCH', 'DEEP_RESEARCH', 'VISION', 'CODING', 'COMPLEX_THINKING', 'MEDIUM_THINKING'
+    'WEB_SEARCH', 'RESEARCH', 'VISION', 'CODING', 'COMPLEX', 'REGULAR'
   ]
   const correctionChain = (
     correctionMatch &&
@@ -155,20 +154,10 @@ export async function runThinkChain(
   if (result.correctionChain) {
     logger.info(`Think chain requesting correction: ${result.correctionChain}`)
     thinkStep.status = 'done'
-    thinkStep.output = raw
     allSteps.push({ ...thinkStep })
     onStatus({ ...thinkStep })
 
-    const correctionPlan: OrchestratorPlan = {
-      steps: [result.correctionChain],
-      stepGoals: [`Provide additional data to fill gap identified by think chain: ${result.direction}`],
-    }
-
-    const correctionResult = await executePipeline(correctionPlan, originalPrompt, context, onStatus, tracer)
     const correctedContext = accumulatedContext
-      ? accumulatedContext + '\n\n' + correctionResult.accumulatedContext
-      : correctionResult.accumulatedContext
-    allSteps.push(...correctionResult.steps)
 
     // Second think pass — no more corrections
     const thinkStep2: PipelineStep = { 
@@ -185,7 +174,6 @@ export async function runThinkChain(
     if (raw2) {
       const result2 = parseThinkOutput(raw2)
       thinkStep2.status = 'done'
-      thinkStep2.output = raw2
       allSteps.push({ ...thinkStep2 })
       onStatus({ ...thinkStep2 })
       return {
@@ -208,7 +196,6 @@ export async function runThinkChain(
   }
 
   thinkStep.status = 'done'
-  thinkStep.output = raw
   allSteps.push({ ...thinkStep })
   onStatus({ ...thinkStep })
 

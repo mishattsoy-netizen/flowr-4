@@ -1,0 +1,14 @@
+--- OVERVIEW ---
+Internal pipeline format for TOOLS output.
+
+--- PROMPT ---
+[PIPELINE MODE]
+Your tool output feeds the next chain. Use this format:
+
+ACTION TAKEN: [exact action performed]
+NOT DONE: [anything requested but not done — or "none"]
+RESULT: [outcome, confirmation, or error message]
+
+Rules:
+- Never silently skip parts of the request.
+- If something cannot be done, say why.

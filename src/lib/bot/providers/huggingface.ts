@@ -30,7 +30,7 @@ export async function runHuggingFace(modelId: string, prompt: string, aiApiKey?:
           num_inference_steps: 40
         },
         options: {
-          use_cache: false,
+          use_cache: true,
           wait_for_model: true
         }
       })
@@ -54,8 +54,9 @@ export async function runHuggingFaceText(
   prompt: string,
   systemPrompt?: string,
   history?: any[],
-  aiApiKey?: string
-): Promise<string | null> {
+  aiApiKey?: string,
+  context?: any
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string } | null> {
   let keys = aiApiKey ? [aiApiKey] : []
   if (keys.length === 0) {
     keys = [...await getProviderKeys('HUGGINGFACE'), ...await getProviderKeys('HUGGING_FACE')]
@@ -87,7 +88,8 @@ export async function runHuggingFaceText(
       },
       body: JSON.stringify({
         messages,
-        max_tokens: 2000
+        max_tokens: context?.max_tokens || 2000,
+        options: { use_cache: true }
       })
     })
 
@@ -97,7 +99,14 @@ export async function runHuggingFaceText(
     }
 
     const json = await response.json()
-    return json.choices?.[0]?.message?.content ?? null
+    const msg = json.choices?.[0]?.message
+    const usage = json.usage ? {
+      prompt_tokens: json.usage.prompt_tokens,
+      completion_tokens: json.usage.completion_tokens,
+      total_tokens: json.usage.total_tokens,
+    } : undefined
+    if (!msg?.content) return null
+    return { content: msg.content, usage, reasoning: msg.reasoning || undefined }
   } catch (error: any) {
     logger.error(`HuggingFace text model ${modelId} execution failed:`, error.message)
     return null

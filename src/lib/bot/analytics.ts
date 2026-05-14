@@ -29,7 +29,7 @@ export async function logInteraction(
     if (role === 'user' && content) {
       try {
         const { getRouterChain } = await import('../router-config')
-        const { chain } = await getRouterChain('FAST_SIMPLE')
+        const { chain } = await getRouterChain('REGULAR')
         const modelConfig = chain.find(m => m.is_enabled && m.provider === 'google')
         
         if (modelConfig) {

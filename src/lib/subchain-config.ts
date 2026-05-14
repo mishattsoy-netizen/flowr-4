@@ -16,7 +16,7 @@ const DEFAULTS: SubchainConfig[] = [
     id: 'prompt_expander',
     label: 'Prompt Expander',
     parent_category: 'IMAGE_GEN',
-    chain_category: 'FAST_SIMPLE',
+    chain_category: 'REGULAR',
     system_prompt: `You are a professional image prompt engineer.
 Your task is to take the user's current request and the conversation history, and generate a single, highly detailed, descriptive image generation prompt.
 
@@ -50,8 +50,8 @@ Rules:
   {
     id: 'deep_research_gap_detector',
     label: 'Gap Detector',
-    parent_category: 'DEEP_RESEARCH',
-    chain_category: 'FAST_SIMPLE',
+    parent_category: 'RESEARCH',
+    chain_category: 'REGULAR',
     system_prompt: `You are a research gap detector. Given search findings and the original question, identify up to 2 specific follow-up search queries needed to fill gaps. Return ONLY a JSON array of query strings, nothing else. If no gaps exist, return [].
 
 Return format: ["query 1", "query 2"]`,

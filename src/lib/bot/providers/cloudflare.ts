@@ -17,7 +17,8 @@ export async function runCloudflare(
   aiApiKey?: string,
   system_prompt?: string,
   history: { role: 'user' | 'assistant' | 'system', content: string }[] = [],
-  category?: string
+  category?: string,
+  context?: any
 ): Promise<Buffer | string | null> {
   const keys = await getProviderKeys('cloudflare')
   const token = (aiApiKey || keys[0])?.trim()
@@ -60,7 +61,7 @@ export async function runCloudflare(
       if (system_prompt) messages.push({ role: 'system', content: system_prompt })
       for (const msg of history) messages.push({ role: msg.role, content: msg.content })
       messages.push({ role: 'user', content: prompt })
-      body = { messages, max_tokens: 2048 }
+      body = { messages, max_tokens: context?.max_tokens || 2048 }
     }
 
     const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId.trim()}/ai/run/${cfModel.trim()}`

@@ -29,21 +29,21 @@ export interface ClassifyResult {
 }
 
 const VALID_CATEGORIES: (IntentCategory | 'MULTI_CHAIN')[] = [
-  'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING',
-  'IMAGE_GEN', 'WEB_SEARCH', 'AUDIO_VOICE', 'TOOL_CALLING',
-  'CODING', 'DEEP_RESEARCH', 'MULTI_CHAIN', 'ADVISOR',
+  'REGULAR', 'COMPLEX',
+  'IMAGE_GEN', 'WEB_SEARCH', 'AUDIO', 'TOOLS',
+  'CODING', 'RESEARCH', 'MULTI_CHAIN', 'ADVISOR',
 ]
 
 const DEFAULT_CLASSIFIER_PROMPT = `Classify user intent into exactly ONE category:
 FAST_SIMPLE: Quick questions, greetings, casual chat.
-COMPLEX_THINKING: Hard logic, deep analysis, step-by-step reasoning.
+COMPLEX: Hard logic, deep analysis, step-by-step reasoning.
 MEDIUM_THINKING: Moderate complexity, multi-part answers.
 IMAGE_GEN: Requests to create, draw, or generate images/art.
 WEB_SEARCH: Current events, live data, product comparisons, new software/AI versions (e.g. "Gemini 3.1", "GPT-5"), or anything likely after 2024.
-AUDIO_VOICE: Voice interaction or audio related.
-TOOL_CALLING: Intent that requires specialized tools.
+AUDIO: Voice interaction or audio related.
+TOOLS: Intent that requires specialized tools.
 CODING: Programming, debugging, code snippets.
-DEEP_RESEARCH: Exhaustive topic research and synthesis.
+RESEARCH: Exhaustive topic research and synthesis.
 ADVISOR: Strategic advice, coaching, or planning.
 MULTI_CHAIN: Multiple intents combined.
 
@@ -51,10 +51,10 @@ Respond ONLY with the category name.`
 
 const TAG_CATEGORY_MAP: Record<string, IntentCategory> = {
   '/search': 'WEB_SEARCH',
-  '/research': 'DEEP_RESEARCH',
+  '/research': 'RESEARCH',
   '/code': 'CODING',
   '/image': 'IMAGE_GEN',
-  '/tool': 'TOOL_CALLING',
+  '/tool': 'TOOLS',
 }
 
 export async function classifyIntent(message: string, aiApiKey?: string, modelId?: string): Promise<IntentCategory | 'MULTI_CHAIN' | null> {
@@ -113,7 +113,7 @@ export async function classifyIntentWithModel(
           .from('bot_settings')
           .select('is_active')
           .eq('category', 'classifier_keywords_enabled')
-          .eq('mode', 'default')
+          .eq('mode', 'global')
           .maybeSingle(),
         supabaseAdmin
           .from('bot_settings')
@@ -125,7 +125,7 @@ export async function classifyIntentWithModel(
           .from('bot_settings')
           .select('content')
           .eq('category', 'classifier_keywords')
-          .eq('mode', 'default')
+          .eq('mode', 'global')
           .maybeSingle(),
       ])
 
@@ -162,8 +162,8 @@ export async function classifyIntentWithModel(
   // Keyword fast-path — only runs if keywords are configured and enabled
   if (keywordsEnabled && keywordsObj) {
     for (const cat of Object.keys(keywordsObj) as IntentCategory[]) {
-      const list = keywordsObj[cat] || []
-      for (const kw of list) {
+      const catKeywords = keywordsObj[cat] || []
+      for (const kw of catKeywords) {
         const kwLower = kw.trim().toLowerCase()
         if (!kwLower) continue
 
@@ -220,7 +220,7 @@ export async function classifyIntentWithModel(
   const lastWasImage = !!lastModelText && /(!\[|data:image|\[Image[: ])/i.test(lastModelText)
 
   const contextHint = lastWasImage ? `\n[CONTEXT: The last response contained an image. Follow-up requests like "one more", "make it...", or "change..." should likely be IMAGE_GEN.]` : ''
-  const finalPrompt = `${replyPrefix}${activePrompt}${contextHint}\nUser: "${message}"`
+  const finalUserPrompt = `${replyPrefix}${contextHint}\nUser: "${message}"`
 
   for (const modelConfig of activeChain) {
     if (!modelConfig.is_enabled) continue
@@ -234,7 +234,7 @@ export async function classifyIntentWithModel(
     if (modelConfig.provider.toLowerCase().includes('ollama')) key = 'LOCAL'
 
     const t0 = Date.now()
-    const traceMeta = { chain: 'CLASSIFIER', model: modelConfig.id, provider: modelConfig.provider, key: `${key} 1`, input_user: finalPrompt, input_history_count: recentHistory.length }
+    const traceMeta = { chain: 'CLASSIFIER', model: modelConfig.id, provider: modelConfig.provider, key: `${key} 1`, input_system: activePrompt || undefined, input_user: finalUserPrompt, input_history_count: recentHistory.length }
 
     try {
       let rawResponse: any = null
@@ -242,17 +242,17 @@ export async function classifyIntentWithModel(
 
       const provider = modelConfig.provider.toLowerCase()
       if (provider === 'google') {
-        rawResponse = await runGoogle(modelConfig.id, finalPrompt, undefined, undefined, traceContext, recentHistory)
+        rawResponse = await runGoogle(modelConfig.id, finalUserPrompt, activePrompt, undefined, traceContext, recentHistory)
       } else if (provider === 'groq') {
-        rawResponse = await runGroq(modelConfig.id, finalPrompt, undefined, aiApiKey, traceContext, recentHistory)
+        rawResponse = await runGroq(modelConfig.id, finalUserPrompt, activePrompt, aiApiKey, traceContext, recentHistory)
       } else if (provider === 'openrouter') {
-        const orRes = await (await import('./providers/openrouter')).runOpenRouter(modelConfig.id, finalPrompt, '', recentHistory, aiApiKey, modelConfig.openrouter_provider || undefined)
+        const orRes = await (await import('./providers/openrouter')).runOpenRouter(modelConfig.id, finalUserPrompt, activePrompt || '', recentHistory, aiApiKey, modelConfig.openrouter_provider || undefined)
         rawResponse = typeof orRes === 'string' ? orRes : (orRes as any)?.content || null
       } else if (provider === 'ollama' || provider === 'local') {
-        const olRes = await (await import('./providers/ollama')).runOllama(modelConfig.id, finalPrompt, '', recentHistory)
+        const olRes = await (await import('./providers/ollama')).runOllama(modelConfig.id, finalUserPrompt, activePrompt || '', recentHistory)
         rawResponse = typeof olRes === 'string' ? olRes : null
       } else if (provider === 'pollinations') {
-        const polRes = await (await import('./providers/pollinations')).runPollinationsText(modelConfig.id, finalPrompt, '', recentHistory)
+        const polRes = await (await import('./providers/pollinations')).runPollinationsText(modelConfig.id, finalUserPrompt, activePrompt || '', recentHistory)
         rawResponse = typeof polRes === 'string' ? polRes : null
       }
 

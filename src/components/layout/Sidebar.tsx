@@ -98,8 +98,6 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
   const chatEditInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [storeHydrated, setStoreHydrated] = useState(false);
-  // Show skeleton immediately on mount/refresh (0ms delay) to prevent "gray void"
-  const showSkeleton = (!storeHydrated || !isMounted);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const lastClickedRef = useRef<string | null>(null);
 
@@ -580,11 +578,9 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {(!isMounted || !storeHydrated) ? (
-            showSkeleton ? (
-              (inferredEntityId === 'chat' && !effectiveCollapsed) 
-                ? <ChatHistorySkeleton /> 
-                : <SidebarSkeleton collapsed={effectiveCollapsed} />
-            ) : null
+            (inferredEntityId === 'chat' && !effectiveCollapsed) 
+              ? <ChatHistorySkeleton /> 
+              : <SidebarSkeleton collapsed={effectiveCollapsed} />
           ) : effectiveCollapsed ? (
             <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-4 flex flex-col items-center gap-3 w-full scrollbar-none">
               <Tooltip content="Pinned items">
@@ -642,10 +638,10 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                       if (convs.length === 0) return null;
                       return (
                         <div key={label}>
-                          <p className="pl-[10px] pr-1.5 h-7 flex items-center text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-70)]">
+                          <div className="pl-[10px] pr-1.5 h-7 flex items-center text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-70)]">
                             <div className="w-[14px] shrink-0" />
                             <span className="ml-[6px]">{label}</span>
-                          </p>
+                          </div>
                           {convs.map(conv => (
                             <div
                               key={conv.id}

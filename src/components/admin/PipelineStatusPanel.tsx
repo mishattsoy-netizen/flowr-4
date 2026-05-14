@@ -8,15 +8,16 @@ interface Props {
 }
 
 const CHAIN_TYPES = [
-  'FAST_SIMPLE', 'COMPLEX_THINKING', 'MEDIUM_THINKING',
-  'VISION', 'WEB_SEARCH', 'DEEP_RESEARCH', 'CODING',
-  'TOOL_CALLING', 'IMAGE_GEN', 'AUDIO_VOICE',
-  'CLASSIFIER', 'ADVISOR', 'THINKING', 'ORCHESTRATOR'
+  'REGULAR', 'COMPLEX',
+  'VISION', 'WEB_SEARCH', 'RESEARCH', 'CODING',
+  'TOOLS', 'IMAGE_GEN', 'AUDIO',
+  'CLASSIFIER', 'ADVISOR', 'THINKING', 'COMPACTION',
 ]
 
 export default function PipelineStatusPanel({ initialMessages }: Props) {
   const [messages, setMessages] = useState(initialMessages)
   const [saving, setSaving] = useState<string | null>(null)
+  const [savingAll, setSavingAll] = useState(false)
   const [, startTransition] = useTransition()
 
   const handleSave = (type: string) => {
@@ -28,14 +29,35 @@ export default function PipelineStatusPanel({ initialMessages }: Props) {
     })
   }
 
+  const handleSaveAll = () => {
+    setSavingAll(true)
+    startTransition(async () => {
+      await Promise.all(CHAIN_TYPES.map(async (type) => {
+        const msg = messages[type] || { label: '', emoji: '' }
+        await saveStatusMessage(type, msg.label, msg.emoji)
+      }))
+      setSavingAll(false)
+    })
+  }
+
   return (
     <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-[var(--bone-12)]">
-      <div className="flex items-center gap-3 mb-1">
-        <MessageSquare className="w-5 h-5 text-accent" />
-        <div>
-          <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Pipeline Status Messages</h2>
-          <p className="text-[11px] text-bone-70">custom labels shown in chat during execution</p>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <MessageSquare className="w-5 h-5 text-accent" />
+          <div>
+            <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Pipeline Status Messages</h2>
+            <p className="text-[11px] text-bone-70">custom labels shown in chat during execution</p>
+          </div>
         </div>
+        <button
+          onClick={handleSaveAll}
+          disabled={savingAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-accent/10 text-accent text-xs font-bold hover:bg-accent/20 transition-colors disabled:opacity-50"
+        >
+          <Save className="w-3 h-3" />
+          {savingAll ? 'Saving All...' : 'Save All'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

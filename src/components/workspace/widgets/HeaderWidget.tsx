@@ -4,7 +4,10 @@ import { Entity, useStore } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
 import { stripHtml } from '@/lib/utils';
 
-export function HeaderWidget({ entity }: { entity: Entity }) {
+export function HeaderWidget({ entity: propEntity, contextId }: { entity?: Entity; contextId?: string }) {
+  const entities = useStore(state => state.entities);
+  const entity = propEntity ?? entities.find(e => e.id === contextId) ?? null;
+  if (!entity) return null;
   const Icon = getEntityIcon(entity.icon);
 
   return (

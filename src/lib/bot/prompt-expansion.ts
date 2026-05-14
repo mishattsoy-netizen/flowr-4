@@ -12,7 +12,7 @@ export async function expandImagePrompt(
   context: any
 ): Promise<{ expanded: string; modelId?: string; provider?: string }> {
   const config = await getSubchainConfig('prompt_expander')
-  const chainCategory: IntentCategory = config?.chain_category ?? 'FAST_SIMPLE'
+  const chainCategory: IntentCategory = config?.chain_category ?? 'REGULAR'
   const systemPrompt = config?.system_prompt ?? ''
 
   const { chain } = await getRouterChain(chainCategory)

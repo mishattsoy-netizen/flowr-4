@@ -137,6 +137,8 @@ export async function logModelCost(cost: {
   total_cost: number
   prompt_tokens: number
   completion_tokens: number
+  chain?: string
+  subprovider?: string | null
 }) {
   const { error } = await supabaseAdmin.from('cost_log').insert(cost)
   if (error) console.error('[CostLog] Failed to log cost:', error.message)

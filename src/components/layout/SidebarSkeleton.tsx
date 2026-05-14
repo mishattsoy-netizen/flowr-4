@@ -7,16 +7,18 @@ import { Skeleton } from '@/components/ui/Skeleton';
 export function SidebarSkeleton({ collapsed }: { collapsed?: boolean }) {
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center gap-4 pt-4 px-3 skeleton-pulse">
-        {[1, 2, 3].map(i => (
-          <Skeleton key={i} className="w-8 h-8 rounded-[var(--radius-medium)] shrink-0 opacity-60" />
-        ))}
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-4 flex flex-col items-center gap-3 w-full scrollbar-none">
+        <div className="flex flex-col items-center gap-4 pt-1">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} className="w-8 h-8 rounded-[var(--radius-medium)] shrink-0 opacity-60" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 px-3 pt-3 space-y-7 skeleton-pulse">
+    <div className="flex-1 flex flex-col min-h-0 px-3 pt-3 space-y-7">
       {/* Section 1 - Workspaces */}
       <div className="space-y-4 px-3">
         <div className="flex items-center justify-between">

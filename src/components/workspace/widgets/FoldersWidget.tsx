@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { Tooltip } from '@/components/layout/Tooltip';
 import clsx from 'clsx';
 
-export function FoldersWidget({ entity }: { entity: Entity }) {
+export function FoldersWidget({ entity: propEntity, contextId }: { entity?: Entity; contextId?: string }) {
   const entities = useStore(state => state.entities);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
   const openContextMenu = useStore(state => state.openContextMenu);
@@ -17,9 +17,11 @@ export function FoldersWidget({ entity }: { entity: Entity }) {
   const contextMenu = useStore(state => state.contextMenu);
   const [tempTitle, setTempTitle] = useState('');
 
+  const entity = propEntity ?? entities.find(e => e.id === contextId);
   const folders = useMemo(() => {
+    if (!entity) return [];
     return entities.filter(e => e.parentId === entity.id && (e.type === 'folder' || e.type === 'collection'));
-  }, [entities, entity.id]);
+  }, [entities, entity?.id]);
 
   return (
     <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">

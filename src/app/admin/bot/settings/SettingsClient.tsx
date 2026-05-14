@@ -10,7 +10,6 @@ import { RegistryModel } from '@/components/admin/model-utils'
 import { Toggle } from '@/components/ui/Toggle'
 import PipelinePromptsPanel from '@/components/admin/PipelinePromptsPanel'
 import PipelineStatusPanel from '@/components/admin/PipelineStatusPanel'
-import OrchestratorPanel from '@/components/admin/OrchestratorPanel'
 
 const TABS: { key: SettingsCategory; label: string; description: string }[] = [
   { key: 'core_rules', label: 'Core Rules', description: 'Hard constraints — what the bot must always or never do' },
@@ -268,7 +267,6 @@ export default function SettingsClient({
       <div className="border-t border-[var(--bone-6)] pt-6">
         <h2 className="text-lg font-bold text-bone-100 uppercase tracking-widest mb-4 opacity-60">Pipeline & Chain Configuration</h2>
         <div className="flex flex-col gap-6">
-          <OrchestratorPanel settings={initialPipelineSettings} />
           <PipelinePromptsPanel initialPrompts={initialPipelinePrompts} />
           <PipelineStatusPanel initialMessages={initialStatusMessages} />
         </div>

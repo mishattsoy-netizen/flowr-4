@@ -14,21 +14,20 @@ export interface RouterModel {
 }
 
 export type IntentCategory =
-  | 'FAST_SIMPLE'
-  | 'COMPLEX_THINKING'
-  | 'MEDIUM_THINKING'
-  | 'AUDIO_VOICE'
-  | 'TOOL_CALLING'
+  | 'REGULAR'
+  | 'COMPLEX'
+  | 'AUDIO'
+  | 'TOOLS'
   | 'IMAGE_GEN'
   | 'IMAGE_UPSCALE'
   | 'WEB_SEARCH'
   | 'CLASSIFIER'
   | 'VISION'
   | 'CODING'
-  | 'DEEP_RESEARCH'
+  | 'RESEARCH'
   | 'ADVISOR'
   | 'THINKING'
-  | 'ORCHESTRATOR'
+  | 'COMPACTION'
 
 export type Platform = 'telegram'
 
@@ -187,6 +186,9 @@ export interface PipelineSettings {
   statusMessages: Record<string, { label: string; emoji: string }>
   historyEnabledCategories?: IntentCategory[]
   globalPromptEnabledCategories?: IntentCategory[]
+  inputTokenLimit: number
+  outputTokenLimit: number
+  tokenLimitEnabledCategories?: IntentCategory[]
 }
 
 export async function getPipelineSettings(): Promise<PipelineSettings> {
@@ -213,14 +215,17 @@ export async function getPipelineSettings(): Promise<PipelineSettings> {
 
     const result: PipelineSettings = {
       orchestratorEnabled: map['orchestrator_enabled'] !== false,
-      maxPipelineSteps: typeof map['max_pipeline_steps'] === 'number' ? map['max_pipeline_steps'] : 7,
+      maxPipelineSteps: typeof map['max_pipeline_steps'] === 'number' ? map['max_pipeline_steps'] : 20,
       historyLimit: typeof map['history_limit'] === 'number' ? map['history_limit'] : 20,
       imageGenAutoLast: map['image_gen_auto_last'] !== false,
       thinkingToggleDefault: map['thinking_toggle_default'] === true,
       thinkingSummaryVisible: map['thinking_summary_visible'] ?? 'collapsible',
       statusMessages: map['pipeline_status_messages'] ?? {},
       historyEnabledCategories: map['history_enabled_categories'] || undefined,
-      globalPromptEnabledCategories: map['global_prompt_enabled_categories'] || undefined
+      globalPromptEnabledCategories: map['global_prompt_enabled_categories'] || undefined,
+      inputTokenLimit: typeof map['input_token_limit'] === 'number' ? map['input_token_limit'] : 0,
+      outputTokenLimit: typeof map['output_token_limit'] === 'number' ? map['output_token_limit'] : 0,
+      tokenLimitEnabledCategories: map['token_limit_enabled_categories'] || undefined
     }
 
     // Save to cache
@@ -242,12 +247,14 @@ export async function getPipelineSettings(): Promise<PipelineSettings> {
 
     return {
       orchestratorEnabled: true,
-      maxPipelineSteps: 7,
+      maxPipelineSteps: 20,
       historyLimit: 20,
       imageGenAutoLast: true,
       thinkingToggleDefault: false,
       thinkingSummaryVisible: 'collapsible',
       statusMessages: {},
+      inputTokenLimit: 0,
+      outputTokenLimit: 0,
     }
   }
 }

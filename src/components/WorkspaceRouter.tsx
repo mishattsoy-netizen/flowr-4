@@ -11,6 +11,7 @@ import { TrackerPage } from './tracker/TrackerPage';
 import ChatPage from './chat/ChatPage';
 import { DashboardSkeleton } from './dashboard/DashboardSkeleton';
 import { ChatMainSkeleton } from './chat/ChatSkeleton';
+import { TrackerSkeleton } from './tracker/TrackerSkeleton';
 
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
@@ -60,6 +61,7 @@ export const WorkspaceRouter = memo(function WorkspaceRouter({ initialEntityId }
 
     if (!isMounted || !storeHydrated) {
       if (inferredEntityId === 'chat') return <ChatMainSkeleton />;
+      if (inferredEntityId === 'tracker') return <TrackerSkeleton />;
       return <DashboardSkeleton />;
     }
 

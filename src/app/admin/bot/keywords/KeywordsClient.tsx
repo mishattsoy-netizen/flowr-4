@@ -6,21 +6,20 @@ import { cn } from '@/lib/utils'
 import { saveClassifierKeywords, getClassifierKeywords } from '@/app/admin/bot/classifier/actions'
 
 const INTENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  FAST_SIMPLE:      { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/20' },
-  MEDIUM_THINKING:  { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20' },
-  COMPLEX_THINKING: { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/20' },
+  REGULAR:          { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/20' },
+  COMPLEX:          { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/20' },
   IMAGE_GEN:        { bg: 'bg-pink-500/10',   text: 'text-pink-400',   border: 'border-pink-500/20' },
   WEB_SEARCH:       { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' },
-  TOOL_CALLING:     { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20' },
-  AUDIO_VOICE:      { bg: 'bg-teal-500/10',   text: 'text-teal-400',   border: 'border-teal-500/20' },
+  TOOLS:            { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20' },
+  AUDIO:            { bg: 'bg-teal-500/10',   text: 'text-teal-400',   border: 'border-teal-500/20' },
   VISION:           { bg: 'bg-cyan-500/10',   text: 'text-cyan-400',   border: 'border-cyan-500/20' },
   CODING:           { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' },
-  DEEP_RESEARCH:    { bg: 'bg-rose-500/10',   text: 'text-rose-400',   border: 'border-rose-500/20' },
+  RESEARCH:         { bg: 'bg-rose-500/10',   text: 'text-rose-400',   border: 'border-rose-500/20' },
 }
 
 const CATEGORIES = [
-  'FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX_THINKING', 'IMAGE_GEN',
-  'WEB_SEARCH', 'TOOL_CALLING', 'AUDIO_VOICE', 'VISION', 'CODING', 'DEEP_RESEARCH',
+  'REGULAR', 'COMPLEX', 'IMAGE_GEN',
+  'WEB_SEARCH', 'TOOLS', 'AUDIO', 'VISION', 'CODING', 'RESEARCH',
 ]
 
 function toInputs(kw: Record<string, string[]>): Record<string, string> {

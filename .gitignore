@@ -50,3 +50,6 @@ gha-creds-*.json
 # archived versions
 Flowr-1.0/
 .claude/worktrees/
+
+# transcripts
+/transcripts/

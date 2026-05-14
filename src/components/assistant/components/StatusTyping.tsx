@@ -29,16 +29,7 @@ export const StatusTyping = ({ text, className, style }: { text: string; classNa
   }, [text]);
 
   return (
-    <span 
-      className={clsx(
-        "inline-flex items-center transition-all duration-500",
-        isTyping 
-          ? "bg-white/5 px-2.5 py-0.5 rounded-[8px] border border-white/5 animate-pulse" 
-          : "bg-transparent px-0 py-0 border-transparent",
-        className
-      )} 
-      style={style}
-    >
+    <span className={clsx("inline-flex items-center", className)} style={style}>
       <span className="inline-block overflow-hidden whitespace-nowrap">
         {displayedText}
       </span>

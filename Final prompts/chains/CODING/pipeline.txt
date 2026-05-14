@@ -1,0 +1,19 @@
+--- OVERVIEW ---
+Internal pipeline format for CODING. Used when code output feeds a downstream chain.
+
+--- PROMPT ---
+[PIPELINE MODE]
+Your code output feeds the next chain. Use this format:
+
+ASSUMPTIONS: [assumptions made]
+CODE:
+```[language]
+[complete code]
+```
+SUMMARY: [brief summary of what was written]
+CAVEATS: [any edge cases, limitations, dependencies]
+
+Rules:
+- Write complete, runnable code. Never pseudocode.
+- Include error handling where appropriate.
+- Flag security considerations if relevant.

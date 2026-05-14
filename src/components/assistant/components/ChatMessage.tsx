@@ -15,7 +15,7 @@ import { ChatAudioPlayer } from './ChatAudioPlayer';
 import clsx from 'clsx';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
-import { parseMarkdownToBlocks } from '@/lib/utils/markdownToBlocks';
+import { parseMarkdownToBlocks } from '@/lib/editor/markdownBlocks';
 
 const InTableContext = createContext(false);
 const InHeaderContext = createContext(false);
@@ -1162,7 +1162,14 @@ export const ChatMessage = memo(({
                     if (msg.status) return msg.status;
                     if (msg.pipelineSteps && msg.pipelineSteps.length > 0) {
                       const activeStep = msg.pipelineSteps.find(s => s.status === 'running') || msg.pipelineSteps[msg.pipelineSteps.length - 1];
-                      if (activeStep) return activeStep.label || activeStep.goal;
+                      if (activeStep) {
+                        if (activeStep.label) return activeStep.label;
+                        if (activeStep.chain) {
+                          const custom = aiSessionContext?.status_messages?.[activeStep.chain];
+                          if (custom) return `${custom.emoji} ${custom.label}`.trim();
+                        }
+                        return activeStep.goal || activeStep.chain || "Working...";
+                      }
                     }
                     const category = thinkingEnabled ? "THINKING" : "CLASSIFIER";
                     const custom = aiSessionContext?.status_messages?.[category];
@@ -1433,6 +1440,31 @@ export const ChatMessage = memo(({
                                   </DropdownMenu.Portal>
                                 </DropdownMenu.Root>
                               </div>
+                              {(msg as any).transcript_md ? (
+                                <>
+                                  <div className="h-3 w-[1px] bg-white/5 mx-0.5" />
+                                  <div className="flex items-center gap-0 relative h-6 border border-white/5 rounded-md overflow-hidden bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
+                                    <Tooltip content="Copy full transcript (request, all chain inputs/outputs, reasoning, traces)">
+                                      <button
+                                        onClick={() => navigator.clipboard.writeText((msg as any).transcript_md)}
+                                        className="h-full px-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--bone-40)] hover:text-bone-100 transition-colors"
+                                      >
+                                        <ClipboardCopy strokeWidth={2} className="w-2.5 h-2.5" />
+                                        <span>Transcript</span>
+                                      </button>
+                                    </Tooltip>
+                                  </div>
+                                </>
+                              ) : hasFinishedTyping && (
+                                <Tooltip content="Transcript not available (requires new AI request)">
+                                  <div className="flex items-center gap-0 relative h-6 border border-white/5 rounded-md overflow-hidden opacity-30 cursor-not-allowed">
+                                    <button disabled className="h-full px-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--bone-40)]">
+                                      <ClipboardCopy strokeWidth={2} className="w-2.5 h-2.5" />
+                                      <span>Transcript</span>
+                                    </button>
+                                  </div>
+                                </Tooltip>
+                              )}
                             </>
                           )}
 

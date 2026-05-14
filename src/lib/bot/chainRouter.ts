@@ -1,4 +1,4 @@
-import { classifyIntentWithModel } from './classifier'
+﻿import { classifyIntentWithModel } from './classifier'
 import { runAdvisor } from './advisor'
 import { getRouterChain, getFallbackModes, IntentCategory } from '../router-config'
 import type { BotMode } from '@/data/store.types'
@@ -21,25 +21,37 @@ import { getConversationMemory, getWebConversationMemory } from './memory'
 import { supabaseAdmin } from '../supabase'
 import { getCompiledPrompt, getInternalPrompt } from './compilePrompt'
 import { getSessionState, updateSessionState, estimateTokens, summarizeSession } from './context'
-import { planChainSequence } from './orchestrator'
-import { executePipeline, PipelineStep, StatusCallback } from './pipeline'
+import type { StatusCallback, PipelineStep } from './pipeline'
 import { runThinkChain } from './thinkChain'
 import { getPipelineSettings } from '../router-config'
 import { expandImagePrompt } from './prompt-expansion'
 import { TraceCollector } from './tracing'
+import { buildTranscript } from './transcript'
+
+function logCost(cost: {
+  model_id: string; provider: string; prompt_cost: number; completion_cost: number;
+  total_cost: number; prompt_tokens: number; completion_tokens: number;
+}) {
+  if (!supabaseAdmin) return
+  // Only insert fields that exist on cost_log table
+  const { chain, subprovider, ...safe } = cost as any
+  supabaseAdmin.from('cost_log').insert(safe)
+    .then(({ error }: { error: any }) => { if (error) logger.warn(`[CostLog] insert failed: ${error.message}`) })
+    .catch((err: any) => logger.warn(`[CostLog] error: ${err?.message ?? String(err)}`))
+}
 
 async function trackModelUsage(p_model_id: string, p_provider: string) {
   try {
     const today = new Date().toISOString().split('T')[0]
 
     // 1. Check if we need a global reset for the day
-    const { data: model } = await supabaseAdmin
+    const { data: model, error: fetchError } = await supabaseAdmin
       .from('models')
       .select('last_reset_date')
       .eq('id', p_model_id)
-      .single()
+      .maybeSingle()
 
-    if (model && model.last_reset_date !== today) {
+    if (!fetchError && model && model.last_reset_date !== today) {
       logger.info(`[RPD] New day detected (${today}). Resetting all model usage...`)
       await supabaseAdmin
         .from('models')
@@ -47,10 +59,10 @@ async function trackModelUsage(p_model_id: string, p_provider: string) {
           usage_today: 0,
           last_reset_date: today
         })
-        .neq('last_reset_date', today) // Only reset those not yet reset
+        .neq('last_reset_date', today)
     }
 
-    // 2. Increment usage
+    // 2. Increment usage (creates or updates the model row)
     const { error } = await supabaseAdmin.rpc('increment_model_usage', { p_model_id, p_provider })
     if (error) throw error
   } catch (error: any) {
@@ -58,6 +70,67 @@ async function trackModelUsage(p_model_id: string, p_provider: string) {
   }
 }
 
+
+// Generates alternative search queries when initial search fails
+
+
+// Augments search query with context from conversation history
+function augmentSearchQuery(originalQuery: string, history: any[]): string {
+  if (!history || history.length === 0) return originalQuery
+  
+  // Collect unique nouns/entities from the last N user messages
+  const lastUserMsgs = history
+    .filter(h => h.role === "user" || h.role === "human")
+    .slice(-3)
+    .map(h => {
+      const text = h.parts?.[0]?.text || h.content || ""
+      return text.slice(0, 200) // keep it short
+    })
+  
+  if (lastUserMsgs.length === 0) return originalQuery
+  
+  // If the current query is very short or ambiguous, append context
+  const queryWords = originalQuery.split(/s+/).length
+  if (queryWords <= 5) {
+    // Find the most distinct entity from recent history not in the current query
+    const queryLower = originalQuery.toLowerCase()
+    for (const msg of lastUserMsgs.reverse()) {
+      const msgLower = msg.toLowerCase()
+      // Extract first sentence or key entity
+      const firstSentence = msg.split(/[.?!]/)[0].trim()
+      if (firstSentence && !queryLower.includes(firstSentence.slice(0, 20).toLowerCase())) {
+        const keyEntity = firstSentence.replace(/^(who is|what is|tell me about|compare|find)s+/i, "").slice(0, 60)
+        if (keyEntity && keyEntity.length > 3) {
+          return originalQuery + " " + keyEntity
+        }
+      }
+    }
+  }
+  
+  return originalQuery
+}
+
+
+function generateOptimizedQuery(originalPrompt: string): string[] {
+  const queries: string[] = [originalPrompt]
+  
+  // If comparison format, generate individual entity queries
+  const compareMatch = originalPrompt.match(/compare\s+(.+?)\s+(?:and|vs|with|versus)\s+(.+)/i)
+  if (compareMatch) {
+    const a = compareMatch[1].trim().replace(/^(?:the|a|an)\s+/i, '').slice(0, 100)
+    const b = compareMatch[2].trim().replace(/^(?:the|a|an)\s+/i, '').slice(0, 100)
+    queries.push(`${a} specifications capabilities`)
+    queries.push(`${b} specifications capabilities`)
+  }
+  
+  // Strip conversational framing
+  const stripped = originalPrompt.replace(/^(?:can you|could you|i want to know|tell me about|what about|how about|what is|what are|do you know)\s+/i, '').trim()
+  if (stripped !== originalPrompt && stripped.length > 5) {
+    queries.push(stripped)
+  }
+  
+  return queries
+}
 // Simple circuit breaker to skip models that failed recently
 const FAILURE_CACHE_MS = 60000 // 1 minute
 const modelFailureCache: Record<string, number> = {}
@@ -104,6 +177,7 @@ export interface ChainResponse {
   image_prompt?: string
   trace?: any[]
   step_traces?: import('./tracing').StepTrace[]
+  transcript_md?: string
 }
 
 export async function runChain(
@@ -124,6 +198,7 @@ export async function runChain(
     thinkingEnabled?: boolean;
     advisorEnabled?: boolean;
     onStatus?: StatusCallback;
+    onChunk?: (chunk: string) => void;
     vision_notes?: string;
     _forcedCategory?: IntentCategory;
     _triggerType?: string;
@@ -140,7 +215,11 @@ export async function runChain(
   const dateContext = `[CURRENT CONTEXT]\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\n`
 
   // 0. Prefetch independent config in parallel
-  const sessionId = context?.chatId?.toString() || context?.activeChatId || context?.activeEntityId || 'global'
+  const sessionId = context?.chatId?.toString()
+    || (context?.activeChatId ? `chat:${context.activeChatId}` : null)
+    || (context?.isTempChat ? 'temp' : null)
+    || context?.activeEntityId
+    || 'global'
   const [sessionState, globalPrompt, fallbackModes, pipelineSettings] = await Promise.all([
     getSessionState(sessionId),
     getCompiledPrompt(context?.mode ?? 'default'),
@@ -161,7 +240,21 @@ export async function runChain(
   if (history.length === 0 && context?.clientHistory && context.clientHistory.length > 0) {
     history = context.clientHistory.slice(-historyLimit)
   }
-  const currentSummary = sessionState?.distilled_summary || null
+  let currentSummary = sessionState?.distilled_summary || null
+
+  // Pre-request compaction: if cumulative tokens exceed threshold and no summary exists,
+  // compact before processing this request so it benefits from trimmed context.
+  if (sessionState && !currentSummary && history.length >= 5
+    && sessionState.token_usage_total > sessionState.context_limit * sessionState.compaction_threshold) {
+    logger.info(`Pre-request compaction for ${sessionId} (${sessionState.token_usage_total}/${sessionState.context_limit})`)
+    await summarizeSession(sessionId, history, null)
+    const updated = await getSessionState(sessionId)
+    if (updated?.distilled_summary) {
+      currentSummary = updated.distilled_summary
+      sessionState.distilled_summary = updated.distilled_summary
+      sessionState.token_usage_total = updated.token_usage_total ?? sessionState.token_usage_total
+    }
+  }
 
   // 1. Specialized Vision Flow (Buffer or URL)
   let activeBuffers = Array.isArray(inputBuffer) ? inputBuffer : (inputBuffer ? [inputBuffer] : [])
@@ -240,11 +333,15 @@ export async function runChain(
     const { chain: visionChain, system_prompt: visionSystemPrompt } = await getRouterChain('VISION')
     const visionTrace: any[] = []
 
-    // System Instructions = Persona + Date + Global Rules
+    // System Instructions = Persona + Date + Global Rules (respect pipeline settings)
+    // VISION is a pipeline category — excluded from global prompt by default
+    const visionGlobalEnabled = pipelineSettings.globalPromptEnabledCategories
+      ? pipelineSettings.globalPromptEnabledCategories.includes('VISION')
+      : false
     const systemPromptCombined = [
       visionSystemPrompt,
       dateContext,
-      globalPrompt
+      visionGlobalEnabled ? globalPrompt : null
     ].filter(Boolean).join("\n\n")
 
     // User Prompt = User Message or Default Trigger
@@ -278,7 +375,7 @@ export async function runChain(
             visionRes = await runGoogle(sanitizedId, activePrompt, systemPromptCombined, activeBuffers, context as any, history)
             break
           case 'openrouter':
-            visionRes = await runOpenRouter(modelConfig.id, activePrompt, systemPromptCombined, history, context?.aiApiKey, modelConfig.openrouter_provider, activeBuffers)
+            visionRes = await runOpenRouter(modelConfig.id, activePrompt, systemPromptCombined, history, context?.aiApiKey, { openrouterProvider: modelConfig.openrouter_provider }, activeBuffers)
             break
           case 'groq':
             visionRes = await runGroq(modelConfig.id, activePrompt, systemPromptCombined, context?.aiApiKey, context, history, activeBuffers)
@@ -289,8 +386,33 @@ export async function runChain(
         }
 
         if (visionRes) {
+          const visionUsage = typeof visionRes === 'object' ? (visionRes as any).usage : undefined
+          const visionReasoning = typeof visionRes === 'object' ? (visionRes as any).reasoning : undefined
           const outputContent = typeof visionRes === 'object' ? visionRes.content : visionRes
-          tracer.recordSuccess({ ...visionTraceMeta, output: outputContent }, Date.now() - visionT0)
+          const visionCost = (visionUsage?.prompt_tokens ?? 0) * (modelConfig.prompt_cost ?? 0)
+                           + (visionUsage?.completion_tokens ?? 0) * (modelConfig.completion_cost ?? 0)
+          tracer.recordSuccess({
+            ...visionTraceMeta,
+            output: outputContent,
+            prompt_tokens: visionUsage?.prompt_tokens,
+            completion_tokens: visionUsage?.completion_tokens,
+            total_tokens: visionUsage?.total_tokens,
+            cache_read_input_tokens: visionUsage?.cache_read_input_tokens,
+            cost: visionCost > 0 ? visionCost : undefined,
+            reasoning: visionReasoning,
+          }, Date.now() - visionT0)
+          await trackModelUsage(modelConfig.id, modelConfig.provider).catch(() => {})
+          logCost({
+            model_id: modelConfig.id,
+            provider: modelConfig.provider,
+            prompt_cost: (visionUsage?.prompt_tokens ?? 0) * (modelConfig.prompt_cost ?? 0),
+            completion_cost: (visionUsage?.completion_tokens ?? 0) * (modelConfig.completion_cost ?? 0),
+            total_cost: visionCost,
+            prompt_tokens: visionUsage?.prompt_tokens ?? 0,
+            completion_tokens: visionUsage?.completion_tokens ?? 0,
+            chain: 'VISION',
+            subprovider: (visionRes as any)?.provider ?? null,
+          } as any)
           visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'success' })
           let content = typeof visionRes === 'object' ? visionRes.content : visionRes
 
@@ -412,119 +534,8 @@ export async function runChain(
     onStatus({ chain: 'CLASSIFIER', status: 'done', goal: 'Classifying intent' })
   }
 
-  // MULTI_CHAIN path — orchestrator plans and executes a chain sequence
-  if (rawCategory === 'MULTI_CHAIN' && pipelineSettings.orchestratorEnabled) {
-    onStatus({ chain: 'ORCHESTRATOR', goal: 'Planning chain sequence', status: 'running', label: getStatusLabel('ORCHESTRATOR') })
-
-    const plan = await planChainSequence(
-      prompt,
-      history,
-      context?.replyContext,
-      currentSummary,
-      pipelineSettings.maxPipelineSteps,
-      context?.vision_notes,
-      tracer
-    )
-
-    if (plan) {
-      onStatus({ chain: 'ORCHESTRATOR', goal: 'Planning chain sequence', status: 'done' })
-
-      const pipelineContext = { ...context, history }
-      const pipelineResult = await executePipeline(plan, prompt, pipelineContext as any, onStatus, tracer)
-
-      let finalAccumulated = pipelineResult.accumulatedContext
-      const imageDescription = pipelineResult.image_description
-      let thinkDirection = ''
-      const thinkSteps: PipelineStep[] = []
-
-      if (thinkingEnabled) {
-        const thinkResult = await runThinkChain(
-          prompt,
-          finalAccumulated,
-          history,
-          currentSummary,
-          context?.replyContext,
-          context as any,
-          onStatus,
-          tracer
-        )
-        thinkDirection = thinkResult.direction
-        if (thinkResult.correctedContext) finalAccumulated = thinkResult.correctedContext
-        thinkSteps.push(...thinkResult.steps)
-      }
-
-      // Use orchestrator's planned final output chain (last step), fallback to COMPLEX_THINKING
-      const TEXT_CHAINS: IntentCategory[] = ['FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX_THINKING']
-      const plannedFinalChain = plan.steps.length > 0
-        ? plan.steps[plan.steps.length - 1]
-        : 'COMPLEX_THINKING'
-      const finalChainType: IntentCategory = TEXT_CHAINS.includes(plannedFinalChain as IntentCategory)
-        ? plannedFinalChain as IntentCategory
-        : 'COMPLEX_THINKING'
-
-      let { chain: finalChain, system_prompt: finalSysPrompt } = await getRouterChain(finalChainType)
-
-      finalSysPrompt = dateContext + '\n\n' + (finalSysPrompt || '')
-      if (currentSummary && finalChainType !== 'WEB_SEARCH' && finalChainType !== 'DEEP_RESEARCH' && !context?._skipSessionSummary) finalSysPrompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + finalSysPrompt
-      if (globalPrompt) finalSysPrompt = globalPrompt + '\n\n' + finalSysPrompt
-      if (context?.replyContext?.attentionBlock) finalSysPrompt = context.replyContext.attentionBlock + '\n\n' + finalSysPrompt
-      if (finalAccumulated) finalSysPrompt = `[PIPELINE CONTEXT]\n${finalAccumulated}\n\n` + finalSysPrompt
-      if (thinkDirection) finalSysPrompt = `[THINK CHAIN DIRECTION]\n${thinkDirection}\n\n` + finalSysPrompt
-      if (context?.vision_notes) finalSysPrompt = `[VISION DATA]\n${context.vision_notes}\n\n` + finalSysPrompt
-
-      const finalOutputStep: PipelineStep = { chain: finalChainType, goal: 'Write final answer', status: 'running', label: getStatusLabel(finalChainType) }
-      onStatus(finalOutputStep)
-
-      for (const modelConfig of finalChain) {
-        if (!modelConfig.is_enabled) continue
-        try {
-          const provider = modelConfig.provider.toLowerCase()
-          let response: any = null
-
-          if (provider === 'google') {
-            response = await runGoogle(modelConfig.id, prompt, finalSysPrompt, undefined, context as any, history)
-          } else if (provider === 'groq') {
-            response = await runGroq(modelConfig.id, prompt, finalSysPrompt, undefined, context as any, history)
-          } else if (provider === 'openrouter') {
-            const keys = await getProviderKeys('OPENROUTER')
-            response = await runOpenRouter(modelConfig.id, prompt, finalSysPrompt, history, context?.aiApiKey || keys[0], modelConfig.openrouter_provider || undefined)
-          }
-
-          if (response) {
-            const content = typeof response === 'object' ? response.content : response
-            finalOutputStep.status = 'done'
-            onStatus({ ...finalOutputStep })
-
-            const allSteps = [...pipelineResult.steps, ...thinkSteps, finalOutputStep]
-            const triggerPart = triggerInfo ? `${triggerInfo.type.toUpperCase().replace(/_/g, ' ')}|${triggerInfo.value}|true → ` : ''
-            return {
-              type: pipelineResult.imageBuffer ? 'photo' : 'text',
-              content: pipelineResult.imageBuffer ?? content,
-              text_content: pipelineResult.imageBuffer ? content : undefined,
-              usage_type: 'chat',
-              model: modelConfig.id,
-              model_chain: `${triggerPart}orchestrator → ${allSteps.map(s => s.chain).join(' → ')}${imageDescription ? ' → VISION' : ''}`,
-              status: 'success',
-              classification_trace: classificationTrace,
-              pipeline_steps: allSteps,
-              image_description: imageDescription,
-              step_traces: tracer.all.length > 0 ? tracer.all : undefined,
-            }
-          }
-        } catch (e: any) {
-          logger.warn(`Final output chain ${modelConfig.id} failed: ${e.message}`)
-        }
-      }
-
-      return { type: 'text', content: '⚡ *System Overload*', usage_type: 'chat', status: 'error', classification_trace: classificationTrace, step_traces: tracer.all.length > 0 ? tracer.all : undefined } as any
-    }
-
-    // Orchestrator failed — fall through to COMPLEX_THINKING
-    logger.error('Orchestrator failed to produce a plan — falling back to COMPLEX_THINKING')
-  }
-
   // Single-chain path
-  let category: IntentCategory = (rawCategory === 'MULTI_CHAIN') ? 'COMPLEX_THINKING' : rawCategory
+  let category: IntentCategory = rawCategory
   logger.info(`[Router] Starting runChain for category: ${category} | prompt: "${prompt.slice(0, 50)}..."`)
 
   const routingTrace: RoutingTrace[] = []
@@ -544,7 +555,7 @@ export async function runChain(
       }
     }
     // If PASS, fallback to complex thinking to actually process the user query
-    category = 'COMPLEX_THINKING'
+    category = 'COMPLEX'
   }
 
   let { chain, system_prompt: routerOverridePrompt, temperature } = await getRouterChain(category)
@@ -556,12 +567,30 @@ export async function runChain(
   // Order: 1. Global (Rules/Personality) 2. Internal (Instructions) 3. Router Override (Specific overrides)
   let finalSysPrompt = dateContext
 
-  // Only inject global prompt if the category is enabled in pipeline settings
-  const isGlobalPromptEnabled = !pipelineSettings.globalPromptEnabledCategories || pipelineSettings.globalPromptEnabledCategories.includes(category)
+  // Only inject global prompt if the category is enabled in pipeline settings.
+  // When no admin setting exists, default to ALL categories (original behavior).
+  // The admin can configure exclusions via Pipeline Settings → Global Prompt Enabled Categories.
+  const isGlobalPromptEnabled = pipelineSettings.globalPromptEnabledCategories
+    ? pipelineSettings.globalPromptEnabledCategories.includes(category)
+    : true
 
   if (globalPrompt && isGlobalPromptEnabled) finalSysPrompt += "\n\n" + globalPrompt
-  if (internalPipelinePrompt) finalSysPrompt += "\n\n" + internalPipelinePrompt
+  // Skip internal pipeline prompt for chains that have their own router override —
+  // the router prompt already contains [ANSWER MODE] instructions and mixing both
+  // causes the model to default to PIPELINE structured output instead of user-facing answers.
+  const PIPELINE_PROMPT_CHAINS = ['WEB_SEARCH', 'RESEARCH']
+  if (internalPipelinePrompt && !PIPELINE_PROMPT_CHAINS.includes(category)) finalSysPrompt += "\n\n" + internalPipelinePrompt
   if (routerOverridePrompt) finalSysPrompt += "\n\n" + routerOverridePrompt
+
+  // Deduplicate [RESTRICTIONS] — the compiled global prompt already contains it,
+  // and it may also appear in the router override or internal prompt.
+  // Keep only the first occurrence to save tokens.
+  let restrictionsDeduped = false
+  finalSysPrompt = finalSysPrompt.replace(/^\[RESTRICTIONS\][\s\S]*?(?=\n\n\[|$)/gm, (match) => {
+    if (restrictionsDeduped) return ''
+    restrictionsDeduped = true
+    return match
+  })
 
   let system_prompt = finalSysPrompt
 
@@ -570,8 +599,8 @@ export async function runChain(
   }
 
   // Inject global session summary if available.
-  // Skip for WEB_SEARCH/DEEP_RESEARCH and fallbacks from those chains — poisoned summaries override search results.
-  const skipSummary = category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH' || context?._skipSessionSummary
+  // Skip for WEB_SEARCH/RESEARCH and fallbacks from those chains — poisoned summaries override search results.
+  const skipSummary = category === 'WEB_SEARCH' || category === 'RESEARCH' || context?._skipSessionSummary
   if (currentSummary && !skipSummary) {
     system_prompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + system_prompt
   }
@@ -581,8 +610,8 @@ export async function runChain(
   }
 
   let finalUsageType: 'chat' | 'tool' | 'search' | 'vision' | 'image' = 'chat'
-  if (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH') finalUsageType = 'search'
-  if (category === 'TOOL_CALLING') finalUsageType = 'tool'
+  if (category === 'WEB_SEARCH' || category === 'RESEARCH') finalUsageType = 'search'
+  if (category === 'TOOLS') finalUsageType = 'tool'
   if (category === 'IMAGE_GEN') finalUsageType = 'image'
 
   const fallbackMode = fallbackModes[category] || 'model_first'
@@ -631,29 +660,35 @@ export async function runChain(
     }
   }
 
-  // ── Iterative search for DEEP_RESEARCH ──
+  // ── Iterative search for RESEARCH ──
   let activePromptForGen = prompt
-  if (category === 'DEEP_RESEARCH') {
-    onStatus({ chain: 'DEEP_RESEARCH', goal: 'Running iterative web research', status: 'running', label: getStatusLabel('DEEP_RESEARCH') })
+  if (category === 'RESEARCH') {
+    onStatus({ chain: 'RESEARCH', goal: 'Running iterative web research', status: 'running', label: getStatusLabel('RESEARCH') })
     const researchResult = await runDeepResearchChain(prompt, context)
-    if (!researchResult.includes('Search failed')) {
-      activePromptForGen = researchResult
+    if (!researchResult.researchText.includes('Search failed')) {
+      activePromptForGen = researchResult.researchText
     }
-    onStatus({ chain: 'DEEP_RESEARCH', goal: 'Running iterative web research', status: 'done' })
+    if (researchResult.gapTrace.length > 0) {
+      routingTrace.push(...researchResult.gapTrace)
+    }
+    onStatus({ chain: 'RESEARCH', goal: 'Running iterative web research', status: 'done' })
   }
 
   // ── Prompt Expansion for IMAGE_GEN ──
   if (category === 'IMAGE_GEN') {
     onStatus({ chain: 'IMAGE_GEN', goal: 'Expanding prompt with context', status: 'running', label: getStatusLabel('IMAGE_GEN') })
     const expansionT0 = Date.now()
+    const { getSubchainConfig } = await import('../subchain-config')
+    const expanderCfg = await getSubchainConfig('prompt_expander')
     const expansionResult = await expandImagePrompt(prompt, history, context)
     activePromptForGen = expansionResult.expanded
     if (expansionResult.modelId) {
       routingTrace.push({ model: expansionResult.modelId, category: 'FAST_SIMPLE', key: 'PROMPT_EXPANSION', success: true })
       tracer.recordSuccess({
-        chain: 'FAST_SIMPLE',
+        chain: 'PROMPT_EXPANSION',
         model: expansionResult.modelId,
         provider: expansionResult.provider ?? 'unknown',
+        input_system: expanderCfg?.system_prompt,
         input_user: prompt,
         output: activePromptForGen,
       }, Date.now() - expansionT0)
@@ -661,7 +696,21 @@ export async function runChain(
     onStatus({ chain: 'IMAGE_GEN', goal: 'Expanding prompt with context', status: 'done' })
   }
 
+  // ── Status label for text-processing categories ──
+  const STATUS_CATEGORIES = ['REGULAR', 'COMPLEX', 'CODING', 'TOOLS', 'ADVISOR', 'AUDIO', 'WEB_SEARCH']
+  if (STATUS_CATEGORIES.includes(category)) {
+    onStatus({
+      chain: category,
+      goal: `Processing ${category.toLowerCase()} request`,
+      status: 'running',
+      label: getStatusLabel(category),
+    })
+  }
+
+  logger.info(`[${category}] Chain models: [${uniqueChain.map(m => `${m.id}(${m.provider},en=${m.is_enabled},paid=${m.is_paid})`).join(', ')}]`)
+
   modelLoop: for (const modelConfig of uniqueChain) {
+
 
     // ── CostGuard: project cost from prompt + estimated completion tokens ──
     if (modelConfig.is_paid && (modelConfig.prompt_cost || modelConfig.completion_cost)) {
@@ -683,6 +732,13 @@ export async function runChain(
       }
     }
 
+
+    // ── WEB_SEARCH/RESEARCH: inject [SEARCH FAILED] if all search engines exhausted ──
+    const SEARCH_CHAIN_CATEGORIES: string[] = ['WEB_SEARCH', 'RESEARCH']
+    if (SEARCH_CHAIN_CATEGORIES.includes(category) && !modelConfig.id.includes('search') && modelConfig.provider !== 'core' && modelConfig.provider !== 'tavily' && !system_prompt.includes('[SEARCH DATA]') && !system_prompt.includes('[SEARCH FAILED]')) {
+      logger.info(`All search engines exhausted for ${category} — injecting [SEARCH FAILED] before text model ${modelConfig.id}`)
+      system_prompt += `\n\n[SEARCH FAILED]\nAll search attempts returned no results. Acknowledge your knowledge cutoff, provide what you know from training (labeled as pre-cutoff knowledge), and suggest the user retry searching in a few minutes.\n\n`
+    }
     if (isModelFailed(modelConfig.id)) {
       logger.info(`Skipping failed model: ${modelConfig.id}`)
       routingTrace.push({ model: modelConfig.id, category, key: 'SKIPPED', success: false })
@@ -725,18 +781,68 @@ export async function runChain(
 
           const routeContext: any = {
             ...(context || {}),
-            useTools: category === 'TOOL_CALLING',
+            useTools: category === 'TOOLS',
             aiApiKey: activeKey || undefined,
             usedKeyIndex: k + 1,
             temperature: typeof temperature === 'number' ? temperature : undefined,
             setSynthesisModel: (m: string) => { usedSynthesisModel = m }
           }
 
-          // WEB_SEARCH/DEEP_RESEARCH: never pass conversation history — prior wrong answers poison synthesis.
+          // Only stream tokens for text-generation chains — skip search, image gen, vision, tool calling
+          const TEXT_STREAM_CATEGORIES = ['FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX', 'CODING', 'ADVISOR']
+          if (!TEXT_STREAM_CATEGORIES.includes(category)) {
+            routeContext.onChunk = undefined
+          }
+
+          // WEB_SEARCH/RESEARCH: never pass conversation history — prior wrong answers poison synthesis.
           // The search results are the ground truth; history would override them.
-          const historyForChain = (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH')
+          let historyForChain = (category === 'WEB_SEARCH' || category === 'RESEARCH')
             ? []
             : (!pipelineSettings.historyEnabledCategories || pipelineSettings.historyEnabledCategories.includes(category)) ? history : []
+
+          // When session summary exists, trim raw history — the summary carries prior context.
+          // Keep only the last few messages for immediate conversational coherence (Claude Code style).
+          if (currentSummary && historyForChain.length > 5) {
+            historyForChain = historyForChain.slice(-5)
+          }
+
+          // ── Token Limit Application ──
+          // Skip token limits for search chains — raw results must pass through unmodified.
+          const SEARCH_CHAINS = ['WEB_SEARCH', 'RESEARCH']
+          const enabledCats: string[] = pipelineSettings.tokenLimitEnabledCategories ?? []
+          const isTokenLimitEnabled = enabledCats.length > 0
+            ? enabledCats.includes(category)
+            : !SEARCH_CHAINS.includes(category)
+          if (isTokenLimitEnabled) {
+            // Apply Output Limit (max_tokens)
+            if (pipelineSettings.outputTokenLimit > 0) {
+              routeContext.max_tokens = pipelineSettings.outputTokenLimit
+            }
+            
+            // Apply Input Limit (Hard trimming)
+            if (pipelineSettings.inputTokenLimit > 0) {
+              const currentPromptTokens = estimateTokens(system_prompt + activePromptForGen)
+              const budgetForHistory = pipelineSettings.inputTokenLimit - currentPromptTokens
+              
+              if (budgetForHistory <= 0) {
+                // If system+user already exceeds limit, we can't send any history
+                logger.warn(`[TokenGuard] System+User prompt (${currentPromptTokens} tokens) exceeds Input Limit (${pipelineSettings.inputTokenLimit}). Sending empty history.`)
+                historyForChain = []
+              } else {
+                // Remove history messages from oldest to newest until it fits in the budget
+                let currentHistory = [...historyForChain]
+                while (currentHistory.length > 0) {
+                  const historyTokens = estimateTokens(JSON.stringify(currentHistory))
+                  if (historyTokens <= budgetForHistory) break
+                  currentHistory.shift() 
+                }
+                if (currentHistory.length !== historyForChain.length) {
+                  logger.info(`[TokenGuard] Trimmed history from ${historyForChain.length} to ${currentHistory.length} messages to fit ${pipelineSettings.inputTokenLimit} token limit.`)
+                }
+                historyForChain = currentHistory
+              }
+            }
+          }
 
           const traceMeta = {
             chain: category,
@@ -752,7 +858,7 @@ export async function runChain(
           try {
             switch (modelConfig.provider.toLowerCase()) {
               case 'google':
-                response = await runGoogle(modelConfig.id, activePromptForGen, system_prompt, undefined, { ...context, temperature } as any, historyForChain)
+                response = await runGoogle(modelConfig.id, activePromptForGen, system_prompt, undefined, routeContext, historyForChain)
                 break
               case 'groq':
                 response = await runGroq(modelConfig.id, activePromptForGen, system_prompt, activeKey || context?.aiApiKey, routeContext, historyForChain)
@@ -761,18 +867,19 @@ export async function runChain(
                 if (category === 'IMAGE_GEN') {
                   response = await runHuggingFace(modelConfig.id, activePromptForGen, activeKey || context?.aiApiKey)
                 } else {
-                  response = await runHuggingFaceText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || context?.aiApiKey)
+                  response = await runHuggingFaceText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || context?.aiApiKey, routeContext)
                 }
                 break
               case 'cloudflare':
-                response = await runCloudflare(modelConfig.id, activePromptForGen, activeKey || context?.aiApiKey, system_prompt, historyForChain, category)
+                response = await runCloudflare(modelConfig.id, activePromptForGen, activeKey || context?.aiApiKey, system_prompt, historyForChain, category, routeContext)
                 break
               case 'core':
               case 'tavily': {
                 // If we already have search data (from Thinking pass, Web Search, or Deep Research), skip redundant search
                 // Note: Deep Research results are often in activePromptForGen instead of system_prompt
                 const hasSearchData =
-                  system_prompt.includes('[SEARCH DATA]') ||
+                  system_prompt.includes('[SEARCH DATA:') ||
+                  system_prompt.includes('[SEARCH DATA]\n') ||
                   system_prompt.includes('[SEARCH RESULTS') ||
                   system_prompt.includes('RESEARCH FINDINGS:') ||
                   activePromptForGen.includes('RESEARCH FINDINGS:')
@@ -784,11 +891,31 @@ export async function runChain(
 
                 const SEARCH_FAILURE_STRINGS = ['search failed', 'unavailable', 'could not retrieve', 'failed to retrieve', 'unable to find', 'no results']
                 let searchResult: string | null = null
-                // Use the ORIGINAL prompt for search, not activePromptForGen which might contain prior search data
-                if (modelConfig.id === 'tavily-search') searchResult = await runWebSearchChain(prompt, routeContext, system_prompt)
-                if (modelConfig.id === 'duckduckgo-search') searchResult = await runDuckDuckGoSearchChain(prompt, routeContext, system_prompt)
+                // Augment search query with conversation context for disambiguation
+                const searchQuery = augmentSearchQuery(prompt, history)
+                if (modelConfig.id === 'tavily-search') searchResult = await runWebSearchChain(searchQuery, routeContext, system_prompt)
+                if (modelConfig.id === 'duckduckgo-search') searchResult = await runDuckDuckGoSearchChain(searchQuery, routeContext, system_prompt)
 
-                const isSearchFailure = !searchResult || SEARCH_FAILURE_STRINGS.some(f => searchResult!.toLowerCase().includes(f))
+                let isSearchFailure = !searchResult || SEARCH_FAILURE_STRINGS.some(f => searchResult!.toLowerCase().includes(f))
+
+                if (isSearchFailure) {
+                  // Retry with optimized query (one retry per engine)
+                  const altQueries = generateOptimizedQuery(searchQuery)
+                  for (const altQuery of altQueries) {
+                    if (altQuery === searchQuery) continue
+                    logger.info(`Retrying ${modelConfig.id} with optimized query: "${altQuery}"`)
+                    let retryResult: string | null = null
+                    if (modelConfig.id === 'tavily-search') retryResult = await runWebSearchChain(altQuery, routeContext, system_prompt)
+                    if (modelConfig.id === 'duckduckgo-search') retryResult = await runDuckDuckGoSearchChain(altQuery, routeContext, system_prompt)
+                    const retryFailed = !retryResult || SEARCH_FAILURE_STRINGS.some(f => retryResult!.toLowerCase().includes(f))
+                    if (!retryFailed) {
+                      searchResult = retryResult
+                      isSearchFailure = false
+                      logger.info(`Retry succeeded for ${modelConfig.id} with query: "${altQuery}"`)
+                      break
+                    }
+                  }
+                }
 
                 if (isSearchFailure) {
                   const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} 1`
@@ -806,23 +933,23 @@ export async function runChain(
                 if (category === 'IMAGE_GEN') {
                   response = await runPollinations(activePromptForGen, modelConfig.id)
                 } else {
-                  response = await runPollinationsText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0])
+                  response = await runPollinationsText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0], routeContext)
                 }
                 break
               case 'openrouter':
-                console.log(`[DEBUG chainRouter] openrouter_provider value:`, modelConfig.openrouter_provider, `| model:`, modelConfig.id, `| category:`, category)
-                response = await runOpenRouter(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || context?.aiApiKey || providerKeys[0], modelConfig.openrouter_provider || undefined)
+                if (modelConfig.openrouter_provider) routeContext.openrouterProvider = modelConfig.openrouter_provider
+                response = await runOpenRouter(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || context?.aiApiKey || providerKeys[0], routeContext)
                 break
               case 'local':
               case 'ollama':
               case 'ollama(my pc)':
-                response = await runOllama(modelConfig.id, activePromptForGen, system_prompt, historyForChain, temperature)
+                response = await runOllama(modelConfig.id, activePromptForGen, system_prompt, historyForChain, temperature, routeContext)
                 break
               case 'siliconflow':
                 if (category === 'IMAGE_GEN') {
                   response = await runSiliconFlow(modelConfig.id, activePromptForGen, activeKey || providerKeys[0])
                 } else {
-                  response = await runSiliconFlowText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0])
+                  response = await runSiliconFlowText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0], routeContext)
                 }
                 break
             }
@@ -834,16 +961,20 @@ export async function runChain(
           if (response) {
             let finalContent = response
             let citations: string[] | undefined = undefined
+            let providerUsage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } | undefined
+            let providerReasoning: string | undefined
 
             if (typeof response === 'object' && !Buffer.isBuffer(response) && 'content' in response) {
               finalContent = (response as any).content
               citations = (response as any).citations
+              providerUsage = (response as any).usage
+              providerReasoning = (response as any).reasoning
             }
 
-            // For WEB_SEARCH/DEEP_RESEARCH search steps, we DON'T return. 
+            // For WEB_SEARCH/RESEARCH search steps, we DON'T return. 
             // We've already updated system_prompt and recorded trace inside the switch.
             // We just need to move to the next model in the modelLoop (the synthesis LLM).
-            if ((modelConfig.provider === 'tavily' || modelConfig.id.includes('search')) && (category === 'WEB_SEARCH' || category === 'DEEP_RESEARCH')) {
+            if ((modelConfig.provider === 'tavily' || modelConfig.id.includes('search')) && (category === 'WEB_SEARCH' || category === 'RESEARCH')) {
               // If this was a search provider success, we've already done everything needed inside the switch.
               // We just break the keyLoop to move to the next model in the modelLoop.
               break keyLoop
@@ -869,11 +1000,33 @@ export async function runChain(
 
             const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} 1`
             routingTrace.push({ model: modelConfig.id, category, key: displayKey, success: true, actualProvider: (response as any).provider })
-            tracer.recordSuccess({ ...traceMeta, output: typeof finalContent === 'string' ? finalContent : '[binary]' }, Date.now() - t0)
+            const actualCost = (providerUsage?.prompt_tokens ?? 0) * (modelConfig.prompt_cost ?? 0)
+                              + (providerUsage?.completion_tokens ?? 0) * (modelConfig.completion_cost ?? 0)
+            tracer.recordSuccess({
+              ...traceMeta,
+              output: typeof finalContent === 'string' ? finalContent : '[binary]',
+              prompt_tokens: providerUsage?.prompt_tokens,
+              completion_tokens: providerUsage?.completion_tokens,
+              total_tokens: providerUsage?.total_tokens,
+              cache_read_input_tokens: providerUsage?.cache_read_input_tokens,
+              cost: actualCost > 0 ? actualCost : undefined,
+              reasoning: providerReasoning,
+            }, Date.now() - t0)
             if (usedSynthesisModel) {
               routingTrace.push({ model: usedSynthesisModel, category, key: 'GEMINI 1', success: true })
             }
-            trackModelUsage(modelConfig.id, modelConfig.provider)
+            await trackModelUsage(modelConfig.id, modelConfig.provider).catch(() => {})
+            logCost({
+              model_id: modelConfig.id,
+              provider: modelConfig.provider,
+              prompt_cost: (providerUsage?.prompt_tokens ?? 0) * (modelConfig.prompt_cost ?? 0),
+              completion_cost: (providerUsage?.completion_tokens ?? 0) * (modelConfig.completion_cost ?? 0),
+              total_cost: actualCost,
+              prompt_tokens: providerUsage?.prompt_tokens ?? 0,
+              completion_tokens: providerUsage?.completion_tokens ?? 0,
+              chain: category,
+              subprovider: (response as any)?.provider ?? null,
+            } as any)
 
             let imageDescription: string | undefined = undefined
             if (category === 'IMAGE_GEN') {
@@ -925,15 +1078,18 @@ export async function runChain(
                   }
                   try {
                     const { narrateGeneratedImage } = await import('./image-narration')
+                    const { getSubchainConfig } = await import('../subchain-config')
+                    const narrationCfg = await getSubchainConfig('image_narration')
                     const narrateT0 = Date.now()
                     const narrateRes = await narrateGeneratedImage(processingBuffer, context)
                     if (narrateRes) {
                       imageDescription = narrateRes.description
                       routingTrace.push({ model: narrateRes.modelId, category: 'VISION', key: 'NARRATION', success: true })
                       tracer.recordSuccess({
-                        chain: 'VISION',
+                        chain: 'IMAGE_NARRATION',
                         model: narrateRes.modelId,
                         provider: narrateRes.provider,
+                        input_system: narrationCfg?.system_prompt,
                         output: narrateRes.description,
                       }, Date.now() - narrateT0)
                     }
@@ -966,7 +1122,7 @@ export async function runChain(
 
             // Update token usage
             if (typeof finalContent === 'string') {
-              const sid = context?.chatId?.toString() || context?.activeEntityId || 'global'
+              const sid = sessionId
               const newTokens = estimateTokens(prompt + (finalContent || '') + (system_prompt || ''))
               const totalUsage = (sessionState?.token_usage_total || 0) + newTokens
               const limit = sessionState?.context_limit ?? 32000
@@ -979,6 +1135,37 @@ export async function runChain(
               }
             }
 
+            const transcript_md = buildTranscript({
+              prompt,
+              history: history,
+              context,
+              category,
+              classificationTrace,
+              routingTrace,
+              systemPrompt: system_prompt,
+              globalPrompt: (globalPrompt as string) || undefined,
+              internalPrompt: (internalPipelinePrompt as string) || undefined,
+              routerPrompt: (routerOverridePrompt as string) || undefined,
+              dateContext,
+              currentSummary,
+              visionNotes: (context as any)?.vision_notes,
+              replyContext: (context as any)?.replyContext,
+              thinkingEnabled: (context as any)?.thinkingEnabled,
+              advisorEnabled: (context as any)?.advisorEnabled,
+              mode: (context as any)?.mode,
+              stepTraces: tracer.all.length > 0 ? tracer.all : undefined,
+              pipelineSteps: thinkPipelineStepsPrepass.length > 0 ? thinkPipelineStepsPrepass : undefined,
+              finalContent: typeof finalContent === 'string' ? finalContent : '[image]',
+              finalModel: modelConfig.id,
+              citations,
+              tokensUsed: providerUsage?.total_tokens ?? (typeof finalContent === 'string' ? estimateTokens(prompt + (finalContent as string) + (system_prompt || '')) : undefined),
+              providerUsage,
+              providerReasoning,
+              chainDuration: Date.now() - t0,
+              usageType: finalUsageType,
+              modelChain: detailedModelChain,
+            })
+
             return {
               type: category === 'IMAGE_GEN' ? 'photo' : 'text',
               content: finalContent as any,
@@ -989,11 +1176,12 @@ export async function runChain(
               classification_trace: classificationTrace,
               routing_trace: routingTrace,
               citations,
-              tokens_used: typeof finalContent === 'string' ? estimateTokens(prompt + finalContent + (system_prompt || '')) : undefined,
+              tokens_used: providerUsage?.total_tokens ?? (typeof finalContent === 'string' ? estimateTokens(prompt + (finalContent as string) + (system_prompt || '')) : undefined),
               image_description: imageDescription,
               image_prompt: category === 'IMAGE_GEN' ? activePromptForGen : undefined,
               pipeline_steps: thinkPipelineStepsPrepass.length > 0 ? thinkPipelineStepsPrepass : undefined,
               step_traces: tracer.all.length > 0 ? tracer.all : undefined,
+              transcript_md,
             }
           } else {
             const lastTried = triedKeysCount[key] ?? 0
@@ -1035,13 +1223,13 @@ export async function runChain(
     }
   }
 
-  // All models in the chain exhausted — fall back to COMPLEX_THINKING if not already there
-  if (category !== 'COMPLEX_THINKING' && category !== 'MEDIUM_THINKING' && category !== 'FAST_SIMPLE') {
-    logger.warn(`[Fallback] All models exhausted for ${category} — retrying with COMPLEX_THINKING`)
-    const searchCategories = ['WEB_SEARCH', 'DEEP_RESEARCH']
+  // All models in the chain exhausted — fall back to COMPLEX if not already there
+  if (category !== 'COMPLEX' && category !== 'REGULAR') {
+    logger.warn(`[Fallback] All models exhausted for ${category} — retrying with COMPLEX`)
+    const searchCategories = ['WEB_SEARCH', 'RESEARCH']
     const fallbackResult = await runChain(prompt, inputBuffer, {
       ...context,
-      _forcedCategory: 'COMPLEX_THINKING',
+      _forcedCategory: 'COMPLEX',
       // Strip session summary from fallback when search chain failed — prevents poisoned context
       ...(searchCategories.includes(category) ? { _skipSessionSummary: true } : {}),
     })

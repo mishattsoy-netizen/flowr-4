@@ -37,14 +37,14 @@ export async function runPollinationsText(
   prompt: string,
   systemPrompt?: string,
   history: any[] = [],
-  apiKey?: string
-): Promise<string | null> {
+  apiKey?: string,
+  context?: any
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null> {
   try {
     const messages: { role: string; content: string }[] = []
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
 
-    const recentHistory = (history || []).slice(-10)
-    for (const msg of recentHistory) {
+    for (const msg of (history || [])) {
       if (msg.role && msg.content) messages.push({ role: msg.role, content: msg.content })
     }
     messages.push({ role: 'user', content: prompt })
@@ -58,7 +58,12 @@ export async function runPollinationsText(
       fetch('https://gen.pollinations.ai/v1/chat/completions', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ model: modelId, messages, seed: Math.floor(Math.random() * 1000000) })
+        body: JSON.stringify({ 
+          model: modelId, 
+          messages, 
+          seed: Math.floor(Math.random() * 1000000),
+          max_tokens: context?.max_tokens || undefined
+        })
       }),
       POLLINATIONS_TIMEOUT_MS,
       `Pollinations text [${modelId}]`
@@ -70,10 +75,16 @@ export async function runPollinationsText(
     }
 
     const data = await response.json()
-    const content = data?.choices?.[0]?.message?.content
-    if (!content) throw new Error(`Pollinations [${modelId}] returned empty content`)
+    const msg = data?.choices?.[0]?.message
+    if (!msg?.content) throw new Error(`Pollinations [${modelId}] returned empty content`)
 
-    return content
+    const usage = data.usage ? {
+      prompt_tokens: data.usage.prompt_tokens,
+      completion_tokens: data.usage.completion_tokens,
+      total_tokens: data.usage.total_tokens,
+    } : undefined
+
+    return { content: msg.content, usage }
   } catch (error: any) {
     logger.error(`Pollinations text [${modelId}] failed: ${error.message}`)
     return null

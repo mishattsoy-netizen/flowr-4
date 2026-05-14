@@ -245,9 +245,9 @@ export const useStore = create<AppState>()(
       aiClassificationModelId: (typeof window !== 'undefined' && localStorage.getItem('flowr_ai_classification_model')) || '',
       aiAbortController: null,
       sidebarSectionSettings: {
-        pinned: { sortMode: 'lastModified', itemLimit: 10 },
-        unsorted: { sortMode: 'lastModified', itemLimit: 10 },
-        workspaces: { sortMode: 'lastModified', itemLimit: 10 },
+        pinned: { sortMode: 'lastModified', itemLimit: 20 },
+        unsorted: { sortMode: 'lastModified', itemLimit: 20 },
+        workspaces: { sortMode: 'lastModified', itemLimit: 20 },
       },
       hiddenEntityIds: [],
       isCommandPaletteOpen: false,
@@ -467,6 +467,33 @@ export const useStore = create<AppState>()(
           set({ chatConversations: convs });
         } catch (e) {
           console.error('Failed to load conversations', e);
+        }
+      },
+
+      saveTempChat: async () => {
+        const { aiMessages, chatConversations } = get()
+        try {
+          const conv = await createConversation('New Chat')
+          const userAndAssistant = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant')
+          for (const m of userAndAssistant) {
+            await insertMessage(conv.id, m.role as 'user' | 'assistant', m.content || '', m.model, undefined, m.image_description, undefined)
+          }
+          // Auto-title from first user message
+          const firstUser = userAndAssistant.find(m => m.role === 'user')
+          if (firstUser?.content) {
+            const title = firstUser.content.slice(0, 60)
+            await updateConversationTitle(conv.id, title)
+            conv.title = title
+          }
+          set({
+            activeChatId: conv.id,
+            isTempChat: false,
+            tempChatMessages: [],
+            chatConversations: [conv, ...chatConversations],
+          })
+          get().fetchAISessionContext(conv.id)
+        } catch (e) {
+          console.error('Failed to save temp chat', e)
         }
       },
 
@@ -700,6 +727,7 @@ export const useStore = create<AppState>()(
                                   pipelineSteps: parsed.pipeline_steps ?? m.pipelineSteps,
                                   logId: parsed.log_id ?? m.logId,
                                   citations: parsed.citations ?? m.citations,
+                                  transcript_md: parsed.transcript_md ?? (m as any).transcript_md,
                                 }
                               : m
                           ),

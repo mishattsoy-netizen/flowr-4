@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check } from 'lucide-react'
+import { Check, RefreshCw } from 'lucide-react'
 import { Toggle } from '@/components/ui/Toggle'
 import { cn } from '@/lib/utils'
 import { saveSettingBlock, toggleSettingBlock } from '@/app/admin/bot/settings/actions'
 import { saveClassifierConfig } from '@/app/admin/bot/classifier/actions'
+import { syncFinalPrompts } from '@/app/admin/bot/global/actions'
 import type { BotSetting, SettingsCategory } from '@/app/admin/bot/settings/actions'
 import type { BotMode } from '@/data/store.types'
 
@@ -39,6 +40,7 @@ export default function ModeSettingsClient({
   const [saved, setSaved] = useState<Record<string, boolean>>({})
   const [classifierPrompt, setClassifierPrompt] = useState(initialClassifierPrompt)
   const [classifierSaved, setClassifierSaved] = useState(false)
+  const [finalSyncStatus, setFinalSyncStatus] = useState<'idle' | 'syncing' | 'done'>('idle')
   const [isPending, startTransition] = useTransition()
 
   const handleSave = (category: SettingsCategory) => {
@@ -62,13 +64,29 @@ export default function ModeSettingsClient({
     })
   }
 
+  const handleSyncFinal = () => {
+    setFinalSyncStatus('syncing')
+    startTransition(async () => {
+      await syncFinalPrompts()
+      setFinalSyncStatus('done')
+      setTimeout(() => setFinalSyncStatus('idle'), 3000)
+    })
+  }
+
   const allTabs = [...SETTINGS_TABS, { key: 'classifier' as const, label: 'Classifier', description: 'Intent classification prompt for this mode' }]
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <span className="text-lg">{modeIcon}</span>
         <h1 className="text-xl font-display font-normal">{modeLabel} Mode</h1>
+        <div className="ml-auto">
+          <button onClick={handleSyncFinal} disabled={finalSyncStatus === 'syncing'}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-accent/10 text-accent text-[10px] font-bold hover:bg-accent/20 transition-colors disabled:opacity-50">
+            {finalSyncStatus === 'done' ? <Check className="w-3 h-3" /> : <RefreshCw className={cn('w-3 h-3', finalSyncStatus === 'syncing' && 'animate-spin')} />}
+            {finalSyncStatus === 'syncing' ? 'Syncing...' : finalSyncStatus === 'done' ? 'Done' : 'Sync Final Prompts'}
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}

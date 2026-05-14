@@ -167,13 +167,13 @@ function ModelSelector({
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
-  TOOL_CALLING: Command,
+  TOOLS: Command,
   WEB_SEARCH: Share2,
   FAST_SIMPLE: Zap,
   MEDIUM_THINKING: Wand2,
-  COMPLEX_THINKING: Cpu,
+  COMPLEX: Cpu,
   IMAGE_GEN: Image,
-  AUDIO_VOICE: Mic,
+  AUDIO: Mic,
   CLASSIFIER: Brain
 }
 
@@ -198,12 +198,12 @@ export default function RouterManager({
   const [hasChanges, setHasChanges] = useState(false)
 
   // Subchain state
-  const SUBCHAIN_PARENTS: Record<string, true> = { IMAGE_GEN: true, DEEP_RESEARCH: true }
+  const SUBCHAIN_PARENTS: Record<string, true> = { IMAGE_GEN: true, RESEARCH: true }
   const hasSubchains = category ? SUBCHAIN_PARENTS[category] === true : false
   const ALL_CATEGORIES: IntentCategory[] = [
-    'FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX_THINKING', 'CLASSIFIER',
-    'VISION', 'IMAGE_GEN', 'IMAGE_UPSCALE', 'WEB_SEARCH', 'DEEP_RESEARCH',
-    'TOOL_CALLING', 'CODING', 'THINKING', 'ORCHESTRATOR', 'ADVISOR',
+    'REGULAR', 'COMPLEX', 'CLASSIFIER',
+    'VISION', 'IMAGE_GEN', 'IMAGE_UPSCALE', 'WEB_SEARCH', 'RESEARCH',
+    'TOOLS', 'CODING', 'THINKING', 'ADVISOR',
   ]
   const [isSubchainView, setIsSubchainView] = useState(false)
   const [subchains, setSubchains] = useState<SubchainConfig[]>([])

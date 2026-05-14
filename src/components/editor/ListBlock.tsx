@@ -16,17 +16,17 @@ interface ListRow {
 function flattenRows(block: EditorBlock): ListRow[] {
   const rows: ListRow[] = [];
 
-  function walk(item: EditorBlock, depth: number) {
-    rows.push({ id: item.id, content: item.content, checked: item.checked, depth });
-    for (const child of item.children ?? []) {
-      walk(child, depth + 1);
+  function walk(items: EditorBlock[], depth: number) {
+    for (const item of items) {
+      rows.push({ id: item.id, content: item.content, checked: item.checked, depth });
+      if (item.children) {
+        walk(item.children, depth + 1);
+      }
     }
   }
 
   rows.push({ id: block.id, content: block.content, checked: block.checked, depth: 0 });
-  for (const child of block.children ?? []) {
-    walk(child, 1);
-  }
+  walk(block.children ?? [], 0);
 
   return rows;
 }
@@ -57,7 +57,7 @@ function nestRows(rows: ListRow[], blockType: BlockType): { content: string; che
   return {
     content: first.content,
     checked: first.checked,
-    children: buildTree(rows.slice(1), 1),
+    children: buildTree(rows.slice(1), 0),
   };
 }
 
@@ -185,6 +185,7 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
   // Keep a stable ref to current rows so keyboard handlers don't go stale
   const rowsRef = useRef<ListRow[]>(flattenRows(block));
   rowsRef.current = flattenRows(block);
+  const ignoreNextInput = useRef(false);
 
   const registerRef = useCallback((id: string, el: HTMLDivElement | null) => {
     if (el) rowRefs.current.set(id, el);
@@ -226,6 +227,10 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
   }, [block.id, block.type, onUpdate, onExitBottom]);
 
   const handleRowUpdate = useCallback((rowId: string, content: string) => {
+    if (ignoreNextInput.current) {
+      ignoreNextInput.current = false;
+      return;
+    }
     const rows = rowsRef.current;
     if (content === '__toggle_checked__') {
       const newRows = rows.map(r => r.id === rowId ? { ...r, checked: !r.checked } : r);
@@ -242,6 +247,8 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
+      ignoreNextInput.current = true;
       const el = rowRefs.current.get(row.id);
       const content = el?.innerHTML ?? '';
 
@@ -254,7 +261,7 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
         } else if (rowIndex === rows.length - 1) {
           // Last empty top-level row: remove it and exit list
           const newRows = rows.slice(0, rowIndex);
-          if (newRows.length === 0) { onExitBottom(); return; }
+          if (newRows.length === 0) { onExitTop(); return; }
           commitRows(newRows);
           onExitBottom();
         } else {
@@ -293,6 +300,58 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
       return;
     }
 
+    if (e.key === ' ') {
+      const el = rowRefs.current.get(row.id);
+      if (!el) return;
+      const text = el.textContent ?? '';
+
+      if (text === '#') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'text', style: 'title', content: '', children: undefined });
+        return;
+      }
+      if (text === '##') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'text', style: 'heading', content: '', children: undefined });
+        return;
+      }
+      if (text === '###') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'text', style: 'subheading', content: '', children: undefined });
+        return;
+      }
+      if (text === '[]') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'checklist', checked: false, content: '', children: undefined });
+        return;
+      }
+      if (text === '1.') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'numberedList', content: '', children: undefined });
+        return;
+      }
+      if (text === '>' || text === '"') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'quote', content: '', children: undefined });
+        return;
+      }
+      if (text === '---') {
+        e.preventDefault();
+        onUpdate(block.id, { type: 'divider', content: '', children: undefined });
+        return;
+      }
+      if (text === '-') {
+        e.preventDefault();
+        const maxDepth = rowIndex === 0 ? 0 : rows[rowIndex - 1].depth + 1;
+        if (row.depth < maxDepth) {
+          const newRows = [...rows];
+          newRows[rowIndex] = { ...row, content: '', depth: row.depth + 1 };
+          commitRows(newRows, row.id);
+        }
+        return;
+      }
+    }
+
     if (e.key === 'Backspace') {
       const el = rowRefs.current.get(row.id);
       const text = el?.textContent ?? '';
@@ -312,7 +371,7 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
         }
       }
     }
-  }, [block.type, commitRows, onExitBottom, onExitTop]);
+  }, [block.type, block.id, commitRows, onExitBottom, onExitTop, onUpdate]);
 
   const rows = rowsRef.current;
 

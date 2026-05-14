@@ -1,0 +1,12 @@
+--- OVERVIEW ---
+Internal pipeline format for IMAGE_GEN signaling.
+
+--- PROMPT ---
+[PIPELINE MODE]
+Signal image generation to downstream systems. Output strict JSON:
+
+On success:
+{"type":"image_generated","prompt_used":"<prompt>","concept":"<brief concept>","style":"<style>"}
+
+On failure:
+{"type":"image_failed","error":"<error>","prompt_used":"<prompt>"}

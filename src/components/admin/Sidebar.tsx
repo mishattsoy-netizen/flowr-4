@@ -8,7 +8,7 @@ import {
   Bot, MessageSquareText, BarChart3, ScrollText, ArrowLeft,
   Database, Brain,
   RotateCcw, MessageCircle, LayoutDashboard, Globe,
-  Telescope
+  Telescope, DollarSign, SlidersHorizontal, Monitor
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,27 +29,31 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-gutter:stable] pl-3 pr-[4px] pt-3 mr-[2px] flex flex-col gap-3">
-        <PlatformSection title="Global Management">
+        <PlatformSection title="System">
           <NavLink href="/admin" icon={Activity}>System Overview</NavLink>
-          <NavLink href="/admin/analytics" icon={BarChart3}>Analytics Engine</NavLink>
+          <NavLink href="/admin/analytics" icon={BarChart3}>Analytics</NavLink>
+          <NavLink href="/admin/costs" icon={DollarSign}>Costs</NavLink>
           <NavLink href="/admin/logs" icon={ScrollText}>Message Logs</NavLink>
-          <NavLink href="/admin/users" icon={Users}>Global Users</NavLink>
-          <NavLink href="/admin/vault" icon={Shield}>Secure Vault</NavLink>
-          <NavLink href="/admin/presets" icon={Zap}>Usage Presets</NavLink>
-          <NavLink href="/admin/models" icon={Database}>Model Registry</NavLink>
-          <NavLink href="/admin/discover" icon={Telescope}>Discover</NavLink>
-          <NavLink href="/admin/router" icon={Cpu}>Router Matrix</NavLink>
+          <NavLink href="/admin/users" icon={Users}>Users</NavLink>
         </PlatformSection>
 
-        <PlatformSection title="Bot Intelligence">
+        <PlatformSection title="Infrastructure">
+          <NavLink href="/admin/vault" icon={Shield}>Vault</NavLink>
+          <NavLink href="/admin/presets" icon={SlidersHorizontal}>Presets</NavLink>
+          <NavLink href="/admin/discover" icon={Telescope}>Discover</NavLink>
+        </PlatformSection>
+
+        <PlatformSection title="Bot">
           <NavLink href="/admin/bot/global" icon={Globe}>Global Settings</NavLink>
+          <NavLink href="/admin/models" icon={Database}>Model Registry</NavLink>
+          <NavLink href="/admin/router" icon={Monitor}>Router Matrix</NavLink>
           <div className="px-3 py-[3px] mt-1">
             <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-40)]">Modes</span>
           </div>
-          <NavLink href="/admin/bot/default" icon={Zap}>Default Mode</NavLink>
-          <NavLink href="/admin/bot/pro" icon={Cpu}>Pro Mode</NavLink>
+          <NavLink href="/admin/bot/default" icon={Zap}>Default</NavLink>
+          <NavLink href="/admin/bot/pro" icon={Cpu}>Pro</NavLink>
           <div className="px-3 py-[3px] mt-1">
-            <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-40)]">Intelligence</span>
+            <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide text-[var(--bone-40)]">Config</span>
           </div>
           <NavLink href="/admin/bot/brain" icon={Brain}>Brain</NavLink>
           <NavLink href="/admin/bot/keywords" icon={Zap}>Keywords</NavLink>
