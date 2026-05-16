@@ -53,9 +53,9 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
   };
 
   return (
-    <section className="bg-sidebar group/widget px-4 pb-4 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground">All Files</h2>
+    <section className="bg-sidebar group/widget px-4 pb-4 pt-4 widget-shadow h-full flex flex-col">
+      <div className="flex items-center justify-between mb-0.5">
+        <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">All Files</h2>
         {onUpdateData && (
           <div className="flex items-center gap-1">
             <select value={sort} onChange={e => onUpdateData({ ...data, sort: e.target.value as SortBy })}

@@ -50,6 +50,7 @@ const PROVIDER_INFO: Record<string, ProviderInfo> = {
   openrouter:  { name: 'OpenRouter',  color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20', dot: 'bg-purple-400' },
   ollama:      { name: 'Ollama',      color: 'text-teal-400',   bg: 'bg-teal-400/10',   border: 'border-teal-400/20',   dot: 'bg-teal-400'   },
   tavily:      { name: 'Tavily',      color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/20',   dot: 'bg-cyan-400'   },
+  exa:         { name: 'Exa',         color: 'text-violet-400',  bg: 'bg-violet-400/10',  border: 'border-violet-400/20',  dot: 'bg-violet-400'  },
   huggingface: { name: 'Hugging Face', color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20', dot: 'bg-yellow-400' },
   pollinations: { name: 'Pollinations', color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20',   dot: 'bg-pink-400'   },
   siliconflow: { name: 'SiliconFlow', color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20', dot: 'bg-indigo-400' },

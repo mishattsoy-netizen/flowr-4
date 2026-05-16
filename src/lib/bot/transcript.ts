@@ -1,3 +1,9 @@
+export interface LogEntryLight {
+  level: string
+  message: string
+  timestamp: string
+}
+
 export interface TranscriptData {
   prompt: string
   history?: any[]
@@ -27,9 +33,17 @@ export interface TranscriptData {
   chainDuration?: number
   usageType?: string
   modelChain?: string
+  capturedLogs?: LogEntryLight[]
 }
 
+import { getCapturedLogs } from '../logger'
+
 export function buildTranscript(d: TranscriptData): string {
+  const rawLogs = (d.capturedLogs && d.capturedLogs.length > 0) ? d.capturedLogs : getCapturedLogs()
+  const logs = rawLogs.filter((l: LogEntryLight) => {
+    if (l.message.includes('PAYLOAD') || l.message.includes('[DEBUG]') || l.message.length > 500) return false
+    return true
+  })
   const lines: string[] = []
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19)
   const dateFile = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -56,6 +70,35 @@ export function buildTranscript(d: TranscriptData): string {
   if (d.chainDuration) lines.push(`- **Duration:** ${d.chainDuration}ms`)
   if (d.modelChain) lines.push(`- **Model Chain:** ${d.modelChain}`)
   lines.push('')
+
+  // ── Failed Models (early summary, before verbose sections) ──
+  if (d.routingTrace) {
+    const failures = d.routingTrace.filter((r: any) => !r.success)
+    if (failures.length > 0) {
+      lines.push('## Failed Models')
+      lines.push('')
+      lines.push('| Model | Category | Error |')
+      lines.push('|-------|----------|-------|')
+      for (const r of failures) {
+        const model = r.model || '?'
+        const cat = r.category || '—'
+        const err = r.error || (r.status === 'empty' ? 'Empty response' : r.status || 'Unknown error')
+        lines.push(`| ${model} | ${cat} | ${err} |`)
+      }
+      lines.push('')
+    }
+  }
+
+  // ── Live Logs (captured runtime logs, excluding long payload dumps) ──
+  if (logs.length > 0) {
+    lines.push('## Live Logs')
+    lines.push('')
+    for (const log of logs) {
+      const time = log.timestamp.slice(11, 19)
+      lines.push(`[${time}] ${log.level} → ${log.message}`)
+    }
+    lines.push('')
+  }
 
   // ── Context / State ──
   if (d.replyContext) {

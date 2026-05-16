@@ -300,6 +300,22 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
       return;
     }
 
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (rowIndex < rows.length - 1) {
+        focusRow(rows[rowIndex + 1].id);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (rowIndex > 0) {
+        focusRow(rows[rowIndex - 1].id);
+      }
+      return;
+    }
+
     if (e.key === ' ') {
       const el = rowRefs.current.get(row.id);
       if (!el) return;
@@ -369,9 +385,35 @@ export function ListBlock({ block, listNumber, onUpdate, onExitBottom, onExitTop
           const prevId = rows[rowIndex - 1].id;
           commitRows([...rows.slice(0, rowIndex), ...rows.slice(rowIndex + 1)], prevId);
         }
+        return;
+      }
+
+      // Non-empty row: check if cursor is at start position
+      const sel = window.getSelection();
+      if (sel?.rangeCount && sel.getRangeAt(0).collapsed) {
+        const range = sel.getRangeAt(0);
+        const testRange = document.createRange();
+        testRange.selectNodeContents(el!);
+        testRange.setEnd(range.startContainer, range.startOffset);
+        if (testRange.toString().length === 0) {
+          e.preventDefault();
+          if (row.depth > 0) {
+            const newRows = [...rows];
+            newRows[rowIndex] = { ...row, depth: row.depth - 1 };
+            commitRows(newRows, row.id);
+          } else if (rowIndex > 0) {
+            const prevRow = rows[rowIndex - 1];
+            const prevContent = prevRow.content || '';
+            const curContent = row.content || '';
+            const newContent = prevContent + curContent;
+            const mergedRows = [...rows.slice(0, rowIndex - 1), { ...prevRow, content: newContent }, ...rows.slice(rowIndex + 1)];
+            commitRows(mergedRows, prevRow.id);
+          }
+          return;
+        }
       }
     }
-  }, [block.type, block.id, commitRows, onExitBottom, onExitTop, onUpdate]);
+  }, [block.type, block.id, commitRows, onExitBottom, onExitTop, onUpdate, focusRow]);
 
   const rows = rowsRef.current;
 

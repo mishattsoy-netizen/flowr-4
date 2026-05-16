@@ -49,6 +49,6 @@ No typecheck script exists — run `npx tsc --noEmit` if needed.
 - `tsconfig.json` excludes `Flowr-1.0/`, `Flowr-AI-Telegram-Bot-main/`, `skills/`.
 - Build optimized imports: `lucide-react`, `gsap` (in `next.config.ts`).
 - ESLint is lenient: `no-explicit-any` off, `unused-vars` warn, `exhaustive-deps` warn.
-- Version suffix in `package.json` name (`flowr-4.9.1`) — bump on pushes per `.agents/rules/project-versions-rule.md`.
+- Version suffix in `package.json` name (`flowr-4.9.2`) — bump on pushes per `.agents/rules/project-versions-rule.md`.
 - The `www`/`non-www` redirect happens via an `entities` table. Not via middleware.
 - `supabase_types.ts` is empty — Supabase types not yet generated.

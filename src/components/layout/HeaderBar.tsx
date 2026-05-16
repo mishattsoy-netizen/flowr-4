@@ -171,7 +171,7 @@ export const HeaderBar = memo(function HeaderBar() {
             <Menu strokeWidth={2} className="w-5 h-5" />
           </button>
 
-          <Tooltip content="Go Back (Alt+Left)">
+          <Tooltip content="Go Back">
             <button onClick={goBack} disabled={!canGoBack} className={btnClass(canGoBack)}>
               <ArrowLeft strokeWidth={2} className="w-4 h-4" />
             </button>
@@ -190,7 +190,7 @@ export const HeaderBar = memo(function HeaderBar() {
             </button>
           </Tooltip>
 
-          <Tooltip content="Toggle Sidebar (Ctrl+S)">
+          <Tooltip content="Toggle Sidebar">
             <button onClick={toggleSidebar} className={btnClass(true)}>
               <PanelLeft strokeWidth={2} className="w-4 h-4" />
             </button>

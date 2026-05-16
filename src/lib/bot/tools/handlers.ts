@@ -45,6 +45,15 @@ export const toolHandlers: Record<string, (args: any, context?: any) => Promise<
   },
 
   /**
+   * Exa Search
+   */
+  async exa_search({ query }: { query: string }, context?: any) {
+    const { runExaSearchChain } = await import('../providers/exa')
+    const results = await runExaSearchChain(query, context)
+    return { results }
+  },
+
+  /**
    * Weather via Open-Meteo (Zero Key)
    */
   async get_weather({ location }: { location: string }) {

@@ -42,7 +42,7 @@ export function ChatConversation() {
         className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-10 pb-36 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
         style={{ overflowAnchor: 'auto' }}
       >
-        <div className="max-w-3xl mx-auto space-y-2">
+        <div className="max-w-3xl mx-auto space-y-0.5">
           {displayMessages.length === 0 && !isAILoading ? (
             <div className="flex-1 flex flex-col items-center justify-center h-[50vh] text-center gap-6 pt-24">
               <AIAvatar className="w-12 h-12 opacity-100" />

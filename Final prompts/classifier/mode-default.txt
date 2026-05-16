@@ -24,7 +24,7 @@ REGULAR: Well-established facts with no recency requirements. Historical events 
 
 COMPLEX: Deep analysis, strategy, architecture, multi-step logic, business plans, essays. Used when the request requires structured reasoning, not just factual lookup.
 
-CODING: Active programming, debugging, scripts, SQL, infrastructure. Triggered by development tasks, not generic tech questions.
+CODING: Active programming, debugging, scripts, SQL, infrastructure. Triggered by development tasks (writing code, debugging errors, architecture design). NOT for: "how do I check my node version", "what command to X", "how to install Y", or any simple 1-line terminal command questions — those are REGULAR.
 
 RESEARCH: Triggered ONLY by /research tag.
 

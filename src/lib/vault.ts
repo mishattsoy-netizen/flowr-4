@@ -72,7 +72,7 @@ export async function getProviderKeys(provider: string): Promise<string[]> {
 
     // Filter out metadata and INACTIVE keys
     const filteredData = (data || []).filter((item: any) => 
-      item.is_active !== false &&
+      item.is_active === true &&
       !item.key_id.includes('_ACCOUNT_ID') && 
       !item.key_id.includes('_BASE_URL') &&
       !item.key_id.includes('_ORG_ID')

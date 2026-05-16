@@ -12,10 +12,11 @@ interface TooltipProps {
   disabled?: boolean;
 }
 
-export function Tooltip({ children, content, delay = 2000, className, disabled }: TooltipProps) {
+export function Tooltip({ children, content, delay = 500, className, disabled }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [renderedPos, setRenderedPos] = useState({ x: 0, y: 0 });
+  const [hasCalculated, setHasCalculated] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -26,9 +27,13 @@ export function Tooltip({ children, content, delay = 2000, className, disabled }
     if (timerRef.current) clearTimeout(timerRef.current);
     
     setPos({ x: e.clientX, y: e.clientY });
-    timerRef.current = setTimeout(() => {
+    if (delay > 0) {
+      timerRef.current = setTimeout(() => {
+        setIsVisible(true);
+      }, delay);
+    } else {
       setIsVisible(true);
-    }, delay);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -40,16 +45,19 @@ export function Tooltip({ children, content, delay = 2000, className, disabled }
   const handleMouseLeave = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setIsVisible(false);
+    setHasCalculated(false);
   };
 
   const handleClick = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setIsVisible(false);
+    setHasCalculated(false);
   };
 
   useEffect(() => {
     if (disabled && isVisible) {
       setIsVisible(false);
+      setHasCalculated(false);
       if (timerRef.current) clearTimeout(timerRef.current);
     }
   }, [disabled, isVisible]);
@@ -73,6 +81,7 @@ export function Tooltip({ children, content, delay = 2000, className, disabled }
       y = Math.max(padding, y);
 
       setRenderedPos({ x, y });
+      setHasCalculated(true);
     }
   }, [isVisible, pos]);
 
@@ -80,7 +89,8 @@ export function Tooltip({ children, content, delay = 2000, className, disabled }
     <div
       ref={tooltipRef}
       className={cn(
-        "fixed pointer-events-none z-[9999] px-3 py-2 bg-panel/95 border border-border/50 rounded-2xl text-[11px] font-medium text-foreground backdrop-blur-xl",
+        "fixed pointer-events-none z-[9999] px-1.5 py-0.5 bg-background border border-[var(--bone-12)] rounded-sm text-[11px] font-medium text-[var(--bone-70)] backdrop-blur-xl",
+        !hasCalculated && "invisible",
         className
       )}
       style={{

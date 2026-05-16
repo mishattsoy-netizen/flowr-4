@@ -1,6 +1,7 @@
 import { tavily } from '@tavily/core'
 import { getVaultKey, getProviderKeys } from '../../vault'
 import { logger } from '../../logger'
+import { extractContent, formatExtractedPages } from './content-extract'
 
 async function searchTavily(query: string, context?: any): Promise<string | null> {
   let keys = context?.aiApiKey ? [context.aiApiKey] : []
@@ -13,12 +14,42 @@ async function searchTavily(query: string, context?: any): Promise<string | null
     const results = await client.search(query, { searchDepth: 'advanced', maxResults: 5 })
     if (!results.results?.length) return null
     return results.results.map(r =>
-      `SOURCE: ${r.title}\nURL: ${r.url}\nCONTENT: ${r.content}\n\n[📄 ${r.title}](${r.url})`
+      `SOURCE: ${r.title}\nURL: ${r.url}\nCONTENT: ${r.content}\n\n[ ${r.title}](${r.url})`
     ).join('\n\n---\n\n')
   } catch (e: any) {
     logger.warn(`Tavily search failed for "${query}": ${e.message}`)
     return null
   }
+}
+
+async function searchExa(query: string, context?: any): Promise<string | null> {
+  const { searchExa: exaSearch } = await import('./exa')
+  return exaSearch(query, context)
+}
+
+async function bestSearch(query: string, context?: any): Promise<{ text: string; urls: string[] } | null> {
+  // Try Exa first, then Tavily
+  const exaResult = await searchExa(query, context)
+  if (exaResult) {
+    const urls = extractUrls(exaResult)
+    return { text: exaResult, urls }
+  }
+  const tavilyResult = await searchTavily(query, context)
+  if (tavilyResult) {
+    const urls = extractUrls(tavilyResult)
+    return { text: tavilyResult, urls }
+  }
+  return null
+}
+
+function extractUrls(searchText: string): string[] {
+  const urls: string[] = []
+  const urlRegex = /URL:\s*(https?:\/\/[^\s\n]+)/g
+  let match
+  while ((match = urlRegex.exec(searchText)) !== null) {
+    urls.push(match[1])
+  }
+  return urls
 }
 
 async function detectGaps(allFindings: string, originalQuestion: string, gapSystemPrompt: string, gapModel: any): Promise<string[]> {
@@ -91,10 +122,18 @@ export async function runDeepResearchChain(prompt: string, context?: any): Promi
   logger.info(`Deep research using query: ${researchQuery}`)
 
   // Round 1 — initial broad search (using the real topic, not the conversational prompt)
-  const round1Data = await searchTavily(researchQuery, context)
-  if (!round1Data) return { researchText: 'Search failed to retrieve results.', gapTrace: [] }
+  const round1 = await bestSearch(researchQuery, context)
+  if (!round1) return { researchText: 'Search failed to retrieve results.', gapTrace: [] }
 
-  let allFindings = `[ROUND 1 — Query: ${researchQuery}]\n${round1Data}`
+  let allFindings = `[ROUND 1 — Query: ${researchQuery}]\n${round1.text}`
+
+  // Fetch full content from discovered URLs
+  if (round1.urls.length > 0) {
+    const pages = await extractContent(round1.urls, context)
+    if (pages.length > 0) {
+      allFindings += `\n\n[EXTRACTED CONTENT]\n${formatExtractedPages(pages)}`
+    }
+  }
 
   // Round 2 — gap detection + targeted follow-up
   if (gapModel) {
@@ -102,10 +141,13 @@ export async function runDeepResearchChain(prompt: string, context?: any): Promi
     logger.info(`Deep research gaps detected: ${JSON.stringify(gaps)}`)
 
     if (gaps.length > 0) {
-      const round2Results = await Promise.all(gaps.map(q => searchTavily(q, context)))
+      const round2Results = await Promise.all(gaps.map(q => bestSearch(q, context)))
       gaps.forEach((query, i) => {
         if (round2Results[i]) {
-          allFindings += `\n\n[ROUND 2 — Query: ${query}]\n${round2Results[i]}`
+          allFindings += `\n\n[ROUND 2 — Query: ${query}]\n${round2Results[i].text}`
+          if (round2Results[i].urls.length > 0) {
+            // Reuse already-extracted pages if same URLs, otherwise content is from R1
+          }
         }
       })
     }

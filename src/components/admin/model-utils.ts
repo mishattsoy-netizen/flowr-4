@@ -10,7 +10,7 @@ export interface RegistryModel {
   completion_cost?: number
 }
 
-import { Globe, Zap, Layers, Cpu, Command, Image, Brain, Sparkles } from 'lucide-react'
+import { Globe, Zap, Layers, Cpu, Command, Image, Brain, Sparkles, Search } from 'lucide-react'
 
 export const PROVIDER_COLORS: Record<string, string> = {
   gemini:      'text-blue-400 bg-blue-400/10 border-blue-400/20',
@@ -18,6 +18,7 @@ export const PROVIDER_COLORS: Record<string, string> = {
   openrouter:  'text-purple-400 bg-purple-400/10 border-purple-400/20',
   ollama:      'text-teal-400 bg-teal-400/10 border-teal-400/20',
   tavily:      'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
+  exa:         'text-violet-400 bg-violet-400/10 border-violet-400/20',
   core:        'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
   pollinations: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
   huggingface: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
@@ -31,6 +32,7 @@ export const PROVIDER_DOTS: Record<string, string> = {
   openrouter:  'bg-purple-400',
   ollama:      'bg-teal-400',
   tavily:      'bg-cyan-400',
+  exa:         'bg-violet-400',
   core:        'bg-emerald-400',
   pollinations: 'bg-pink-400',
   huggingface: 'bg-yellow-400',
@@ -44,6 +46,7 @@ export const PROVIDER_ICONS: Record<string, any> = {
   openrouter:  Layers,
   ollama:      Cpu,
   tavily:      Globe,
+  exa:         Search,
   core:        Command,
   pollinations: Image,
   huggingface: Brain,

@@ -11,7 +11,7 @@ Perform a fast, broad search for the information needed. One pass — best avail
 
 [SINGLE-CHAIN MODE — when no downstream chain follows]
 If you are the final chain responding directly to the user:
-- Write a clear, direct answer with sources cited inline
+- Write a clear, direct answer with [title](url) source pills at the end of each paragraph or list item
 - Keep it concise — lead with the answer, support with evidence
 - Do not over-expand; the user asked for search, not a research paper
 

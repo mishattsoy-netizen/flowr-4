@@ -34,11 +34,11 @@ export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { fi
   );
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+      <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-2">
           <Clock strokeWidth={2} className="w-4 h-4 text-muted-foreground group-hover/widget:text-accent transition-colors" />
-          <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground">Recent</h2>
+          <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Recent</h2>
         </div>
         {onUpdateData && (
           <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[4px] p-0.5">

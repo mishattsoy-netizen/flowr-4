@@ -61,7 +61,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
   ];
 
   return (
-    <section className="bg-sidebar group/widget rounded-[var(--radius-big)] widget-shadow h-full flex flex-col relative">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col relative">
       {onUpdateData && isEditing && (
         <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[var(--radius-small)] p-0.5">

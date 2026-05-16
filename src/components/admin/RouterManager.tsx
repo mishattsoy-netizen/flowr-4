@@ -21,7 +21,14 @@ import {
   X,
   Save,
   Edit2,
-  MessageSquareCode
+  MessageSquareCode,
+  Sparkles,
+  Search,
+  Eye,
+  ShieldCheck,
+  ArrowUpRight,
+  Maximize,
+  GraduationCap
 } from 'lucide-react'
 import {
   updateRouterChain,
@@ -174,7 +181,16 @@ const CATEGORY_ICONS: Record<string, any> = {
   COMPLEX: Cpu,
   IMAGE_GEN: Image,
   AUDIO: Mic,
-  CLASSIFIER: Brain
+  CLASSIFIER: Brain,
+  THINKING: Sparkles,
+  ORCHESTRATOR: Layers,
+  CODING: MessageSquareCode,
+  RESEARCH: GraduationCap,
+  VISION: Eye,
+  ADVISOR: ShieldCheck,
+  IMAGE_UPSCALE: Maximize,
+  PROMPT_EXPANSION: ArrowUpRight,
+  IMAGE_NARRATION: Mic
 }
 
 export default function RouterManager({
@@ -393,7 +409,10 @@ export default function RouterManager({
     setHasChanges(true)
   }
 
-  const providers = [...new Set(availableModels.map(m => m.provider.toLowerCase()))].sort()
+  const providers = [...new Set([
+    ...Object.keys(PROVIDER_COLORS),
+    ...availableModels.map(m => m.provider.toLowerCase())
+  ])].sort()
 
   const addModel = () => {
     if (models.length >= 10) {
@@ -544,7 +563,7 @@ export default function RouterManager({
           <div className="flex items-center gap-2">
             {category && CATEGORY_ICONS[category] && (
               <div>
-                {React.createElement(CATEGORY_ICONS[category], { className: "w-3 h-3 text-[#eea047]", strokeWidth: 2.5 })}
+                {React.createElement(CATEGORY_ICONS[category], { className: "w-3 h-3 text-accent", strokeWidth: 2.5 })}
               </div>
             )}
             <h3 className="text-[10px] font-ui-label font-bold text-muted-foreground tracking-widest uppercase">
@@ -552,24 +571,6 @@ export default function RouterManager({
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            {category === 'IMAGE_UPSCALE' && (
-              <div className="mr-2 flex items-center gap-1 text-[8px] font-bold text-accent bg-accent/5 px-2 py-0.5 rounded-sm border border-accent/20 animate-pulse">
-                <span>Free Pick: xinlai/Real-ESRGAN-realesrgan-x4plus</span>
-              </div>
-            )}
-            {models.some(m => m.provider.toLowerCase() === 'cloudflare') && (
-              <div className="mr-2 group relative">
-                <div className="flex items-center gap-1 text-[8px] font-bold text-amber-500 bg-amber-500/5 px-2 py-0.5 rounded-sm border border-amber-500/20 cursor-help">
-                   <span>401?</span>
-                </div>
-                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-[#1A1A1A] border border-white/10 rounded-medium shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[100]">
-                  <p className="text-[9px] leading-relaxed text-bone-70">
-                    <span className="text-amber-500 font-bold">Cloudflare 401?</span><br />
-                    Ensure your token has <span className="text-bone-100 font-bold">"Workers AI: Edit"</span> permission in the Cloudflare dashboard.
-                  </p>
-                </div>
-              </div>
-            )}
             {/* Subchain tabs — shown only in subchain view */}
             {isSubchainView && subchains.map(s => (
               <button
@@ -700,7 +701,7 @@ export default function RouterManager({
                )}
              >
                {/* Col 1: Model ID */}
-               <div className="w-[200px] shrink-0 flex items-center gap-1.5">
+               <div className="w-[190px] shrink-0 flex items-center gap-1.5">
                  <ModelDropdown
                    value={model.id}
                    models={availableModels}
@@ -708,15 +709,15 @@ export default function RouterManager({
                    providerFilter={model.provider}
                  />
                  {isPaid && (
-                   <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#d38f36]/10 border border-[#d38f36]/30 shrink-0" title="Paid Model">
-                     <span className="text-[9px] font-bold text-[#d38f36] select-none leading-none">$</span>
+                   <div className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-accent/10 border border-accent/20 shrink-0" title="Paid Model">
+                     <span className="text-[9px] font-bold text-accent select-none leading-none">$</span>
                    </div>
                  )}
                </div>
              
-             <div className="flex items-center gap-2 ml-auto">
+             <div className="flex items-center gap-1 ml-auto">
                {/* Col 2: RPD */}
-               <div className="flex items-center gap-1 shrink-0 text-bone-70 group-hover:text-bone-80 transition-colors duration-0 w-16 justify-end">
+               <div className="flex items-center gap-1 shrink-0 text-bone-70 group-hover:text-bone-80 transition-colors duration-0 w-12 justify-end">
                  <span className={cn(
                     "text-[9px] font-mono font-medium",
                     (() => {

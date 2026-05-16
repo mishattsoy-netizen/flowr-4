@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { X, Plus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Entity, EditorBlock, BlockType, BlockStyle, generateId, useStore } from '@/data/store';
-import { EditorToolbar } from './EditorToolbar';
+import { SelectionToolbar } from './SelectionToolbar';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { BlockRenderer } from './BlockRenderer';
 import { BlockOptionsMenu } from './BlockOptionsMenu';
@@ -404,34 +404,24 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     active: boolean;
   } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const [tempTitle, setTempTitle] = useState(entity.title);
   const isFullWidth = useStore(s => s.isFullWidth);
 
-  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null!);
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
 
   const isEditingTitle = editingEntity?.id === entity.id && editingEntity.source === 'view';
 
-  useEffect(() => {
-    if (isEditingTitle) {
-      setTempTitle(entity.title);
-    }
-  }, [isEditingTitle, entity.title]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isEditingTitle && titleRef.current) {
-      titleRef.current.setSelectionRange(tempTitle.length, tempTitle.length);
+      titleRef.current.focus();
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(titleRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
   }, [isEditingTitle]);
-
-  /* Auto-resize the title textarea so it grows to fit wrapped text */
-  const autoResizeTitle = useCallback(() => {
-    const el = titleRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
-    }
-  }, []);
 
   const [history, setHistory] = useState<EditorBlock[][]>(() => [blocks]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -1065,7 +1055,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
   }, [activeBlock, updateBlock]);
 
   const handleTitleBlur = () => {
-    const value = tempTitle.trim();
+    const value = (titleRef.current?.textContent ?? '').trim();
     if (value !== entity.title) {
        renameEntity(entity.id, value || "Untitled");
     }
@@ -1170,46 +1160,33 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
                   className="pr-9 py-6 group relative transition-none duration-0"
                   style={{ paddingLeft: '44px' }}
                 >
-                <div className="flex items-start justify-between w-full">
-                  {isEditingTitle ? (
-                    <textarea
-                      ref={titleRef}
-                      rows={1}
-                      autoFocus
-                      value={tempTitle}
-                      onChange={e => {
-                        setTempTitle(e.target.value);
-                      }}
-                      onBlur={handleTitleBlur}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleTitleBlur();
-                        }
-                        if (e.key === 'Escape') { 
-                          setTempTitle(entity.title); 
-                          setEditingEntityId(null); 
-                        }
-                      }}
-                      className="text-5xl font-display font-medium bg-transparent border-none outline-none flex-1 text-foreground px-0 py-0 resize-none leading-tight block align-top"
-                      onInput={autoResizeTitle}
-                    />
-                  ) : (
-                    <>
-                      <h1
-                        onDoubleClick={(e) => { e.stopPropagation(); setTempTitle(entity.title); setEditingEntityId(entity.id, 'view'); }}
-                        className="text-5xl font-display font-medium outline-none cursor-text select-text text-foreground flex-1 break-words leading-tight block transition-none duration-0 transform-none line-clamp-2"
-                      >
-                        {entity.title}
-                      </h1>
-                      <button
-                        onClick={() => { setTempTitle(entity.title); setEditingEntityId(entity.id, 'view'); }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors mt-4"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
+                  <div className="flex items-start justify-between w-full">
+                  <h1
+                    ref={titleRef}
+                    contentEditable={isEditingTitle}
+                    suppressContentEditableWarning
+                    onDoubleClick={(e) => { e.stopPropagation(); setEditingEntityId(entity.id, 'view'); }}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && isEditingTitle) {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
+                      if (e.key === 'Escape' && isEditingTitle) {
+                        e.currentTarget.textContent = entity.title;
+                        setEditingEntityId(null);
+                      }
+                    }}
+                    className="text-5xl font-display font-medium outline-none cursor-text select-text text-foreground flex-1 break-words leading-tight block transition-none duration-0 transform-none"
+                  >
+                    {entity.title}
+                  </h1>
+                  <button
+                    onClick={() => setEditingEntityId(entity.id, 'view')}
+                    className="opacity-0 group-hover:opacity-100 p-2 rounded-md hover:bg-hover text-muted-foreground hover:text-foreground transition-colors mt-4"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 </div>
 
@@ -1256,20 +1233,6 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
               </div>
             </div>
           </div>
-
-          <EditorToolbar
-            isFloating={isMixed}
-            activeBlockStyle={activeBlock?.style}
-            activeBlockType={activeBlock?.type}
-            activeAlign={activeBlock?.align}
-            onChangeBlockStyle={changeBlockStyle}
-            onConvertToList={convertToList}
-            onChangeAlign={changeAlign}
-            onUndo={undo}
-            onRedo={redo}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < history.length - 1}
-          />
 
           {(() => {
             const getLevel = (block: EditorBlock) => {
@@ -1392,6 +1355,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
           />
         </Portal>
       )}
+      <SelectionToolbar editorRef={editorRef} />
     </div>
   );
 }

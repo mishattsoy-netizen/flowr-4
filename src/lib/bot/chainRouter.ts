@@ -1,4 +1,4 @@
-﻿import { classifyIntentWithModel } from './classifier'
+import { classifyIntentWithModel } from './classifier'
 import { runAdvisor } from './advisor'
 import { getRouterChain, getFallbackModes, IntentCategory } from '../router-config'
 import type { BotMode } from '@/data/store.types'
@@ -11,6 +11,7 @@ import { runOllama } from './providers/ollama'
 import { runHuggingFace, runHuggingFaceText } from './providers/huggingface'
 import { runWebSearchChain } from './providers/tavily'
 import { runDuckDuckGoSearchChain } from './providers/duckduckgo'
+import { runExaSearchChain } from './providers/exa'
 import { runDeepResearchChain } from './providers/deepResearch'
 import { runCloudflare } from './providers/cloudflare'
 import { runPollinations, runPollinationsText } from './providers/pollinations'
@@ -217,7 +218,7 @@ export async function runChain(
   // 0. Prefetch independent config in parallel
   const sessionId = context?.chatId?.toString()
     || (context?.activeChatId ? `chat:${context.activeChatId}` : null)
-    || (context?.isTempChat ? 'temp' : null)
+    || (context?.isTempChat ? `temp:${crypto.randomUUID()}` : null)
     || context?.activeEntityId
     || 'global'
   const [sessionState, globalPrompt, fallbackModes, pipelineSettings] = await Promise.all([
@@ -600,7 +601,7 @@ export async function runChain(
 
   // Inject global session summary if available.
   // Skip for WEB_SEARCH/RESEARCH and fallbacks from those chains — poisoned summaries override search results.
-  const skipSummary = category === 'WEB_SEARCH' || category === 'RESEARCH' || context?._skipSessionSummary
+  const skipSummary = category === 'WEB_SEARCH' || category === 'RESEARCH' || context?._skipSessionSummary || context?.isTempChat
   if (currentSummary && !skipSummary) {
     system_prompt = `[SESSION MEMORY SUMMARY]\n${currentSummary}\n\n` + system_prompt
   }
@@ -747,6 +748,7 @@ export async function runChain(
 
     let key = modelConfig.provider === 'google' ? 'GEMINI' : modelConfig.provider.toUpperCase()
     if (modelConfig.id.includes('tavily')) key = 'TAVILY'
+    if (modelConfig.id.includes('exa')) key = 'EXA'
     let providerKeys: string[] = []
 
     providerKeys = prefetchedKeys[key] ?? []
@@ -756,7 +758,7 @@ export async function runChain(
     }
 
     // core/tavily providers fetch their own keys internally — skip the key gate for them
-    const isKeylessProvider = modelConfig.provider === 'core' || modelConfig.provider === 'tavily'
+    const isKeylessProvider = modelConfig.provider === 'core' || modelConfig.provider === 'tavily' || modelConfig.provider === 'exa'
     if (providerKeys.length === 0 && !isKeylessProvider) {
       logger.warn(`No API keys for ${modelConfig.id} (${key}) — skipping`)
       routingTrace.push({ model: modelConfig.id, category, key: 'NO_KEY', success: false })
@@ -858,6 +860,7 @@ export async function runChain(
           try {
             switch (modelConfig.provider.toLowerCase()) {
               case 'google':
+              case 'gemini':
                 response = await runGoogle(modelConfig.id, activePromptForGen, system_prompt, undefined, routeContext, historyForChain)
                 break
               case 'groq':
@@ -874,6 +877,7 @@ export async function runChain(
                 response = await runCloudflare(modelConfig.id, activePromptForGen, activeKey || context?.aiApiKey, system_prompt, historyForChain, category, routeContext)
                 break
               case 'core':
+              case 'exa':
               case 'tavily': {
                 // If we already have search data (from Thinking pass, Web Search, or Deep Research), skip redundant search
                 // Note: Deep Research results are often in activePromptForGen instead of system_prompt
@@ -893,8 +897,14 @@ export async function runChain(
                 let searchResult: string | null = null
                 // Augment search query with conversation context for disambiguation
                 const searchQuery = augmentSearchQuery(prompt, history)
-                if (modelConfig.id === 'tavily-search') searchResult = await runWebSearchChain(searchQuery, routeContext, system_prompt)
-                if (modelConfig.id === 'duckduckgo-search') searchResult = await runDuckDuckGoSearchChain(searchQuery, routeContext, system_prompt)
+                if (modelConfig.id.includes('tavily')) searchResult = await runWebSearchChain(searchQuery, routeContext, system_prompt)
+                else if (modelConfig.id.includes('duckduckgo')) searchResult = await runDuckDuckGoSearchChain(searchQuery, routeContext, system_prompt)
+                else if (modelConfig.id.includes('exa')) searchResult = await runExaSearchChain(searchQuery, routeContext, system_prompt)
+                else {
+                  // Fallback: try based on provider name if ID doesn't match
+                  if (modelConfig.provider === 'tavily') searchResult = await runWebSearchChain(searchQuery, routeContext, system_prompt)
+                  else if (modelConfig.provider === 'exa') searchResult = await runExaSearchChain(searchQuery, routeContext, system_prompt)
+                }
 
                 let isSearchFailure = !searchResult || SEARCH_FAILURE_STRINGS.some(f => searchResult!.toLowerCase().includes(f))
 
@@ -905,8 +915,10 @@ export async function runChain(
                     if (altQuery === searchQuery) continue
                     logger.info(`Retrying ${modelConfig.id} with optimized query: "${altQuery}"`)
                     let retryResult: string | null = null
-                    if (modelConfig.id === 'tavily-search') retryResult = await runWebSearchChain(altQuery, routeContext, system_prompt)
-                    if (modelConfig.id === 'duckduckgo-search') retryResult = await runDuckDuckGoSearchChain(altQuery, routeContext, system_prompt)
+                    if (modelConfig.id.includes('tavily')) retryResult = await runWebSearchChain(altQuery, routeContext, system_prompt)
+                    else if (modelConfig.id.includes('duckduckgo')) retryResult = await runDuckDuckGoSearchChain(altQuery, routeContext, system_prompt)
+                    else if (modelConfig.id.includes('exa')) retryResult = await runExaSearchChain(altQuery, routeContext, system_prompt)
+                    
                     const retryFailed = !retryResult || SEARCH_FAILURE_STRINGS.some(f => retryResult!.toLowerCase().includes(f))
                     if (!retryFailed) {
                       searchResult = retryResult
@@ -975,8 +987,15 @@ export async function runChain(
             // We've already updated system_prompt and recorded trace inside the switch.
             // We just need to move to the next model in the modelLoop (the synthesis LLM).
             if ((modelConfig.provider === 'tavily' || modelConfig.id.includes('search')) && (category === 'WEB_SEARCH' || category === 'RESEARCH')) {
-              // If this was a search provider success, we've already done everything needed inside the switch.
-              // We just break the keyLoop to move to the next model in the modelLoop.
+              // Record success for the search step itself
+              const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} 1`
+              routingTrace.push({ model: modelConfig.id, category, key: displayKey, success: true })
+              tracer.recordSuccess({
+                ...traceMeta,
+                output: (response as any).content || '[search results]',
+              }, Date.now() - t0)
+              
+              // Move to the next model in the chain (synthesis)
               break keyLoop
             }
 

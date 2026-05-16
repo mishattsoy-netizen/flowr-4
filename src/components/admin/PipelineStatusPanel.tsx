@@ -41,12 +41,12 @@ export default function PipelineStatusPanel({ initialMessages }: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-[var(--bone-12)]">
+    <section className="flex flex-col gap-4 px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <MessageSquare className="w-5 h-5 text-accent" />
           <div>
-            <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Pipeline Status Messages</h2>
+            <h2 className="text-sm font-bold text-bone-100 tracking-wider">Pipeline Status Messages</h2>
             <p className="text-[11px] text-bone-70">custom labels shown in chat during execution</p>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function PipelineStatusPanel({ initialMessages }: Props) {
         {CHAIN_TYPES.map(type => {
           const msg = messages[type] || { label: '', emoji: '' }
           return (
-            <div key={type} className="flex flex-col gap-2 p-3 rounded-[12px] bg-background/40 border border-white/5">
+            <div key={type} className="flex flex-col gap-2 p-3 rounded-regular bg-background/40 border border-[var(--bone-6)]">
               <span className="text-[10px] font-mono font-bold text-bone-70">{type}</span>
               <div className="flex gap-2">
                 <input

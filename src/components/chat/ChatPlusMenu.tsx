@@ -55,8 +55,8 @@ export function ChatPlusMenu({ onClose, onMediaClick, onContextToggle, contextEn
       >
         <Eye className="w-4 h-4 shrink-0 opacity-60" strokeWidth={2} />
         <div className="flex flex-col items-start">
-          <span className="font-bold">Context</span>
-          <span className="text-[10px] opacity-30 leading-none mt-0.5">{contextEnabled ? 'On' : 'Off'}</span>
+          <span className="font-semibold">Context</span>
+          <span className="text-[10px] opacity-30 leading-none mt-0.5 font-medium">{contextEnabled ? 'On' : 'Off'}</span>
         </div>
         <div className={cn(
           'ml-auto w-7 h-4 rounded-full flex items-center transition-none',
@@ -70,19 +70,19 @@ export function ChatPlusMenu({ onClose, onMediaClick, onContextToggle, contextEn
 
       {/* Extensions — stubs */}
       <div className="px-3 py-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--bone-30)] mb-2 opacity-80">Extensions</p>
+        <p className="text-[10px] uppercase tracking-wider text-[var(--bone-30)] mb-2 opacity-80 font-medium">Extensions</p>
         <div className="flex flex-wrap gap-1.5">
           {EXTENSION_STUBS.map(name => (
             <span
               key={name}
-              className="px-2.5 py-1 rounded-full bg-white/[0.04] text-[10px] font-bold text-[var(--bone-40)] border border-[var(--bone-12)] cursor-not-allowed uppercase tracking-wider"
+              className="px-2.5 py-1 rounded-full bg-white/[0.04] text-[10px] font-medium text-[var(--bone-40)] border border-[var(--bone-12)] cursor-not-allowed uppercase tracking-wider"
               title="Coming soon"
             >
               {name}
             </span>
           ))}
         </div>
-        <p className="text-[10px] text-[var(--bone-20)] mt-2 italic opacity-40">Coming soon</p>
+        <p className="text-[10px] text-[var(--bone-20)] mt-2 italic opacity-40 font-medium">Coming soon</p>
       </div>
 
       <div className="popup-divider" />
@@ -92,7 +92,7 @@ export function ChatPlusMenu({ onClose, onMediaClick, onContextToggle, contextEn
         <Wand2 className="w-4 h-4 shrink-0" />
         <div className="flex flex-col">
           <p className="font-semibold text-[var(--bone-70)]">Design Mode</p>
-          <p className="text-[10px] italic">Coming soon</p>
+          <p className="text-[10px] italic font-medium">Coming soon</p>
         </div>
       </div>
     </div>

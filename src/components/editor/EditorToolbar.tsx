@@ -343,7 +343,7 @@ export function EditorToolbar({
       )}
 
       <div className="flex items-center gap-0.5 mr-1 ml-0.5">
-        <Tooltip content="Undo (Ctrl+Z)">
+        <Tooltip content="Undo">
           <button
             onClick={onUndo}
             disabled={!canUndo}
@@ -352,7 +352,7 @@ export function EditorToolbar({
             <Undo2 strokeWidth={2} className="w-4 h-4" />
           </button>
         </Tooltip>
-        <Tooltip content="Redo (Ctrl+Shift+Z)">
+        <Tooltip content="Redo">
           <button
             onClick={onRedo}
             disabled={!canRedo}
@@ -448,7 +448,7 @@ export function EditorToolbar({
 
       {/* Link */}
       <div ref={linkRef} className="relative">
-        <Tooltip content="Link (Ctrl+K)">
+        <Tooltip content="Link">
           <button
             onClick={handleLinkBtnClick}
             className={cn("toolbar-btn rounded-[var(--radius-medium)]", showLinkPopover && "toolbar-btn-active")}

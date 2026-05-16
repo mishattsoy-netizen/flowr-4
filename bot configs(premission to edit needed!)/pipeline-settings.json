@@ -1,7 +1,7 @@
 {
   "orchestratorEnabled": true,
   "maxPipelineSteps": 7,
-  "historyLimit": 10,
+  "historyLimit": 14,
   "imageGenAutoLast": true,
   "thinkingToggleDefault": false,
   "thinkingSummaryVisible": "collapsible",
@@ -48,7 +48,7 @@
     },
     "CLASSIFIER": {
       "emoji": "",
-      "label": "Analyzing..."
+      "label": "Classifying..."
     },
     "COMPACTION": {
       "emoji": "",
@@ -112,7 +112,7 @@
     "VISION"
   ],
   "inputTokenLimit": 64000,
-  "outputTokenLimit": 12000,
+  "outputTokenLimit": 0,
   "tokenLimitEnabledCategories": [
     "IMAGE_GEN",
     "REGULAR",

@@ -16,7 +16,7 @@ If you are the final chain responding directly to the user:
 - Deliver a comprehensive, well-structured research report
 - Lead with an executive summary (3-5 sentences covering the most important findings)
 - Use headers to organize by topic/theme
-- Cite all sources inline
+- Cite all sources as [title](url) pills at the end of each paragraph or list item
 - Explicitly flag any areas of uncertainty, conflicting data, or knowledge limits
 - Do not pad with filler — every sentence must carry information value
 

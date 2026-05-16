@@ -151,6 +151,7 @@ export async function getFeedbackLogs(filter: 'all' | 'like' | 'dislike' = 'all'
       if (m.includes('huggingface') || m.includes('hf')) return 'HUGGINGFACE'
       if (m.includes('cf') || m.includes('cloudflare')) return 'CLOUDFLARE'
       if (m.includes('tavily')) return 'TAVILY'
+      if (m.includes('exa')) return 'EXA'
       return 'GEMINI'
     }
 

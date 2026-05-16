@@ -32,7 +32,7 @@ export function KnowledgeSearchWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-sidebar group/widget rounded-[var(--radius-big)] overflow-hidden shadow-sm transition-all">
+    <div className="flex flex-col h-full bg-sidebar group/widget overflow-hidden widget-shadow transition-all">
       <div className="flex items-center px-4 py-3 border-b border-[var(--bone-5)] bg-[var(--color-panel)]/50 backdrop-blur-sm">
         <Search className="w-4 h-4 text-muted-foreground mr-2" />
         <input

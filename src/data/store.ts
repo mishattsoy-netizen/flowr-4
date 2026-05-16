@@ -252,7 +252,7 @@ export const useStore = create<AppState>()(
       hiddenEntityIds: [],
       isCommandPaletteOpen: false,
       selectedSidebarIds: [],
-      aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 },
+      aiSessionContext: null,
       activeMode: 'default' as BotMode,
       activeIntentTag: null,
       activeReplyMessage: null,
@@ -346,14 +346,24 @@ export const useStore = create<AppState>()(
       setAISessionContext: (context) => set({ aiSessionContext: context }),
       
       fetchAISessionContext: async (chatId) => {
+        let sessionData: any = null
         try {
           const res = await fetch(`/api/ai/memory/context?chatId=${encodeURIComponent(chatId)}&t=${Date.now()}`);
-          if (!res.ok) throw new Error('Failed to fetch session context');
-          const data = await res.json();
-          set({ aiSessionContext: data });
+          if (res.ok) sessionData = await res.json();
         } catch (err) {
           console.error('Failed to fetch session context:', err);
         }
+        // Always fetch live compaction config separately to guarantee correct context_limit
+        try {
+          const configRes = await fetch(`/api/ai/config?t=${Date.now()}`);
+          if (configRes.ok) {
+            const config = await configRes.json();
+            sessionData = { ...sessionData, ...config };
+          }
+        } catch (err) {
+          console.error('Failed to fetch compaction config:', err);
+        }
+        if (sessionData) set({ aiSessionContext: sessionData });
       },
 
       clearAIChat: async () => {
@@ -389,7 +399,7 @@ export const useStore = create<AppState>()(
         isTempChat: true,
         tempChatMessages: [],
         aiMessages: [],
-        aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 },
+        aiSessionContext: null,
       }),
 
       startNewChat: async () => {
@@ -400,7 +410,7 @@ export const useStore = create<AppState>()(
             isTempChat: false,
             tempChatMessages: [],
             aiMessages: [],
-            aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 },
+            aiSessionContext: null,
             chatConversations: [conv, ...get().chatConversations],
           });
         } catch (e) {
@@ -426,7 +436,7 @@ export const useStore = create<AppState>()(
             isTempChat: false,
             tempChatMessages: [],
             aiMessages: aiMsgs,
-            aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 },
+            aiSessionContext: null,
           });
           // Fetch fresh context for the loaded chat
           get().fetchAISessionContext(id);
@@ -441,7 +451,7 @@ export const useStore = create<AppState>()(
           const next = get().chatConversations.filter(c => c.id !== id);
           set({ chatConversations: next });
           if (get().activeChatId === id) {
-            set({ activeChatId: null, isTempChat: true, aiMessages: [], tempChatMessages: [], aiSessionContext: { distilled_summary: null, token_usage_total: 0, context_limit: 32000, compaction_threshold: 0.8 } });
+            set({ activeChatId: null, isTempChat: true, aiMessages: [], tempChatMessages: [], aiSessionContext: null });
           }
         } catch (e) {
           console.error('Failed to delete conversation', e);
@@ -471,12 +481,20 @@ export const useStore = create<AppState>()(
       },
 
       saveTempChat: async () => {
-        const { aiMessages, chatConversations } = get()
+        const { aiMessages, chatConversations, aiSessionContext } = get()
         try {
           const conv = await createConversation('New Chat')
           const userAndAssistant = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant')
           for (const m of userAndAssistant) {
             await insertMessage(conv.id, m.role as 'user' | 'assistant', m.content || '', m.model, undefined, m.image_description, undefined)
+          }
+          // Carry over accumulated session summary to the new conversation
+          if (aiSessionContext?.distilled_summary) {
+            await fetch('/api/ai/memory/summary', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chatId: conv.id, summary: aiSessionContext.distilled_summary })
+            }).catch(() => {})
           }
           // Auto-title from first user message
           const firstUser = userAndAssistant.find(m => m.role === 'user')
@@ -622,9 +640,9 @@ export const useStore = create<AppState>()(
             }
           }
 
-          // Handle vision: extract first image attachment if present
+          // Handle vision / PDF: extract first image or pdf attachment
           let imageBuffer: string | undefined = undefined;
-          const firstImage = attachments.find(a => a.type === 'image');
+          const firstImage = attachments.find(a => a.type === 'image' || a.type === 'pdf');
           if (firstImage?.url?.startsWith('data:')) {
             imageBuffer = firstImage.url.split(',')[1];
           }
@@ -646,9 +664,13 @@ export const useStore = create<AppState>()(
               parts: [{ text: stripHeavyMedia(m.content || '', m.image_description) }],
             }))
 
+          const controller = new AbortController();
+          set({ aiAbortController: controller });
+
           const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers,
+            signal: controller.signal,
             body: JSON.stringify({
               prompt: content,
               buffer: imageBuffer,
@@ -675,6 +697,7 @@ export const useStore = create<AppState>()(
                 : m
               ),
               isAILoading: false,
+              aiAbortController: null,
             }));
             return;
           }
@@ -728,6 +751,7 @@ export const useStore = create<AppState>()(
                                   logId: parsed.log_id ?? m.logId,
                                   citations: parsed.citations ?? m.citations,
                                   transcript_md: parsed.transcript_md ?? (m as any).transcript_md,
+                                  toolResults: parsed.toolResults ?? (m as any).toolResults,
                                 }
                               : m
                           ),
@@ -761,7 +785,7 @@ export const useStore = create<AppState>()(
                 }
               }
             }
-            set({ isAILoading: false });
+            set({ isAILoading: false, aiAbortController: null });
             // Persist assistant reply
             const chatId = get().activeChatId;
             if (chatId && !get().isTempChat && accumulatedContent) {
@@ -795,6 +819,7 @@ export const useStore = create<AppState>()(
               : m
             ),
             isAILoading: false,
+            aiAbortController: null,
           }));
 
           // Persist non-streaming assistant reply
@@ -808,14 +833,39 @@ export const useStore = create<AppState>()(
               get().renameChatConversation(cid, title);
             }
           }
-        } catch {
-          set(s => ({
-            aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
-              ? { ...m, content: 'Connection error. Please try again.' }
-              : m
-            ),
-            isAILoading: false,
-          }));
+        } catch (e: any) {
+          if (e?.name === 'AbortError') {
+            const { activeChatId, isTempChat } = get();
+            const interruptedContent = 'Generation stopped by user.';
+            set({
+              aiMessages: get().aiMessages.map(m =>
+                m.id === placeholderMessage.id
+                  ? { ...m, content: interruptedContent, interrupted: true }
+                  : m
+              ),
+              ...(isTempChat ? {
+                tempChatMessages: get().aiMessages.map(m =>
+                  m.id === placeholderMessage.id
+                    ? { ...m, content: interruptedContent, interrupted: true }
+                    : m
+                )
+              } : {}),
+              isAILoading: false,
+              aiAbortController: null,
+            });
+            if (activeChatId && !isTempChat) {
+              insertMessage(activeChatId, 'assistant', interruptedContent).catch(console.error);
+            }
+          } else {
+            set(s => ({
+              aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
+                ? { ...m, content: 'Connection error. Please try again.' }
+                : m
+              ),
+              isAILoading: false,
+              aiAbortController: null,
+            }));
+          }
         }
       },
 

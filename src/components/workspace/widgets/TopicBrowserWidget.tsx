@@ -9,8 +9,8 @@ export function TopicBrowserWidget() {
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
 
   return (
-    <div className="w-full h-full p-5 bg-sidebar rounded-[var(--radius-big)] border border-[var(--bone-3)] group/widget flex flex-col">
-      <h3 className="text-[15px] font-widget-header font-semibold text-[var(--bone-70)] group-hover/widget:text-foreground mb-4">Topic Browser</h3>
+    <div className="w-full h-full p-5 bg-sidebar group/widget flex flex-col">
+      <h3 className="text-[15px] font-widget-header font-semibold text-[var(--bone-70)] mb-0.5">Topic Browser</h3>
       <div className="flex-1 overflow-y-auto min-h-0 -mx-2 px-2 scrollbar-thin">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {topics.map(topic => {

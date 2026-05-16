@@ -167,9 +167,9 @@ describe('blocksToMarkdown', () => {
     expect(blocksToMarkdown(blocks)).toBe('- alpha\n- beta');
   });
 
-  it('serializes numbered list with "1." always', () => {
+  it('serializes numbered list with incrementing numbers', () => {
     const blocks = parseMarkdownToBlocks('1. first\n2. second');
-    expect(blocksToMarkdown(blocks)).toBe('1. first\n1. second');
+    expect(blocksToMarkdown(blocks)).toBe('1. first\n2. second');
   });
 
   it('serializes nested list with 2-space indentation', () => {

@@ -8,7 +8,7 @@ Defined in `src/app/globals.css` and `update-globals.js`.
 | Utility | Font Family | Weight (Numeric) | Letter Spacing | Primary Use Case |
 | :--- | :--- | :--- | :--- | :--- |
 | `font-display` | Crimson Pro | 500 (Medium) | -0.01em | Large page titles |
-| `font-ui` | DM Sans | 500 (Medium) | 0 | General body text, button labels |
+| `font-ui` | DM Sans | 500 (Medium) | 0.06em | General body text, button labels |
 | `font-ui-label` | DM Sans | 500 (Medium) | 0.06em | Sidebar section headers (Pinned, Unsorted) |
 | `font-widget-header`| DM Sans | 600 (SemiBold) | 0 | Widget/Dashboard section titles |
 | `font-mono` | DM Mono | 500 (Medium) | 0 | Clock, Timer, Data cells |

@@ -43,6 +43,20 @@ export function getImageDimensions(buffer: Buffer): { width: number, height: num
 }
 
 /**
+ * Detects MIME type from raw buffer magic bytes.
+ * Supports PDF, PNG, JPEG, GIF, WebP. Falls back to image/jpeg.
+ */
+export function detectMimeType(buf: Buffer): string {
+  if (!buf || buf.length < 4) return 'image/jpeg'
+  if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) return 'application/pdf'
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png'
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg'
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return 'image/gif'
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46) return 'image/webp'
+  return 'image/jpeg'
+}
+
+/**
  * Returns the highest supported resolution for a given model and provider.
  * Following the user rule: "image gen model is using highest possible resolution it can for all providers"
  */

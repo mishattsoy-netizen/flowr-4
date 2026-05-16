@@ -4,6 +4,7 @@ import { runGoogle } from './providers/google'
 import { runGroq } from './providers/groq'
 import { runWebSearchChain } from './providers/tavily'
 import { runDuckDuckGoSearchChain } from './providers/duckduckgo'
+import { runExaSearchChain } from './providers/exa'
 import { logger } from '../logger'
 import { getProviderKeys } from '../vault'
 
@@ -125,9 +126,10 @@ export async function runRoadmapChain(
         response = await runGoogle(model.id, prompt, systemPrompt, buffer, routeContext, history)
       } else if (model.provider === 'groq') {
         response = await runGroq(model.id, prompt, systemPrompt, providerKeys[0], routeContext, history)
-      } else if (model.provider === 'core' || model.provider === 'tavily') {
+      } else if (model.provider === 'core' || model.provider === 'tavily' || model.provider === 'exa') {
         if (model.id === 'tavily-search') response = await runWebSearchChain(prompt, routeContext)
         if (model.id === 'duckduckgo-search') response = await runDuckDuckGoSearchChain(prompt, routeContext)
+        if (model.id === 'exa-search') response = await runExaSearchChain(prompt, routeContext)
       }
 
       if (response) {

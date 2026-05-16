@@ -14,6 +14,7 @@ const PROVIDER_COLORS: Record<string, string> = {
   openrouter:  'text-purple-400 border-purple-400/20 bg-purple-400/10',
   ollama:      'text-teal-400 border-teal-400/20 bg-teal-400/10',
   tavily:      'text-cyan-400 border-cyan-400/20 bg-cyan-400/10',
+  exa:         'text-violet-400 border-violet-400/20 bg-violet-400/10',
   core:        'text-emerald-400 border-emerald-400/20 bg-emerald-400/10',
   pollinations: 'text-pink-400 border-pink-400/20 bg-pink-400/10',
   huggingface: 'text-yellow-400 border-yellow-400/20 bg-yellow-400/10',

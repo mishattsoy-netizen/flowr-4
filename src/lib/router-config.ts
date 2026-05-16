@@ -5,7 +5,7 @@ import path from 'path'
 
 export interface RouterModel {
   id: string
-  provider: 'google' | 'huggingface' | 'cloudflare' | 'groq' | 'local' | 'core' | 'tavily' | 'pollinations' | 'ollama' | 'ollama(my pc)' | 'openrouter' | 'siliconflow'
+  provider: 'google' | 'gemini' | 'huggingface' | 'cloudflare' | 'groq' | 'local' | 'core' | 'tavily' | 'exa' | 'pollinations' | 'ollama' | 'ollama(my pc)' | 'openrouter' | 'siliconflow'
   is_enabled: boolean
   openrouter_provider?: string
   is_paid?: boolean

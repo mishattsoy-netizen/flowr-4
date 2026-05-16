@@ -90,7 +90,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
   return (
     <section 
       className={cn(
-        "h-full w-full relative bg-sidebar rounded-[var(--radius-big)] widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
+        "h-full w-full relative bg-sidebar widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
         isDragOver && "ring-2 ring-accent ring-inset bg-accent/5"
       )}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -99,7 +99,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
       onDrop={handleDrop}
     >
       {/* Dynamic Header Section */}
-      <div className="flex items-center justify-between mb-4 h-8 shrink-0">
+      <div className="flex items-center justify-between mb-0.5 h-8 shrink-0">
         {widgets.length > 1 ? (
           /* Multi-widget Switcher - Dark High Contrast Style */
           <div className="relative flex items-center p-0.5 bg-background rounded-[8px] no-drag min-w-[160px]">

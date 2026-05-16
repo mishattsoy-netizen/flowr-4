@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X } from 'lucide-react';
 import { stripHtml } from '@/lib/utils';
 import type { WidgetProps } from './types';
+import type { AppTask } from '@/data/store.types';
 
 const ALL_TABS = [
   { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
@@ -48,38 +49,41 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
     if (data?.activeTab) setInternalTab(data.activeTab as TabId);
   }, [data?.activeTab]);
 
+  const isSubmitting = useRef(false);
+
   useEffect(() => {
-    if (adding) inputRef.current?.focus();
+    if (adding) {
+      isSubmitting.current = false;
+      inputRef.current?.focus();
+    }
   }, [adding]);
 
-  // If current tab was hidden, switch to first visible
-  useEffect(() => {
-    if (internalTab && hiddenTabs.includes(internalTab) && visibleTabs.length > 0) {
-      setInternalTab(visibleTabs[0].id);
-    }
-  }, [hiddenTabs.join(',')]);
+  // Helper for local YYYY-MM-DD strings to avoid UTC/timezone shifts
+  const getLocalDateStr = (date: Date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const tasksByTab = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(now);
+    const todayStr = getLocalDateStr();
+    const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = getLocalDateStr(tomorrow);
 
     return {
       today: tasks.filter(t => {
         if (t.completed || !t.dueDate) return false;
-        const d = new Date(t.dueDate); d.setHours(0, 0, 0, 0);
-        return d.getTime() === now.getTime();
+        return t.dueDate === todayStr;
       }),
       upcoming: tasks.filter(t => {
         if (t.completed || !t.dueDate) return false;
-        const d = new Date(t.dueDate); d.setHours(0, 0, 0, 0);
-        return d.getTime() >= tomorrow.getTime();
-      }).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()),
+        return t.dueDate >= tomorrowStr;
+      }).sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '')),
       overdue: tasks.filter(t => {
         if (t.completed || !t.dueDate) return false;
-        const d = new Date(t.dueDate); d.setHours(0, 0, 0, 0);
-        return d.getTime() < now.getTime();
+        return t.dueDate < todayStr;
       }),
       progress: tasks.filter(t => !t.completed && t.status === 'in-progress'),
     };
@@ -109,10 +113,38 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
   }
 
   function handleAddSubmit() {
+    if (isSubmitting.current) return;
+    
     const t = newTitle.trim();
-    if (t) addTask({ title: t });
-    setNewTitle('');
+    if (t) {
+      isSubmitting.current = true;
+      const taskData: Partial<AppTask> = { title: t };
+      
+      // Smart defaults based on active tab to ensure visibility
+      if (activeId === 'today') {
+        taskData.dueDate = getLocalDateStr();
+      } else if (activeId === 'upcoming') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        taskData.dueDate = getLocalDateStr(tomorrow);
+      } else if (activeId === 'progress') {
+        taskData.status = 'in-progress';
+      } else if (activeId === 'overdue') {
+        taskData.dueDate = getLocalDateStr();
+      }
+      
+      addTask(taskData as any);
+      setNewTitle('');
+    }
     setAdding(false);
+  }
+
+  function handleToggleAdding() {
+    if (adding) {
+      handleAddSubmit();
+    } else {
+      setAdding(true);
+    }
   }
 
   // Sliding pill: position by index among visible tabs
@@ -120,8 +152,8 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
   const tabCount = visibleTabs.length || 1;
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4 h-8 shrink-0 gap-2">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+      <div className="flex items-center justify-between mb-0.5 h-8 shrink-0 gap-2">
 
         {/* Tab switcher */}
         {visibleTabs.length > 0 ? (
@@ -202,7 +234,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
           )}
 
           <button
-            onClick={() => setAdding(a => !a)}
+            onClick={handleToggleAdding}
             className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
             title="Add task"
           >
@@ -227,7 +259,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
               </div>
             ))}
           </div>
-        ) : (
+        ) : !adding ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
             <CheckCircle2 strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
@@ -241,7 +273,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
               + New Task
             </button>
           </div>
-        )}
+        ) : null}
 
         {adding && (
           <div className="flex items-center gap-2 px-2 py-1.5 mt-1">

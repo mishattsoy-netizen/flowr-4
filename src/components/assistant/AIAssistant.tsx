@@ -19,6 +19,7 @@ import { ChatSkeleton } from './components/ChatSkeleton';
 import { useDeferredLoading } from '@/hooks/use-deferred-loading';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { Tooltip } from '@/components/layout/Tooltip';
 
 const ContextMeter = ({ usage, limit, threshold = 0.8, size = 30 }: { usage: number; limit: number, threshold?: number, size?: number }) => {
   const percentage = Math.round((usage / limit) * 100);
@@ -160,10 +161,10 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   }, []);
 
   useEffect(() => {
-    if (isAIAssistantOpen && !isTempChat) {
+    if (isAIAssistantOpen) {
       fetchAISessionContext(sessionId);
     }
-  }, [isAIAssistantOpen, sessionId, isTempChat, fetchAISessionContext]);
+  }, [isAIAssistantOpen, sessionId, fetchAISessionContext]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
@@ -264,10 +265,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
       await sendAIMessage(finalContent, finalAttachments);
       // Clear intent tag after message is dispatched
       setActiveIntentTag(null);
-      // Re-fetch context after message to get updated token usage (skip for temp chats — they have no server state)
-      if (!isTempChat) {
-        setTimeout(() => fetchAISessionContext(sessionId), 1000);
-      }
+      // Re-fetch context after message to get updated token usage
+      setTimeout(() => fetchAISessionContext(sessionId), 1000);
     } finally {
       setIsSubmitting(false);
     }
@@ -343,9 +342,10 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
       const reader = new FileReader();
       reader.onload = (ev) => {
         const url = ev.target?.result as string;
-        let type: 'image' | 'audio' | 'file' = 'file';
+        let type: 'image' | 'audio' | 'file' | 'pdf' = 'file';
         if (file.type.startsWith('image/')) type = 'image';
         if (file.type.startsWith('audio/')) type = 'audio';
+        if (file.type === 'application/pdf' || file.type === 'application/x-pdf' || file.name.toLowerCase().endsWith('.pdf')) type = 'pdf';
         setAttachments(prev => [...prev, { type, url, name: file.name }]);
       };
       reader.readAsDataURL(file);
@@ -648,28 +648,30 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
 
         <div className={cn("relative h-0 overflow-visible z-[100]", !isScrollable && "hidden")}>
           <div className="absolute bottom-6 right-6 flex flex-col gap-1.5 pointer-events-none">
-            <button
-              onClick={() => {
-                const container = messagesContainerRef.current;
-                if (!container) return;
-                const userMsgs = Array.from(container.querySelectorAll('.items-end'));
-                if (userMsgs.length > 0) {
-                  const lastUserMsg = userMsgs[userMsgs.length - 1];
-                  lastUserMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }}
-              className="w-7 h-7 rounded-[8px] bg-[var(--bone-6)] backdrop-blur-xl text-bone-70 hover:text-bone-100 hover:bg-[var(--bone-15)] flex items-center justify-center pointer-events-auto hover:scale-110 active:scale-95 group/nav"
-              title="Jump to your last message"
-            >
-              <ChevronUp strokeWidth={2} className="w-3.5 h-3.5 group-hover/nav:-translate-y-0.5" />
-            </button>
-            <button
-              onClick={() => scrollToBottom('smooth')}
-              className="w-7 h-7 rounded-[8px] bg-[var(--bone-6)] backdrop-blur-xl text-bone-70 hover:text-bone-100 hover:bg-[var(--bone-15)] flex items-center justify-center pointer-events-auto hover:scale-110 active:scale-95 group/nav"
-              title="Scroll to bottom"
-            >
-              <ChevronUp strokeWidth={2} className="w-3.5 h-3.5 rotate-180 group-hover/nav:translate-y-0.5" />
-            </button>
+            <Tooltip content="Jump to your last message">
+              <button
+                onClick={() => {
+                  const container = messagesContainerRef.current;
+                  if (!container) return;
+                  const userMsgs = Array.from(container.querySelectorAll('.items-end'));
+                  if (userMsgs.length > 0) {
+                    const lastUserMsg = userMsgs[userMsgs.length - 1];
+                    lastUserMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className="w-7 h-7 rounded-[8px] bg-[var(--bone-6)] backdrop-blur-xl text-bone-70 hover:text-bone-100 hover:bg-[var(--bone-15)] flex items-center justify-center pointer-events-auto hover:scale-110 active:scale-95 group/nav"
+              >
+                <ChevronUp strokeWidth={2} className="w-3.5 h-3.5 group-hover/nav:-translate-y-0.5" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Scroll to bottom">
+              <button
+                onClick={() => scrollToBottom('smooth')}
+                className="w-7 h-7 rounded-[8px] bg-[var(--bone-6)] backdrop-blur-xl text-bone-70 hover:text-bone-100 hover:bg-[var(--bone-15)] flex items-center justify-center pointer-events-auto hover:scale-110 active:scale-95 group/nav"
+              >
+                <ChevronUp strokeWidth={2} className="w-3.5 h-3.5 rotate-180 group-hover/nav:translate-y-0.5" />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -721,6 +723,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           isPending
                           onRemove={() => setAttachments(p => p.filter((_, idx) => idx !== i))}
                         />
+                      ) : att.type === 'pdf' ? (
+                        <FileText strokeWidth={2} className="w-4 h-4 text-bone-70" />
                       ) : (
                         <Paperclip strokeWidth={2} className="w-4 h-4 text-bone-70" />
                       )}
@@ -821,68 +825,72 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                     position={plusMenuPos}
                   />
                 )}
-                <button
-                  ref={plusMenuBtnRef}
-                  onClick={() => {
-                    if (chatPageMode) {
-                      if (plusMenuBtnRef.current) {
-                        const r = plusMenuBtnRef.current.getBoundingClientRect();
-                        setPlusMenuPos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                <Tooltip content="Upload or Add">
+                  <button
+                    ref={plusMenuBtnRef}
+                    onClick={() => {
+                      if (chatPageMode) {
+                        if (plusMenuBtnRef.current) {
+                          const r = plusMenuBtnRef.current.getBoundingClientRect();
+                          setPlusMenuPos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                        }
+                        setShowPlusMenu(v => !v);
+                      } else {
+                        fileInputRef.current?.click();
                       }
-                      setShowPlusMenu(v => !v);
-                    } else {
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  className="p-1.5 rounded-[8px] text-bone-70 hover:text-foreground hover:bg-white/5 "
-                  title="Add media"
-                >
-                  <Plus strokeWidth={2} className="w-4 h-4" />
-                </button>
+                    }}
+                    className="p-1.5 rounded-[8px] text-bone-70 hover:text-foreground hover:bg-white/5 "
+                  >
+                    <Plus strokeWidth={2} className="w-4 h-4" />
+                  </button>
+                </Tooltip>
 
-                <button
-                  onClick={() => {
-                    if (!assistantInput.startsWith('/')) {
-                      setAssistantInput('/');
-                      textareaRef.current?.focus();
-                    } else {
-                      setShowCommandMenu(!showCommandMenu);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-[8px] ",
-                    showCommandMenu ? "bg-white/10 text-foreground" : "text-bone-70 hover:text-foreground hover:bg-white/5"
-                  )}
-                  title="Commands and tools"
-                >
-                  <SquareSlash strokeWidth={2} className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest pt-0.5">Tools</span>
-                </button>
+                <Tooltip content="AI Actions">
+                  <button
+                    onClick={() => {
+                      if (!assistantInput.startsWith('/')) {
+                        setAssistantInput('/');
+                        textareaRef.current?.focus();
+                      } else {
+                        setShowCommandMenu(!showCommandMenu);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-[8px] ",
+                      showCommandMenu ? "bg-white/10 text-foreground" : "text-bone-70 hover:text-foreground hover:bg-white/5"
+                    )}
+                  >
+                    <SquareSlash strokeWidth={2} className="w-4 h-4" />
+                    <span className="text-[11px] font-semibold uppercase tracking-widest pt-0.5">Tools</span>
+                  </button>
+                </Tooltip>
               </div>
 
               {/* Right Actions */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-0.5">
                 {/* Mode selector */}
                 <div className="relative">
-                  <button
-                    ref={modeMenuBtnRef}
-                    onClick={() => {
-                      if (modeMenuBtnRef.current) {
-                        const r = modeMenuBtnRef.current.getBoundingClientRect()
-                        setModeMenuPos({ bottom: window.innerHeight - r.top + 8, right: window.innerWidth - r.right })
-                      }
-                      setShowModeMenu(v => !v)
-                    }}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-[8px] border ",
-                      showModeMenu
-                        ? "bg-white/10 border-[var(--bone-12)] text-bone-100"
-                        : "border-[var(--bone-12)] text-bone-70 hover:text-bone-100 hover:border-white/20"
-                    )}
-                  >
-                    <span className="hidden sm:inline text-[11px] font-bold uppercase tracking-widest pt-0.5">{MODE_OPTIONS.find(m => m.key === activeMode)?.label}</span>
-                    <ChevronUp strokeWidth={2} className={cn("w-3 h-3 transition-transform duration-300", showModeMenu ? "rotate-180 opacity-100" : "opacity-40")} />
-                  </button>
+                  <Tooltip content="Switch Model">
+                    <button
+                      ref={modeMenuBtnRef}
+                      onClick={() => {
+                        if (modeMenuBtnRef.current) {
+                          const r = modeMenuBtnRef.current.getBoundingClientRect()
+                          setModeMenuPos({ bottom: window.innerHeight - r.top + 8, right: window.innerWidth - r.right })
+                        }
+                        setShowModeMenu(v => !v)
+                      }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2 py-1 rounded-[8px] border ",
+                        showModeMenu
+                          ? "bg-white/10 border-[var(--bone-12)] text-bone-100"
+                          : "border-[var(--bone-12)] text-bone-70 hover:text-bone-100 hover:border-white/20"
+                      )}
+                    >
+                      <span className="hidden sm:inline text-[11px] font-bold uppercase tracking-widest pt-0.5">{MODE_OPTIONS.find(m => m.key === activeMode)?.label}</span>
+                      <ChevronUp strokeWidth={2} className={cn("w-3 h-3 transition-transform duration-300", showModeMenu ? "rotate-180 opacity-100" : "opacity-40")} />
+                    </button>
+                  </Tooltip>
 
                   {showModeMenu && modeMenuPos && createPortal(
                     <>
@@ -905,8 +913,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                               )}
                             >
                               <div className="flex flex-col">
-                                <p className="font-bold tracking-tight">{opt.label}</p>
-                                <p className="text-[10px] uppercase tracking-wider font-medium opacity-30 leading-none mt-0.5">{opt.description}</p>
+                                <p className="tracking-tight">{opt.label}</p>
+                                <p className="text-[10px] uppercase tracking-wider opacity-30 leading-none mt-0.5">{opt.description}</p>
                               </div>
                             </button>
                           ))}
@@ -922,8 +930,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           >
                             <Brain className="w-4 h-4 shrink-0 opacity-60" strokeWidth={2} />
                             <div className="flex flex-col items-start">
-                              <span className="font-bold">Thinking</span>
-                              <span className="text-[10px] opacity-30 leading-none mt-0.5 font-medium">{thinkingEnabled ? 'On' : 'Off'}</span>
+                              <span>Thinking</span>
+                              <span className="text-[10px] opacity-30 leading-none mt-0.5">{thinkingEnabled ? 'On' : 'Off'}</span>
                             </div>
                             <div className={cn(
                               'ml-auto w-7 h-4 rounded-full flex items-center transition-none',
@@ -941,8 +949,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           >
                             <Sparkles className="w-4 h-4 shrink-0 opacity-60" strokeWidth={2} />
                             <div className="flex flex-col items-start">
-                              <span className="font-bold">Advisor</span>
-                              <span className="text-[10px] opacity-30 leading-none mt-0.5 font-medium">{advisorEnabled ? 'On — asks clarifying questions' : 'Off'}</span>
+                              <span>Advisor</span>
+                              <span className="text-[10px] opacity-30 leading-none mt-0.5">{advisorEnabled ? 'On — asks clarifying questions' : 'Off'}</span>
                             </div>
                             <div className={cn(
                               'ml-auto w-7 h-4 rounded-full flex items-center transition-none',
@@ -1019,7 +1027,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                             <div className="flex items-center gap-2 px-2.5 py-1 rounded-[10px] bg-white/10 border border-[var(--bone-12)] w-fit ">
                               <div className="flex items-center gap-1.5">
                                 <Sparkles className="w-3 h-3 text-bone-100" />
-                                <span className="text-[10px] font-bold text-bone-100 uppercase tracking-wider">{activeIntentTag.replace(/^!/, '').replace(/_/g, ' ')}</span>
+                                <span className="text-[10px] font-semibold text-bone-100 uppercase tracking-wider">{activeIntentTag.replace(/^!/, '').replace(/_/g, ' ')}</span>
                               </div>
                               <button
                                 onClick={() => useStore.getState().setActiveIntentTag(null)}
@@ -1055,7 +1063,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                               }}
                               disabled={!canCompact}
                               className={cn(
-                                "w-full py-1.5 rounded-[8px] text-[10px] font-bold tracking-tight pointer-events-auto flex items-center justify-center gap-2",
+                                "w-full py-1.5 rounded-[8px] text-[10px] font-semibold tracking-tight pointer-events-auto flex items-center justify-center gap-2",
                                 canCompact
                                   ? "bg-white/10 text-bone-100 hover:bg-white/20 active:scale-[0.98]"
                                   : "bg-white/5 text-bone-20 cursor-not-allowed opacity-50"
@@ -1082,39 +1090,43 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                 </div>
 
                 {isAILoading ? (
-                  <button
-                    onClick={stopAIGeneration}
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-[8px] bg-red-400/10 text-red-500 hover:bg-red-400/20  active:scale-90"
-                    title="Stop generation"
-                  >
-                    <Square strokeWidth={2} className="w-2.5 h-2.5 fill-current" />
-                  </button>
+                  <Tooltip content="Stop generation">
+                    <button
+                      onClick={stopAIGeneration}
+                      className="w-7 h-7 shrink-0 flex items-center justify-center rounded-[8px] bg-red-400/10 text-red-500 hover:bg-red-400/20  active:scale-90"
+                    >
+                      <Square strokeWidth={2} className="w-2.5 h-2.5 fill-current" />
+                    </button>
+                  </Tooltip>
                 ) : (!assistantInput.trim() && attachments.length === 0) ? (
-                  <button
-                    onMouseDown={(e) => { if (e.button === 0) startRecording(); }}
-                    onMouseUp={() => stopRecording()}
-                    onMouseLeave={() => { if (isRecording) stopRecording(); }}
-                    onContextMenu={handleMicContextMenu}
-                    className={cn(
-                      "w-7 h-7 rounded-[8px] flex items-center justify-center relative shrink-0  group/mic",
-                      isRecording
-                        ? "bg-red-500 text-white scale-110"
-                        : cn("text-bone-70 hover:text-foreground hover:bg-white/5", showMicSettings && "!bg-[var(--bone-15)] !text-[var(--bone-100)] !opacity-100")
-                    )}
-                    title="Hold to record (Max 60s) — Right-click for settings"
-                  >
-                    <Mic strokeWidth={2} className={cn("w-3.5 h-3.5", isRecording && "animate-pulse")} />
-                    {isRecording && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping" />
-                    )}
-                  </button>
+                  <Tooltip content="Voice Input (Right-click for settings)">
+                    <button
+                      onMouseDown={(e) => { if (e.button === 0) startRecording(); }}
+                      onMouseUp={() => stopRecording()}
+                      onMouseLeave={() => { if (isRecording) stopRecording(); }}
+                      onContextMenu={handleMicContextMenu}
+                      className={cn(
+                        "w-7 h-7 rounded-[8px] flex items-center justify-center relative shrink-0  group/mic",
+                        isRecording
+                          ? "bg-red-500 text-white scale-110"
+                          : cn("text-bone-70 hover:text-foreground hover:bg-white/5", showMicSettings && "!bg-[var(--bone-15)] !text-[var(--bone-100)] !opacity-100")
+                      )}
+                    >
+                      <Mic strokeWidth={2} className={cn("w-3.5 h-3.5", isRecording && "animate-pulse")} />
+                      {isRecording && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping" />
+                      )}
+                    </button>
+                  </Tooltip>
                 ) : (
-                  <button
-                    onClick={() => handleSend()}
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-[8px] bg-white/10 text-bone-100 hover:bg-white/20  active:scale-90"
-                  >
-                    <Send strokeWidth={2} className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Send Message">
+                    <button
+                      onClick={() => handleSend()}
+                      className="w-7 h-7 shrink-0 flex items-center justify-center rounded-[8px] bg-white/10 text-bone-100 hover:bg-white/20  active:scale-90"
+                    >
+                      <Send strokeWidth={2} className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 )}
               </div>
             </div>
@@ -1147,7 +1159,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         {cmd.icon}
                       </div>
                       <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <p className="text-[13.5px] font-semibold tracking-tight shrink-0">{cmd.label}</p>
+                        <p className="text-[13.5px] tracking-tight shrink-0">{cmd.label}</p>
                         {cmd.description && (
                           <p className="text-[11px] text-bone-70 opacity-40 truncate">{cmd.description}</p>
                         )}

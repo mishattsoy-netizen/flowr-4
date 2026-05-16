@@ -12,7 +12,11 @@
 .font-bold,
 .font-extrabold,
 .font-black {
-  letter-spacing: 0.025em;
+  letter-spacing: 0.04em;
+}
+
+.font-sans {
+  letter-spacing: 0.06em;
 }
 
 /* Global small text tracking */
@@ -39,7 +43,7 @@
 }
 
 :root {
-  --color-background: #141413;
+  --color-background: #191917;
   --color-panel: #262624;
   --color-dark: #191917;
   --bone-5: rgba(233, 233, 226, 0.05);
@@ -184,7 +188,7 @@ html[data-interface-size="big"] {
 @utility font-ui {
   font-family: var(--font-sans);
   font-weight: 500;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
 }
 
 @utility font-ui-label {
@@ -698,7 +702,7 @@ html {
 @media (min-width: 768px) {
   .shell-container {
     grid-template-columns: var(--sidebar-w, 280px) 1fr;
-    
+
   }
 }
 
@@ -1008,7 +1012,7 @@ body.is-dragging-widget [data-widget-id] * {
 }
 
 /* Edit mode entry/exit: flash widget borders to bone-30 then back */
-[data-border-flash="true"] section {
+[data-border-flash="true"] .group\/widget {
   border-color: var(--bone-30) !important;
   transition: border-color 200ms ease !important;
 }
@@ -1220,17 +1224,23 @@ body.is-dragging-widget [data-widget-id] * {
     opacity: 0;
   }
 }
+
 /* Shimmer Animation */
 @keyframes skeleton-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @utility skeleton-shimmer-container {
   position: relative;
   overflow: hidden;
   background-color: var(--bone-5);
-  
+
   &::after {
     content: "";
     position: absolute;
@@ -1238,14 +1248,14 @@ body.is-dragging-widget [data-widget-id] * {
     right: 0;
     bottom: 0;
     left: 0;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--bone-10) 50%,
-      transparent 100%
-    );
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--bone-10) 50%,
+        transparent 100%);
     animation: skeleton-shimmer 2s infinite linear;
   }
 }
 
-.widget-skeleton { @apply skeleton-shimmer-container rounded-big bg-[var(--bone-5)]; }
+.widget-skeleton {
+  @apply skeleton-shimmer-container rounded-big bg-[var(--bone-5)];
+}

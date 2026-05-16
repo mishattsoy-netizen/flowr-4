@@ -1,5 +1,6 @@
 import { logger } from '../../logger'
 import { getProviderKeys } from '../../vault'
+import { detectMimeType } from '../image-utils'
 
 function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
@@ -99,15 +100,25 @@ export async function runOpenRouter(
         })
       }
       messages.push(...historyMessages)
+      let hasPdf = false
       if (imageBuffers) {
         const buffers = Array.isArray(imageBuffers) ? imageBuffers : [imageBuffers]
         const contentParts: any[] = [{ type: 'text', text: prompt }]
 
         for (const buf of buffers) {
-          contentParts.push({
-            type: 'image_url',
-            image_url: { url: `data:image/jpeg;base64,${buf.toString('base64')}` }
-          })
+          const mime = detectMimeType(buf)
+          if (mime === 'application/pdf') {
+            hasPdf = true
+            contentParts.push({
+              type: 'image_url',
+              image_url: { url: `data:application/pdf;base64,${buf.toString('base64')}` }
+            })
+          } else {
+            contentParts.push({
+              type: 'image_url',
+              image_url: { url: `data:${mime};base64,${buf.toString('base64')}` }
+            })
+          }
         }
 
         messages.push({
@@ -126,6 +137,12 @@ export async function runOpenRouter(
         stream: shouldStream || undefined,
       }
 
+      if (hasPdf) {
+        requestBody.plugins = [
+          { id: 'file-parser', pdf: { engine: 'cloudflare-ai' } }
+        ]
+      }
+
       if (context?.openrouterProvider) {
         const forcedSlug = (context.openrouterProvider || '').trim()
         logger.info(`OpenRouter: Dynamic routing requested for provider: "${forcedSlug}" (Key preview: ${key.substring(0, 10)}...)`)
@@ -142,11 +159,11 @@ export async function runOpenRouter(
         if (Array.isArray(logBody.messages)) {
           for (const msg of logBody.messages) {
             if (typeof msg.content === 'string') {
-              msg.content = msg.content.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 image redacted]')
+              msg.content = msg.content.replace(/data:(image|application)\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 data redacted]')
             } else if (Array.isArray(msg.content)) {
               for (const part of msg.content) {
                 if (part?.image_url?.url?.startsWith('data:')) {
-                  part.image_url.url = '[base64 image redacted]'
+                  part.image_url.url = '[base64 data redacted]'
                 }
               }
             }
@@ -170,6 +187,7 @@ export async function runOpenRouter(
         method: 'POST',
         headers: fetchHeaders,
         body: JSON.stringify(requestBody),
+        signal: context?.signal,
       })
 
       const actualProvider = response.headers.get('x-openrouter-provider') || undefined

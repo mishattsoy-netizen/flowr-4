@@ -493,6 +493,7 @@ export default function FeedbackClient({ initialLogs }: Props) {
                                         if (m.includes('huggingface') || m.includes('hf')) return 'HUGGINGFACE'
                                         if (m.includes('cf') || m.includes('cloudflare')) return 'CLOUDFLARE'
                                         if (m.includes('tavily') || m.includes('search')) return 'TAVILY'
+                                        if (m.includes('exa')) return 'EXA'
                                         return 'GEMINI'
                                       }
                                       return (
@@ -523,6 +524,7 @@ export default function FeedbackClient({ initialLogs }: Props) {
                                         if (m.includes('huggingface') || m.includes('hf')) return 'HUGGINGFACE'
                                         if (m.includes('cf') || m.includes('cloudflare')) return 'CLOUDFLARE'
                                         if (m.includes('tavily')) return 'TAVILY'
+                                        if (m.includes('exa')) return 'EXA'
                                         return 'GEMINI'
                                       }
                                       return (

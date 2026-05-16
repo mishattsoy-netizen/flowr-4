@@ -160,9 +160,28 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   // Sync --sidebar-w CSS var on <html> when sidebar width/collapse changes
   useEffect(() => {
-    const w = isSidebarCollapsed ? 0 : sidebarWidth;
+    const existing = document.documentElement.style.getPropertyValue('--sidebar-w');
+    if (existing && !hasHydrated) return;
+
+    let w: number;
+    if (hasHydrated) {
+      w = isSidebarCollapsed ? 0 : sidebarWidth;
+    } else {
+      // Fallback: read localStorage directly when script didn't set it
+      try {
+        const str = localStorage.getItem('flowr-storage');
+        if (str) {
+          const state = JSON.parse(str).state;
+          if (state.isSidebarCollapsed) w = 0;
+          else if (state.sidebarWidth != null) w = state.sidebarWidth;
+          else w = 280;
+        } else {
+          w = 280;
+        }
+      } catch { w = 280; }
+    }
     document.documentElement.style.setProperty('--sidebar-w', w + 'px');
-  }, [isSidebarCollapsed, sidebarWidth]);
+  }, [isSidebarCollapsed, sidebarWidth, hasHydrated]);
 
   const isResizingLeftRef = useRef(false);
   const isResizingRightRef = useRef(false);
@@ -242,7 +261,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm md:hidden cursor-pointer" onClick={toggleSidebar} />
         )}
         <div className="relative h-full w-full overflow-hidden">
-          <div className="w-[var(--sidebar-w)] h-full shrink-0">
+          <div className="h-full">
             <Sidebar forceFull={currentSidebarCollapsed} />
           </div>
         </div>

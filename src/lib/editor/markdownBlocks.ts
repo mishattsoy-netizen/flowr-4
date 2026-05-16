@@ -173,20 +173,24 @@ function htmlToText(html: string): string {
     .replace(/&gt;/g, '>');
 }
 
-function serializeBlocks(blocks: EditorBlock[], depth: number): string {
+function serializeBlocks(blocks: EditorBlock[], depth: number, startIndex: number = 1): string {
   const indent = '  '.repeat(depth);
   const lines: string[] = [];
+  let numberedIndex = startIndex;
   for (const b of blocks) {
     let line: string;
     switch (b.type) {
       case 'bulletList':
         line = `${indent}- ${htmlToText(b.content)}`;
+        numberedIndex = 1;
         break;
       case 'dashedList':
         line = `${indent}- ${htmlToText(b.content)}`;
+        numberedIndex = 1;
         break;
       case 'numberedList':
-        line = `${indent}1. ${htmlToText(b.content)}`;
+        line = `${indent}${numberedIndex}. ${htmlToText(b.content)}`;
+        numberedIndex++;
         break;
       case 'checklist':
         line = `${indent}[${b.checked ? 'x' : ' '}] ${htmlToText(b.content)}`;
@@ -209,7 +213,7 @@ function serializeBlocks(blocks: EditorBlock[], depth: number): string {
     }
     lines.push(line);
     if (b.children && b.children.length > 0) {
-      lines.push(serializeBlocks(b.children, depth + 1));
+      lines.push(serializeBlocks(b.children, depth + 1, 1));
     }
   }
   return lines.join('\n');

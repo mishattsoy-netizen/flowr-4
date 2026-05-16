@@ -34,7 +34,7 @@ export async function narrateGeneratedImage(
       } else if (provider === 'cloudflare') {
         response = await runCloudflare(model.id, prompt, context?.aiApiKey, systemPrompt, [], 'VISION')
       } else if (provider === 'openrouter') {
-        response = await runOpenRouter(model.id, prompt, systemPrompt, [], context?.aiApiKey, model.openrouter_provider || undefined, imageBuffer)
+        response = await runOpenRouter(model.id, prompt, systemPrompt, [], context?.aiApiKey, { openrouterProvider: model.openrouter_provider }, imageBuffer)
       } else if (provider === 'groq') {
         response = await runGroq(model.id, prompt, systemPrompt, context?.aiApiKey, context, [], imageBuffer)
       }

@@ -75,24 +75,6 @@ export async function getWebConversationMemory(authUserId: string, limit: number
     let resultData: any[] | null = null;
     if (!error && initialData) { resultData = initialData; }
 
-    // Fallback: if chatId filter returned empty, retry without chat isolation
-    if (chatId && (!resultData || resultData.length === 0)) {
-      logger.info(`Chat isolation returned no history for ${authUserId} - retrying without chat filter`);
-      let fallbackQuery = supabaseAdmin
-        .from('message_logs')
-        .select('role, content, context_messages')
-        .eq('auth_user_id', authUserId);
-      if (quota?.memory_cleared_at) {
-        fallbackQuery = fallbackQuery.gt('created_at', quota.memory_cleared_at);
-      }
-      const { data: fallbackData } = await fallbackQuery
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      if (fallbackData && fallbackData.length > 0) {
-        resultData = fallbackData;
-      }
-    }
-
     if (error) {
       logger.warn(`Web memory unavailable for ${authUserId}: ${error.message}`);
       return [];

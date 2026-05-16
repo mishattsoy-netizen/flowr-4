@@ -295,38 +295,57 @@ export function robustParseJSON(jsonStr: string): any {
 export function blocksToMarkdown(blocks: EditorBlock[]): string {
   if (!blocks || blocks.length === 0) return '';
 
-  return blocks.map(b => {
+  const lines: string[] = [];
+  let numberedIndex = 1;
+  for (const b of blocks) {
     switch (b.type) {
       case 'text':
-        if (b.style === 'title') return `# ${b.content}`;
-        if (b.style === 'heading') return `## ${b.content}`;
-        if (b.style === 'subheading') return `### ${b.content}`;
-        if (b.style === 'mono') return `\`\`\`\n${b.content}\n\`\`\``;
-        return b.content || '';
+        if (b.style === 'title') lines.push(`# ${b.content}`);
+        else if (b.style === 'heading') lines.push(`## ${b.content}`);
+        else if (b.style === 'subheading') lines.push(`### ${b.content}`);
+        else if (b.style === 'mono') lines.push(`\`\`\`\n${b.content}\n\`\`\``);
+        else lines.push(b.content || '');
+        numberedIndex = 1;
+        break;
       case 'table':
-        if (!b.tableData || b.tableData.length === 0) return '';
-        const rows = b.tableData.map(row => `| ${row.join(' | ')} |`);
-        if (rows.length > 0) {
+        if (b.tableData && b.tableData.length > 0) {
+          const rows = b.tableData.map(row => `| ${row.join(' | ')} |`);
           const headerCount = b.tableData[0].length;
           const separator = `| ${Array(headerCount).fill('---').join(' | ')} |`;
           rows.splice(1, 0, separator);
+          lines.push(rows.join('\n'));
         }
-        return rows.join('\n');
+        numberedIndex = 1;
+        break;
       case 'divider':
-        return '---';
+        lines.push('---');
+        numberedIndex = 1;
+        break;
       case 'quote':
-        return `> ${b.content}`;
+        lines.push(`> ${b.content}`);
+        numberedIndex = 1;
+        break;
       case 'bulletList':
       case 'dashedList':
-        return `- ${b.content}`;
+        lines.push(`- ${b.content}`);
+        numberedIndex = 1;
+        break;
       case 'numberedList':
-        return `1. ${b.content}`;
+        lines.push(`${numberedIndex}. ${b.content}`);
+        numberedIndex++;
+        break;
       case 'checklist':
-        return `[${b.checked ? 'x' : ' '}] ${b.content}`;
+        lines.push(`[${b.checked ? 'x' : ' '}] ${b.content}`);
+        numberedIndex = 1;
+        break;
       case 'image':
-        return `![Image](${b.content})`;
+        lines.push(`![Image](${b.content})`);
+        numberedIndex = 1;
+        break;
       default:
-        return b.content || '';
+        lines.push(b.content || '');
+        numberedIndex = 1;
     }
-  }).join('\n');
+  }
+  return lines.join('\n');
 }

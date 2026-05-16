@@ -25,8 +25,8 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
   }, [entities, entity?.id]);
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col">
-      <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground group-hover/widget:text-foreground mb-4">
+    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+      <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground mb-0.5">
         Folders
       </h2>
       <div className="flex-1 overflow-y-auto scrollbar-thin">

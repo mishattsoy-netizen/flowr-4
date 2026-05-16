@@ -3,3 +3,9 @@
 ALTER TABLE cost_log ADD COLUMN IF NOT EXISTS chain TEXT;
 ALTER TABLE cost_log ADD COLUMN IF NOT EXISTS subprovider TEXT;
 CREATE INDEX IF NOT EXISTS idx_cost_log_chain ON cost_log(chain);
+
+-- Apply Data API access grants for security update compliance
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;

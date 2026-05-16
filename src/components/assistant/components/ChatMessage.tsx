@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useState, useRef, useEffect, useMemo, createContext, useContext } from 'react';
-import { Copy, ThumbsUp, ThumbsDown, RotateCcw, Paperclip, CornerUpLeft, FileText, ClipboardCopy, ChevronDown, Sparkles, CheckCircle2, Brain, Check, ExternalLink } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, RotateCcw, Paperclip, CornerUpLeft, FileText, ClipboardCopy, ChevronDown, ChevronRight, Sparkles, CheckCircle2, Brain, Check, ExternalLink } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '../../ui/popover';
 import { useStore } from '@/data/store';
 import type { AIMessage, AIAttachment, EditorBlock } from '@/data/store';
@@ -113,7 +113,10 @@ const renderContentWithStyles = (content: any): any => {
           result.push(
             <span
               key={i}
-              className={cn(stack)}
+              className={cn(
+                stack,
+                isMono && "bg-[var(--bone-6)] rounded-[4px] px-1 text-[16px] tracking-[0] font-normal"
+              )}
               style={isMono ? { fontFamily: 'DM Mono' } : undefined}
             >
               {part}
@@ -527,6 +530,7 @@ export const ChatMessage = memo(({
   const entities = useStore(state => state.entities);
   const addEntity = useStore(state => state.addEntity);
   const updateEntityContent = useStore(state => state.updateEntityContent);
+  const setActiveEntityId = useStore(state => state.setActiveEntityId);
   const aiSessionContext = useStore(state => state.aiSessionContext);
 
   const activeNote = useMemo(() => activeEntityId ? entities.find(e => e.id === activeEntityId) : null, [activeEntityId, entities]);
@@ -1113,8 +1117,9 @@ export const ChatMessage = memo(({
   }
 
   const isError = msg.role === 'assistant' && (msg.content || '').startsWith('Error:');
+  const isInterrupted = msg.role === 'assistant' && !!msg.interrupted;
 
-  if (msg.role === 'assistant' && !displayContent && !(isAILoading && isLast)) return null;
+  if (msg.role === 'assistant' && !displayContent && !(isAILoading && isLast) && !isInterrupted) return null;
 
   if (isError) {
     const errorText = (msg.content || '').replace(/^Error:\s*/, '');
@@ -1132,6 +1137,23 @@ export const ChatMessage = memo(({
           >
             <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-red-400/60 mb-2">System Alert</p>
             <p className="text-foreground/90 font-medium tracking-[0]">{errorText}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isInterrupted) {
+    return (
+      <div className="flex flex-col gap-2 mb-2 items-start w-full">
+        <div className="flex gap-3 w-full items-start">
+          <div className="flex flex-col min-w-0 items-start max-w-full flex-1">
+            <div className="w-5 h-5 shrink-0 flex items-center justify-center select-none mb-1 -ml-1">
+              <AIAvatar isTyping={false} className="w-3.5 h-3.5" />
+            </div>
+            <div className="prose prose-invert max-w-none w-full" style={{ fontFamily: '"Literata"', fontSize: '16px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
+              <span>Interrupted</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1277,8 +1299,8 @@ export const ChatMessage = memo(({
                       {isPureImage ? (
                         <div className="group/row relative transition-colors">
                           {(() => {
-                            const imgMatch = displayContent.match(/!\[(.*?)\]\s*\(\s*([^)]+?)(?:\s+"([^"]+)")?\s*\)/) || 
-                                           displayContent.match(/!\[(.*?)\]\s*\(\s*(data:image\/.*?;base64,[\s\S]*?|https?:\/\/[\s\S]*?|AUO[\s\S]*?)(?:\s*\)|$)/);
+                            const imgMatch = displayContent.match(/!\[(.*?)\]\s*\(\s*([^)]+?)(?:\s+"([^"]+)")?\s*\)/) ||
+                              displayContent.match(/!\[(.*?)\]\s*\(\s*(data:image\/.*?;base64,[\s\S]*?|https?:\/\/[\s\S]*?|AUO[\s\S]*?)(?:\s*\)|$)/);
                             if (imgMatch) {
                               const cleanSrc = imgMatch[2].trim().replace(/\s/g, '');
                               const descriptionFromMarkdown = imgMatch[3];
@@ -1318,6 +1340,32 @@ export const ChatMessage = memo(({
                         </div>
                       )}
                     </div>
+
+                    {msg.toolResults && msg.toolResults.length > 0 && (
+                      <div className="flex flex-col gap-2 w-full mt-3">
+                        {msg.toolResults.map((tr, i) => (
+                          <div
+                            key={i}
+                            onClick={() => tr.id && setActiveEntityId(tr.id)}
+                            className={cn(
+                              "flex items-center gap-3 w-full px-4 py-3 rounded-[14px] cursor-pointer transition-all duration-200",
+                              "bg-white/5 hover:bg-white/10 border border-white/10 group/card"
+                            )}
+                          >
+                            <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                              <FileText strokeWidth={2} className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-bone-100 truncate">{tr.title || tr.type}</p>
+                              {tr.content_preview && (
+                                <p className="text-xs text-bone-40 truncate mt-0.5">{tr.content_preview}</p>
+                              )}
+                            </div>
+                            <ChevronRight strokeWidth={2} className="w-4 h-4 text-bone-30 shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {(hasFinishedTyping || msg.model) && (
                       <div className={cn(

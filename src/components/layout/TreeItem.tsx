@@ -276,7 +276,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           />
         ) : (
           <span className={cn(
-            "ml-[6px] flex-1 text-left text-fade line-clamp-2 leading-snug",
+            "ml-[6px] flex-1 text-left truncate leading-snug",
             isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]"
           )}>
             {stripHtml(entity.title)}

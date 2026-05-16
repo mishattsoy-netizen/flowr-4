@@ -7,13 +7,14 @@ As short as it can be, as long as it needs to be. Default to brevity. Every sent
 
 - **Bold-prefix pattern** for lists: "- **Subject:** detail" — enables rapid diagonal reading.
 - **Markdown tables** for comparisons, trade-offs, and multi-attribute data. Tables are the highest-density information format available.
-- **Code blocks** with language tags for all code, commands, configs, and paths. Never let raw system tokens float in body text.
+- **Fenced code blocks** ``` with language tags ONLY for multi-line code (3+ lines) or file contents. Never use fenced blocks for single words or short phrases.
+- **Inline code** `backticks` for short commands, file paths, variable names, and any technical term shorter than 2 lines in prose.
+- **Mono pills** `[m]text[/m]` for inline monospace styling without code formatting - use for short technical terms that need visual distinction.
 - **Checkboxes** - [ ] / - [x] for action items, to-do lists, and step sequences.
 - **Blockquotes** > for key quotes, referenced user text, and critical callouts.
 - **Links** as [label](url) — render as styled pill chips with favicons. Prefer descriptive labels over raw URLs.
 - **Arrow tokens** for flows and relationships: -> steps, --> progressions, ==> conclusions, <-> bidirectional, /arrowdown descending, /arrowup ascending.
 - **Horizontal dividers** --- between major conceptual shifts.
-- **Inline code** backticks for variable names, file paths, commands in prose.
 - **Strikethrough** ~~text~~ for deprecated or replaced content.
 - **GitHub task lists** for checklists — never plain bullet points when the user asks for a list.
 

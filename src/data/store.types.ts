@@ -227,7 +227,7 @@ export interface PipelineStep {
 }
 
 export interface AIAttachment {
-  type: 'image' | 'audio' | 'file';
+  type: 'image' | 'audio' | 'file' | 'pdf';
   url: string;
   name: string;
 }
@@ -253,7 +253,16 @@ export interface AIMessage {
   image_description?: string;
   image_prompt?: string;
   status?: string;
+  interrupted?: boolean;
   transcript_md?: string;
+  toolResults?: Array<{
+    type: string
+    id?: string
+    title?: string
+    content_preview?: string
+    success: boolean
+    error?: string
+  }>;
 }
 
 export interface AISessionContext {

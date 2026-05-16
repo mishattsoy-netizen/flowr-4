@@ -67,7 +67,7 @@ export async function runAdvisor(
       } else if (provider === 'openrouter') {
         const { runOpenRouter } = await import('./providers/openrouter')
         const keys = await getProviderKeys('OPENROUTER')
-        response = await runOpenRouter(modelConfig.id, advisorPrompt, systemPrompt, history, keys[0] || '', modelConfig.openrouter_provider || undefined)
+        response = await runOpenRouter(modelConfig.id, advisorPrompt, systemPrompt, history, keys[0] || '', { openrouterProvider: modelConfig.openrouter_provider })
       }
 
       if (response) {

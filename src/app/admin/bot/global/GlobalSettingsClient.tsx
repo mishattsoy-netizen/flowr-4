@@ -189,15 +189,15 @@ export default function GlobalSettingsClient({
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-500">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-display font-normal">Global Settings</h1>
         <p className="text-sm text-bone-70">Author the bot's global identity — personality, rules, and behavior for all users.</p>
       </div>
 
       {/* Global toggles */}
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
           <div>
             <p className="text-sm font-medium text-bone-100">Global Prompt Injection</p>
             <p className="text-xs text-bone-70 mt-0.5">Brain + Settings are active on every chat request</p>
@@ -205,7 +205,7 @@ export default function GlobalSettingsClient({
           <Toggle checked={globalOn} onChange={v => { setGlobalOn(v); startTransition(() => setGlobalPromptEnabled(v)) }} />
         </div>
         
-        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
+        <div className="flex items-center justify-between px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
           <div>
             <p className="text-sm font-medium text-bone-100">Local Ollama</p>
             <p className="text-xs text-bone-70 mt-0.5">Your local Ollama instance is active for all users</p>
@@ -213,7 +213,7 @@ export default function GlobalSettingsClient({
           <Toggle checked={ollamaOn} onChange={v => { setOllamaOn(v); startTransition(() => setOllamaEnabled(v)) }} />
         </div>
 
-        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5 border border-[var(--bone-6)]">
+        <div className="flex items-center justify-between px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
           <div>
             <p className="text-sm font-medium text-bone-100">Classifier Keywords</p>
             <p className="text-xs text-bone-70 mt-0.5">Enable keyword fast-path for intent classification</p>
@@ -221,7 +221,7 @@ export default function GlobalSettingsClient({
           <Toggle checked={keywordsOn} onChange={v => { setKeywordsOn(v); startTransition(() => setKeywordsEnabled(v)) }} />
         </div>
 
-        <div className="flex items-center justify-between p-4 rounded-[16px] bg-white/5">
+        <div className="flex items-center justify-between px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
           <div className="flex items-center gap-3">
             <Cpu className="w-4 h-4 text-bone-70" />
             <div>
@@ -229,7 +229,7 @@ export default function GlobalSettingsClient({
               <p className="text-xs text-bone-70 mt-0.5">Used for routine analysis, brain sync, and all backend AI actions</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-background/50 rounded-[12px] p-1.5 border border-[var(--bone-6)] relative min-w-[280px]">
+          <div className="flex items-center gap-2 bg-background/50 rounded-regular p-1.5 border border-[var(--bone-6)] relative min-w-[280px]">
             <ProviderSelector 
               value={backendProvider} 
               providers={allProviders} 
@@ -250,7 +250,7 @@ export default function GlobalSettingsClient({
 
 
       {/* Context & Compaction */}
-      <section className="flex flex-col gap-4 p-4 rounded-[8px] bg-white/5 border border-[var(--bone-6)]">
+      <section className="flex flex-col gap-4 px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
         <h2 className="text-sm font-medium text-bone-80">Context & Compaction</h2>
 
         <div className="flex items-center justify-between">
@@ -286,7 +286,7 @@ export default function GlobalSettingsClient({
 
         {/* Compaction Chain Card */}
         {chainId && (
-          <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.02] border border-[var(--bone-6)]">
+          <div className="flex flex-col gap-3 px-6 py-4 rounded-regular bg-white/5 border border-[var(--bone-12)]">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold text-bone-70 uppercase tracking-widest px-1">Compaction Chain</p>
               <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export default function GlobalSettingsClient({
                     onDragEnd={handleDragEnd}
                     onDrop={handleDrop}
                     className={cn(
-                      "flex items-center gap-2 bg-background/40 rounded-[10px] p-1.5 border border-[var(--bone-6)] cursor-grab active:cursor-grabbing transition-all",
+                      "flex items-center gap-2 bg-background/40 rounded-medium p-1.5 border border-[var(--bone-6)] cursor-grab active:cursor-grabbing transition-all",
                       draggedIndex === index ? "opacity-20 scale-[0.98]" : "opacity-100"
                     )}
                   >
@@ -374,7 +374,7 @@ export default function GlobalSettingsClient({
                 value={chainPrompt}
                 onChange={(e) => setChainPrompt(e.target.value)}
                 rows={4}
-                className="w-full bg-background/50 rounded-[10px] p-2 text-[11px] font-mono text-bone-100 border border-[var(--bone-6)] focus:outline-none focus:border-accent/30 resize-y"
+                className="w-full bg-background/50 rounded-medium p-2 text-[11px] font-mono text-bone-100 border border-[var(--bone-6)] focus:outline-none focus:border-accent/30 resize-y"
                 placeholder="System prompt for the compaction chain..."
               />
             </div>
@@ -385,7 +385,7 @@ export default function GlobalSettingsClient({
       </section>
 
       {/* Compiled prompts */}
-      <section className="flex items-center justify-between p-4 rounded-[16px] bg-white/5 mt-4">
+      <section className="flex items-center justify-between px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
         <div className="flex items-center gap-3">
           <Globe className="w-4 h-4 text-bone-70" />
           <div>
@@ -444,16 +444,16 @@ export default function GlobalSettingsClient({
       </section>
 
       {showPreview && (
-        <pre className="text-xs text-bone-70 bg-white/5 rounded-[12px] p-4 overflow-auto max-h-64 whitespace-pre-wrap font-mono -mt-2">
+        <pre className="text-xs text-bone-70 bg-white/5 border border-[var(--bone-12)] rounded-regular p-6 overflow-auto max-h-64 whitespace-pre-wrap font-mono -mt-2">
           {meta[activeTab]?.content || 'No compiled content yet. Click Sync Brain.'}
         </pre>
       )}
 
       {/* Context & Settings */}
-      <section className="flex flex-col gap-4 p-4 rounded-[8px] bg-white/5 border border-[var(--bone-12)] mt-4">
+      <section className="flex flex-col gap-4 px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
         <div className="flex items-center gap-3">
           <Settings2 className="w-5 h-5 text-accent" />
-          <h2 className="text-sm font-bold text-bone-100 uppercase tracking-wider">Context & Settings</h2>
+          <h2 className="text-sm font-bold text-bone-100 tracking-wider">Context & Settings</h2>
         </div>
 
         {/* History limit */}
@@ -539,14 +539,7 @@ export default function GlobalSettingsClient({
         </div>
       </section>
 
-      {/* Pipeline & Chain Configuration */}
-      <div className="h-4" />
-      <div className="border-t border-[var(--bone-6)] pt-6">
-        <h2 className="text-lg font-bold text-bone-100 uppercase tracking-widest mb-4 opacity-60">Pipeline & Chain Configuration</h2>
-        <div className="flex flex-col gap-6">
-          <PipelineStatusPanel initialMessages={initialStatusMessages} />
-        </div>
-      </div>
+      <PipelineStatusPanel initialMessages={initialStatusMessages} />
     </div>
   )
 }

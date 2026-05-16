@@ -1,5 +1,40 @@
 import { logger } from '../../logger'
 
+export async function extractDuckDuckGoUrls(urls: string[]): Promise<Array<{ url: string; title: string; content: string }>> {
+  if (urls.length === 0) return []
+  const results: Array<{ url: string; title: string; content: string }> = []
+
+  for (const url of urls.slice(0, 5)) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FlowrBot/1.0)' },
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) continue
+      const html = await res.text()
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+      const title = titleMatch ? titleMatch[1].trim() : ''
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+      let bodyText = bodyMatch ? bodyMatch[1] : html
+      bodyText = bodyText
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z]+;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 10000)
+      results.push({ url, title, content: bodyText })
+    } catch {
+      results.push({ url, title: '', content: '' })
+    }
+  }
+
+  return results
+}
+
 export async function runDuckDuckGoSearchChain(prompt: string, _context?: any, systemPrompt?: string): Promise<string> {
   logger.info(`Starting DuckDuckGo search for: ${prompt}`)
   if (systemPrompt) {

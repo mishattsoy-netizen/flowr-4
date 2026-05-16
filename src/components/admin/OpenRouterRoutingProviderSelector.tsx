@@ -106,7 +106,7 @@ export default function OpenRouterRoutingProviderSelector({
         className={cn(
           "flex items-center justify-center w-6 h-6 rounded-sm transition-all duration-0 hover:bg-white/5 focus:outline-none group",
           !isEnabled && "opacity-40",
-          isOpen ? "bg-white/5 text-bone-100" : (value ? "text-accent bg-accent/5 border border-accent/20" : "text-bone-40")
+          isOpen ? "bg-white/5 text-bone-100" : (value ? "text-accent bg-accent/5" : "text-bone-40")
         )}
       >
         <Settings2 className={cn("w-3.5 h-3.5 transition-all group-hover:text-bone-100", isOpen && "text-bone-100")} />

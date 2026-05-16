@@ -230,7 +230,8 @@ export async function classifyIntentWithModel(
       continue
     }
 
-    let key = modelConfig.provider === 'google' ? 'GEMINI' : modelConfig.provider.toUpperCase()
+    const provider = modelConfig.provider.toLowerCase()
+    let key = (provider === 'google' || provider === 'gemini') ? 'GEMINI' : modelConfig.provider.toUpperCase()
     if (modelConfig.provider.toLowerCase().includes('ollama')) key = 'LOCAL'
 
     const t0 = Date.now()
@@ -241,7 +242,7 @@ export async function classifyIntentWithModel(
       const traceContext: any = { aiApiKey }
 
       const provider = modelConfig.provider.toLowerCase()
-      if (provider === 'google') {
+      if (provider === 'google' || provider === 'gemini') {
         rawResponse = await runGoogle(modelConfig.id, finalUserPrompt, activePrompt, undefined, traceContext, recentHistory)
       } else if (provider === 'groq') {
         rawResponse = await runGroq(modelConfig.id, finalUserPrompt, activePrompt, aiApiKey, traceContext, recentHistory)

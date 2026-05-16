@@ -21,7 +21,7 @@ export default function ChatPage() {
         {/* Top fade + title */}
         <div
           className="absolute top-0 left-0 right-0 h-16 pointer-events-none flex items-start px-6 pt-3 gap-3"
-          style={{ zIndex: 40, background: 'linear-gradient(to bottom, #141413 0%, transparent 100%)' }}
+          style={{ zIndex: 40, background: 'linear-gradient(to bottom, var(--color-background) 0%, transparent 100%)' }}
         >
           <h2 className="text-sm font-medium truncate text-[var(--bone-100)] tracking-wide">
             {title}
@@ -39,7 +39,7 @@ export default function ChatPage() {
         {/* Fade behind bar — same height as bar+gap, z-index below bar */}
         <div
           className="absolute left-0 right-0 bottom-0 pointer-events-none"
-          style={{ zIndex: 38, height: '140px', background: 'linear-gradient(to bottom, transparent 0%, #141413 55%)' }}
+          style={{ zIndex: 38, height: '140px', background: 'linear-gradient(to bottom, transparent 0%, var(--color-background) 55%)' }}
         />
 
         {/* Floating glass bar */}

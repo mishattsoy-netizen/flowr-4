@@ -74,8 +74,12 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder()
   const customStream = new ReadableStream({
     async start(controller) {
+      let clientDisconnected = false
+      req.signal.addEventListener('abort', () => { clientDisconnected = true })
+
       const send = (data: any) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        if (clientDisconnected) return
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)) } catch {}
       }
 
       try {
@@ -98,6 +102,7 @@ export async function POST(req: NextRequest) {
           prompt,
           inputBuffers,
           {
+            signal: req.signal,
             userId,
             aiApiKey,
             activeEntityId,
@@ -166,8 +171,9 @@ export async function POST(req: NextRequest) {
           console.error('[Transcript] Failed to write file:', e)
         }
 
-        logWebInteraction(logUserId, prompt, 'user', usageType as any, 'success', modelChain, requestId, contextMessages, result.image_description, activeChatId ?? null).catch(() => {})
-        const messageLogId = await logModelWebMessage(logUserId, loggedContent, usageType as any, result.status || 'success', modelChain, requestId, contextMessages, result.image_description, activeChatId ?? null).catch(() => null)
+        const finalStatus = clientDisconnected ? 'interrupted' : (result.status || 'success')
+        logWebInteraction(logUserId, prompt, 'user', usageType as any, finalStatus, modelChain, requestId, contextMessages, result.image_description, activeChatId ?? null).catch(() => {})
+        const messageLogId = await logModelWebMessage(logUserId, loggedContent, usageType as any, finalStatus, modelChain, requestId, contextMessages, result.image_description, activeChatId ?? null).catch(() => null)
 
         send({
           content,
@@ -185,6 +191,7 @@ export async function POST(req: NextRequest) {
           image_description: result.image_description,
           image_prompt: (result as any).image_prompt,
           transcript_md: result.transcript_md,
+          toolResults: (result as any).toolResults,
         })
         
         send('[DONE]')

@@ -263,10 +263,10 @@ function ChainPills({ traces, modelChain }: { traces: StepTrace[] | null; modelC
     // VISION acts as classifier when an image is attached
     for (const t of visionTraces) {
       pills.push({
-        label: 'VISION',
+        label: t.model || 'VISION',
         success: t.success,
         trace: t,
-        sublabel: 'CLASSIFIER',
+        sublabel: 'VISION',
       })
     }
 
@@ -324,7 +324,7 @@ function ChainPills({ traces, modelChain }: { traces: StepTrace[] | null; modelC
       const upper = model.toUpperCase()
       const isCategory = KNOWN_CATEGORIES.has(upper)
       if (upper === 'VISION' || upper === 'KEYWORD' || upper === 'TAG' || upper === 'AI') {
-        pills.push({ label: upper, success: successStr !== 'false', isCategory: true, sublabel: 'CLASSIFIER' })
+        pills.push({ label: model !== upper ? model : upper, success: successStr !== 'false', isCategory: true, sublabel: upper })
       } else {
         pills.push({ label: isCategory ? upper : model, success: successStr !== 'false', isCategory })
       }

@@ -121,13 +121,16 @@ export function ChatHistoryPanel() {
             if (convs.length === 0) return null;
             return (
               <div key={label}>
-                <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</p>
+                <div className="flex items-center pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
+                  <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide">{label}</span>
+                </div>
+                <div className="space-y-0.5">
                 {convs.map(conv => (
                   <div
                     key={conv.id}
                     className={cn(
-                      "group flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
-                      activeChatId === conv.id ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-hover hover:text-foreground"
+                      "group flex items-center gap-2 pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] cursor-pointer transition-colors",
+                      activeChatId === conv.id ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                     )}
                     onClick={() => loadConversation(conv.id)}
                   >
@@ -142,27 +145,28 @@ export function ChatHistoryPanel() {
                           if (e.key === 'Escape') setEditingId(null);
                         }}
                         onClick={e => e.stopPropagation()}
-                        className="flex-1 bg-transparent text-sm outline-none border-b border-white/30"
+                        className="flex-1 bg-transparent text-[13px] outline-none border-b border-white/30"
                       />
                     ) : (
-                      <span className="flex-1 text-sm truncate">{conv.title}</span>
+                      <span className="flex-1 text-[13px] truncate">{conv.title}</span>
                     )}
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button
                         onClick={e => { e.stopPropagation(); setEditingId(conv.id); setEditTitle(conv.title); }}
-                        className="p-1 rounded hover:bg-white/10"
+                        className="p-1 rounded hover:bg-[var(--bone-6)]"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); handleDeleteRequest(conv.id); }}
-                        className="p-1 rounded hover:bg-white/10 text-danger"
+                        className="p-1 rounded hover:bg-[var(--bone-6)] text-danger"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             );
           })}

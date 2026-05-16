@@ -37,6 +37,17 @@ export const FLOWR_TOOLS = [
     }
   },
   {
+    name: "exa_search",
+    description: "Performs a web search using Exa for real-time information with deep content extraction.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The search query." }
+      },
+      required: ["query"]
+    }
+  },
+  {
     name: "get_weather",
     description: "Provides current weather and 1-day forecast for a given location.",
     parameters: {
@@ -90,11 +101,10 @@ export const FLOWR_TOOLS = [
       type: "object",
       properties: {
         title: { type: "string", description: "Title of the note." },
-        content: { type: "string", description: "Content of the note as plain markdown string (optional). Use blocks instead for structured content." },
         parentId: { type: "string", description: "ID of the parent folder (optional)." },
         blocks: {
           type: "array",
-          description: "Structured block content for the note. Use this instead of content for rich formatting (lists, headings, checklists, etc.).",
+          description: "Structured block content for the note (REQUIRED - always pass blocks for any formatted content).",
           items: {
             type: "object",
             properties: {
@@ -131,7 +141,6 @@ export const FLOWR_TOOLS = [
       properties: {
         id: { type: "string", description: "The ID of the note to update." },
         title: { type: "string", description: "New title for the note (optional)." },
-        content: { type: "string", description: "New text content for the note as plain markdown string (optional). Use blocks instead for structured content." },
         blocks: {
           type: "array",
           description: "Structured block content to replace the note's content. Use this instead of content for rich formatting (lists, headings, checklists, etc.).",

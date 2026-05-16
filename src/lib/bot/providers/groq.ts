@@ -2,6 +2,7 @@ import { getProviderKeys } from '../../vault'
 import { logger } from '../../logger'
 import { FLOWR_TOOLS } from '../tools/definitions'
 import { toolHandlers } from '../tools/handlers'
+import { detectMimeType } from '../image-utils'
 
 export async function runGroq(
   modelId: string,
@@ -11,7 +12,7 @@ export async function runGroq(
   context?: any,
   history: any[] = [],
   imageBuffers?: Buffer | Buffer[]
-): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string } | null> {
+): Promise<string | { content: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string; capturedToolCalls?: any[] } | null> {
   let keys = aiApiKey ? [aiApiKey] : []
   
   if (keys.length === 0) {
@@ -54,7 +55,7 @@ export async function runGroq(
         for (const buf of buffers) {
           contentParts.push({ 
             type: 'image_url', 
-            image_url: { url: `data:image/jpeg;base64,${buf.toString('base64')}` } 
+            image_url: { url: `data:${detectMimeType(buf)};base64,${buf.toString('base64')}` } 
           })
         }
 
@@ -69,6 +70,7 @@ export async function runGroq(
       const MAX_TOOL_HOPS = 4
       let hops = 0
 
+      const capturedToolCalls: any[] = []
       while (hops < MAX_TOOL_HOPS) {
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -83,7 +85,8 @@ export async function runGroq(
             tool_choice: context?.useTools ? 'auto' : undefined,
             temperature: typeof context?.temperature === 'number' ? context.temperature : 0.7,
             max_tokens: context?.max_tokens || undefined
-          })
+          }),
+          signal: context?.signal,
         })
 
         if (response.status === 429) {
@@ -109,6 +112,11 @@ export async function runGroq(
               try {
                 const args = JSON.parse(call.function.arguments)
                 output = await handler(args, context)
+
+                // Capture note/canvas/task tool calls for UI display
+                if (['create_note', 'update_note', 'delete_note', 'create_folder'].includes(call.function.name)) {
+                  capturedToolCalls.push({ type: call.function.name, ...output, ...args })
+                }
               } catch (e: any) {
                 output = { error: e.message }
               }
@@ -133,6 +141,7 @@ export async function runGroq(
             content: message.content,
             usage,
             reasoning: message.reasoning || undefined,
+            capturedToolCalls: capturedToolCalls.length > 0 ? capturedToolCalls : undefined,
           }
         }
       }

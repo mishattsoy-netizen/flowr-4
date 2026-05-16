@@ -342,3 +342,13 @@ create policy "bento_layouts: owner full access"
 
 alter publication supabase_realtime add table bento_layouts;
 
+
+-- ─── Data API Access Grants ──────────────────────────────────
+-- Required for projects created after May 30, 2026
+-- and existing projects after October 30, 2026.
+
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage on all sequences in schema public to authenticated;
+grant usage on all sequences in schema public to service_role;
+
