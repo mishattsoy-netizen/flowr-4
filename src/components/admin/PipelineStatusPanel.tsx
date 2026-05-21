@@ -41,7 +41,7 @@ export default function PipelineStatusPanel({ initialMessages }: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-4 px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-12)]">
+    <section className="flex flex-col gap-4 px-6 py-4 rounded-big bg-white/5 border border-[var(--bone-6)]">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <MessageSquare className="w-5 h-5 text-accent" />

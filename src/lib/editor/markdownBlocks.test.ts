@@ -59,6 +59,49 @@ describe('looksLikeMarkdown', () => {
   });
 });
 
+describe('parseMarkdownToBlocks — tables', () => {
+  const tableMd = [
+    '| Day | Focus | Time split |',
+    '|-----|-------|------------|',
+    '| **Thu 21** | Math fundamentals | ~4h |',
+    '| Fri 22 | Math practice | ~4h |',
+  ].join('\n');
+
+  it('parses a pipe table into a single table block, dropping the separator row', () => {
+    const blocks = parseMarkdownToBlocks(tableMd);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe('table');
+    expect(blocks[0].tableData).toEqual([
+      ['Day', 'Focus', 'Time split'],
+      ['<strong>Thu 21</strong>', 'Math fundamentals', '~4h'],
+      ['Fri 22', 'Math practice', '~4h'],
+    ]);
+  });
+
+  it('does not eat the table separator row as text', () => {
+    const blocks = parseMarkdownToBlocks(tableMd);
+    expect(blocks.some(b => b.type === 'text' && /---/.test(b.content))).toBe(false);
+  });
+
+  it('pads short rows to the widest column count', () => {
+    const md = '| a | b | c |\n| --- | --- | --- |\n| 1 | 2 |';
+    const blocks = parseMarkdownToBlocks(md);
+    expect(blocks[0].tableData?.[1]).toEqual(['1', '2', '']);
+  });
+
+  it('round-trips a table through blocksToMarkdown', () => {
+    const blocks = parseMarkdownToBlocks(tableMd);
+    const md = blocksToMarkdown(blocks);
+    const reparsed = parseMarkdownToBlocks(md);
+    expect(reparsed[0].tableData).toEqual(blocks[0].tableData);
+  });
+
+  it('does not treat a single prose line with a trailing pipe as a table', () => {
+    const blocks = parseMarkdownToBlocks('just some text\nmore text');
+    expect(blocks.every(b => b.type !== 'table')).toBe(true);
+  });
+});
+
 // ── parseMarkdownToBlocks ─────────────────────────────
 describe('parseMarkdownToBlocks', () => {
   it('empty string returns empty array', () => {

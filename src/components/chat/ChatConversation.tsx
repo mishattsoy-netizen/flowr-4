@@ -46,7 +46,7 @@ export function ChatConversation() {
           {displayMessages.length === 0 && !isAILoading ? (
             <div className="flex-1 flex flex-col items-center justify-center h-[50vh] text-center gap-6 pt-24">
               <AIAvatar className="w-12 h-12 opacity-100" />
-              <p className="text-[26px] font-medium text-[var(--bone-100)] leading-tight tracking-tight font-[family-name:var(--font-display)]">
+              <p className="text-[26px] font-normal text-[var(--bone-100)] leading-tight tracking-tight font-display">
                 How can I help you today?
               </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">

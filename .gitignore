@@ -53,3 +53,6 @@ Flowr-1.0/
 
 # transcripts
 /transcripts/
+
+.agents/
+!.agents/rules/

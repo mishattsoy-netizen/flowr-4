@@ -204,7 +204,7 @@ export type ModalType =
   | null
   | { kind: 'newItem'; parentId?: string | null; initialType?: EntityType; defaultToFirstCollection?: boolean }
   | { kind: 'newCollection' }
-  | { kind: 'deleteConfirm'; entityId?: string; entityIds?: string[] }
+  | { kind: 'deleteConfirm'; entityId?: string; entityIds?: string[]; isChat?: boolean }
   | { kind: 'moveTo'; entityId: string }
   | { kind: 'rename'; entityId: string }
   | { kind: 'newTask'; taskId?: string }
@@ -216,7 +216,7 @@ export type ModalType =
   | { kind: 'journalDetail'; id: string | null }
   | { kind: 'routineDetail'; id: string | null };
 
-export type EditingSource = 'sidebar' | 'sidebar-section' | 'header' | 'view' | 'favorites' | 'recent' | 'canvas' | 'editor' | 'modal' | 'all-files' | 'folders' | 'spaces';
+export type EditingSource = 'sidebar' | 'sidebar-section' | 'header' | 'view' | 'favorites' | 'recent' | 'canvas' | 'editor' | 'modal' | 'all-files' | 'folders' | 'spaces' | 'sidebar-toggle';
 
 export interface PipelineStep {
   chain: string
@@ -263,6 +263,8 @@ export interface AIMessage {
     success: boolean
     error?: string
   }>;
+  advisor_questions?: string
+  advisor_state?: string
 }
 
 export interface AISessionContext {
@@ -272,6 +274,17 @@ export interface AISessionContext {
   compaction_threshold: number;
   active_mode?: BotMode;
   status_messages?: Record<string, { label: string; emoji: string }>;
+}
+
+export interface AdvisorSessionState {
+  phase: 'planning' | 'ready' | 'pass'
+  round: number
+  conversation: Array<{ role: 'advisor' | 'user', content: string }>
+  gatheredConstraints: string[]
+  ready: boolean
+  finalBrief?: string
+  approvedPlan?: string
+  originalPrompt: string
 }
 
 export interface AICursor {
@@ -395,6 +408,7 @@ export interface AppState {
   toolbarPosition: { x: number; y: number } | null;
   mixedLayoutSplit: number;
   isFullWidth: boolean;
+  isTabsHeaderVisible: boolean;
   appStyle: 'v1' | 'v2' | 'v3';
   dashboardLayout: WidgetConfig[];
   defaultDashboardLayout: WidgetConfig[];
@@ -424,6 +438,7 @@ export interface AppState {
   activeReplyMessage: AIMessage | null;
   thinkingEnabled: boolean;
   advisorEnabled: boolean;
+  pendingAdvisorState: AdvisorSessionState | null;
   assistantInput: string;
   showPaidModels: boolean;
   isInitialSync: boolean;
@@ -452,6 +467,7 @@ export interface AppState {
   setToolbarPosition: (pos: { x: number; y: number } | null) => void;
   setMixedLayoutSplit: (split: number) => void;
   toggleFullWidth: () => void;
+  toggleTabsHeader: () => void;
   setAppStyle: (style: 'v1' | 'v2' | 'v3') => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   setActiveWorkspaceId: (id: string | null) => void;
@@ -472,6 +488,7 @@ export interface AppState {
   setActiveMode: (mode: BotMode) => void;
   setThinkingEnabled: (enabled: boolean) => void;
   setAdvisorEnabled: (enabled: boolean) => void;
+  setPendingAdvisorState: (state: AdvisorSessionState | null) => void;
   setActiveIntentTag: (tag: string | null) => void;
   setReplyMessage: (msg: AIMessage | null) => void;
   setAIClassificationModelId: (id: string) => void;

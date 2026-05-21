@@ -115,7 +115,7 @@ const renderContentWithStyles = (content: any): any => {
               key={i}
               className={cn(
                 stack,
-                isMono && "bg-[var(--bone-6)] rounded-[4px] px-1 text-[16px] tracking-[0] font-normal"
+                isMono && "bg-[var(--bone-6)] rounded-[4px] px-1.5 py-[1px] mx-[1px] text-[calc(1em-1px)] text-[var(--bone-70)] tracking-tight font-medium"
               )}
               style={isMono ? { fontFamily: 'DM Mono' } : undefined}
             >
@@ -174,6 +174,14 @@ export const sanitizeContent = (content: string, isAILoading: boolean, isLastMes
     text = text.replace(/<system-notes>[\s\S]*$/, '');
   }
 
+  // Strip advisor pipeline metadata that sometimes leaks into displayed content
+  text = text.replace(/---ADVISOR_STATE---[\s\S]*?---END_ADVISOR_STATE---/g, '');
+  if (isAILoading && isLastMessage) {
+    text = text.replace(/---ADVISOR_STATE---[\s\S]*$/, '');
+  }
+  // Remove leading "PASS" label emitted by the advisor when it decides to skip
+  text = text.replace(/^\s*PASS\s*/i, '');
+
   text = text.replace(ALL_TOOLS_FULL_REGEX, "");
 
   // Filter out internal reasoning patterns
@@ -217,6 +225,10 @@ export const sanitizeContent = (content: string, isAILoading: boolean, isLastMes
   text = text.replace(/\{[\s\n\r]*"action"[\s\S]*?\}/g, '');
   text = text.replace(/(?<![!\[])(add_note|add_folder|add_canvas|add_task|update_note_content|append_note_content|generate_image)\s*\([\s\S]*?\);?/g, '');
 
+  // Escape lettered list markers (a), b), A), B) etc.) at line starts so remark-gfm
+  // doesn't misparse them as ordered list items and render them as code blocks.
+  text = text.replace(/^([a-zA-Z])\)/gm, '$1\\)');
+
   text = text.trim();
 
   if (text.startsWith('!function_call:') && text.endsWith('}')) return "";
@@ -244,7 +256,7 @@ const ApplyNoteCard = ({ content }: { content: string }) => {
   };
 
   return (
-    <div className="my-4 w-full p-4 rounded-[17px] bg-emerald-500/5 border border-emerald-500/20 relative overflow-hidden backdrop-blur-xl group">
+    <div className="mt-4 mb-6 w-full p-4 rounded-[17px] bg-emerald-500/5 border border-emerald-500/20 relative overflow-hidden backdrop-blur-xl group">
       <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-emerald-500/10 rounded-full blur-[60px] pointer-events-none transition-opacity group-hover:opacity-100" />
       <div className="flex flex-col gap-3 relative z-10 w-full">
         <div className="flex items-center justify-between w-full">
@@ -277,7 +289,7 @@ const ApplyNoteCard = ({ content }: { content: string }) => {
             )}
           </button>
         </div>
-        <div className="w-full max-h-[140px] overflow-y-auto bg-[var(--color-dark)] p-3 rounded-[12px] text-[12.5px] font-medium leading-[133%] text-bone-100 font-sans border border-white/5 custom-scrollbar">
+        <div className="w-full max-h-[140px] overflow-y-auto bg-panel p-3 rounded-[12px] text-[12.5px] font-medium leading-[133%] text-bone-100 font-sans border border-[var(--bone-6)] custom-scrollbar">
           <pre className="whitespace-pre-wrap font-sans text-bone-100 leading-[133%] font-medium w-full">{content}</pre>
         </div>
       </div>
@@ -349,7 +361,7 @@ const ApplyCanvasCard = ({ content }: { content: string }) => {
   };
 
   return (
-    <div className="my-4 w-full p-4 rounded-[17px] bg-white/5 border border-white/10 relative overflow-hidden backdrop-blur-xl group">
+    <div className="mt-4 mb-6 w-full p-4 rounded-[17px] bg-white/5 border border-white/10 relative overflow-hidden backdrop-blur-xl group">
       <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-white/5 rounded-full blur-[60px] pointer-events-none transition-opacity group-hover:opacity-100" />
       <div className="flex flex-col gap-3 relative z-10 w-full">
         <div className="flex items-center justify-between w-full">
@@ -387,7 +399,7 @@ const ApplyCanvasCard = ({ content }: { content: string }) => {
             )}
           </button>
         </div>
-        <div className="w-full max-h-[140px] overflow-y-auto bg-[var(--color-dark)] p-3 rounded-[12px] text-[12.5px] font-mono leading-[133%] text-bone-100 border border-white/5 custom-scrollbar">
+        <div className="w-full max-h-[140px] overflow-y-auto bg-panel p-3 rounded-[12px] text-[12.5px] font-mono leading-[133%] text-bone-100 border border-[var(--bone-6)] custom-scrollbar">
           <pre className="whitespace-pre-wrap leading-[133%] font-medium w-full">{content}</pre>
         </div>
       </div>
@@ -508,6 +520,29 @@ const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
   );
 };
 
+const AdvisorCard = ({ content, state, compact = false }: { content: string; state: any; compact?: boolean }) => {
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-1.5 mb-2 select-none">
+        <div className="w-4 h-4 rounded-full bg-[var(--brand-blue)]/20 flex items-center justify-center">
+          <Brain strokeWidth={2} className="w-2.5 h-2.5 text-[var(--brand-blue)]" />
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--bone-40)]">
+          Advisor {state?.phase === 'ready' ? '· Ready' : `· Round ${state?.round || 1}`}
+        </span>
+        {state?.phase === 'planning' && (
+          <span className="text-[10px] font-medium text-amber-400/70 ml-auto">Needs your input</span>
+        )}
+      </div>
+      <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/10 prose-pre:rounded-[14px] prose-headings:font-bold prose-headings:text-bone-100 prose-p:text-bone-80 prose-strong:text-bone-100 prose-code:text-emerald-300 prose-code:bg-emerald-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none prose-blockquote:border-l-emerald-500/50 prose-blockquote:bg-emerald-500/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg w-full overflow-hidden [&_p]:my-0 break-words" style={{ fontFamily: '"Literata"', fontSize: compact ? '13.5px' : '17px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+};
+
 export const ChatMessage = memo(({
   msg,
   isAILoading,
@@ -515,7 +550,8 @@ export const ChatMessage = memo(({
   scrollToBottom,
   handleAddImageToWorkspace,
   onRegenerate,
-  onReply
+  onReply,
+  compact = false
 }: {
   msg: AIMessage;
   isAILoading: boolean;
@@ -524,6 +560,7 @@ export const ChatMessage = memo(({
   handleAddImageToWorkspace: (url: string) => void;
   onRegenerate?: () => void;
   onReply: (msg: AIMessage) => void;
+  compact?: boolean;
 }) => {
   const openModal = useStore(state => state.openModal);
   const activeEntityId = useStore(state => state.activeEntityId);
@@ -587,14 +624,14 @@ export const ChatMessage = memo(({
   }, [msg.content, msg.pipelineSteps, isAILoading, isLast]);
 
   const hasThinking = !!thinkContent;
-  const [showThinking, setShowThinking] = useState(isLast && isAILoading);
+  const [showThinking, setShowThinking] = useState(false);
 
-  // Auto-expand thinking when it starts appearing during live generation
+  // Auto-expand thinking during live generation only when the user has opted in
   useEffect(() => {
-    if (isAILoading && isLast && !!thinkContent && !showThinking) {
+    if (isAILoading && isLast && !!thinkContent && !showThinking && thinkingEnabled) {
       setShowThinking(true);
     }
-  }, [!!thinkContent, isAILoading, isLast]);
+  }, [!!thinkContent, isAILoading, isLast, thinkingEnabled]);
 
   const isImageContent = looksLikeImageContent(targetContent);
   const isPureImage = useMemo(() => {
@@ -602,28 +639,14 @@ export const ChatMessage = memo(({
     const trimmed = targetContent.trim();
     return /^!\[.*?\]\s*\(\s*(data:image\/|https?:\/\/|AUO)[\s\S]*?(\s+"[\s\S]*?")?\s*(\s*\)|$)/.test(trimmed);
   }, [targetContent]);
-  const isInitiallyFinished = isImageContent || !isLast || !isAILoading || targetContent.length > 5000;
-  const [displayContent, setDisplayContent] = useState(isLast && isAILoading ? '' : targetContent);
-  const [hasFinishedTyping, setHasFinishedTyping] = useState(!(isLast && isAILoading));
+  const displayContent = useMemo(() => {
+    return (isAILoading && isLast && !isPureImage && targetContent)
+      ? targetContent + '~~AICURSORZX~~'
+      : targetContent;
+  }, [targetContent, isAILoading, isLast, isPureImage]);
+  const hasFinishedTyping = !isAILoading;
 
-  useEffect(() => {
-    if (isLast && isAILoading) {
-      if (displayContent !== '') setDisplayContent('');
-      if (hasFinishedTyping) setHasFinishedTyping(false);
-      return;
-    }
-
-    const isFresh = Date.now() - new Date(msg.timestamp || Date.now()).getTime() < 2000;
-    if (!isInitiallyFinished && isFresh && hasFinishedTyping) {
-      setDisplayContent('');
-      setHasFinishedTyping(false);
-    }
-  }, [isAILoading, isLast, msg.timestamp, isInitiallyFinished, targetContent]);
   const [feedbackState, setFeedbackState] = useState<'like' | 'dislike' | null>(null);
-  const soundPlayedRef = useRef(false);
-  const rafRef = useRef<number | null>(null);
-  const displayedLenRef = useRef(isInitiallyFinished ? targetContent.length : 0);
-  const lastTimeRef = useRef(0);
 
   const [elapsed, setElapsed] = useState(0)
   const [completionTime, setCompletionTime] = useState<number | null>(null)
@@ -639,7 +662,7 @@ export const ChatMessage = memo(({
           if (timerStartRef.current) {
             setElapsed(Date.now() - timerStartRef.current);
           }
-        }, 10);
+        }, 100);
         return () => clearInterval(timer);
       } else if (!isAILoading && elapsed > 0 && !completionTime) {
         setCompletionTime(elapsed);
@@ -655,104 +678,18 @@ export const ChatMessage = memo(({
     }
   }, [msg.role, isLast, isAILoading, completionTime, msg.logId, elapsed]);
 
-  useEffect(() => {
-    if (msg.role === 'user' || hasFinishedTyping || isInitiallyFinished) {
-      setDisplayContent(targetContent);
-      displayedLenRef.current = targetContent.length;
-      if (!hasFinishedTyping) setHasFinishedTyping(true);
-      return;
-    }
-
-    if (targetContent.length - displayedLenRef.current > 2000) {
-      setDisplayContent(targetContent);
-      displayedLenRef.current = targetContent.length;
-      return;
-    }
-
-    const MIN_MS = 45;
-    const BASE_MS = 80;
-    const MAX_LAG = 300;
-
-    const step = (now: number) => {
-      const target = targetContent;
-      const current = displayedLenRef.current;
-      const remaining = target.length - current;
-
-      if (remaining <= 0) {
-        if (!isAILoading) {
-          setHasFinishedTyping(true);
-          if (!soundPlayedRef.current && msg.role === 'assistant') {
-            const audio = new Audio('/notification-sound.mp3');
-            audio.volume = 0.35;
-            audio.play().catch(() => { });
-            soundPlayedRef.current = true;
-          }
-        }
-        lastTimeRef.current = 0;
-        return;
-      }
-
-      let wordsToAdd = 1;
-      let currentInterval = BASE_MS + (Math.random() * 20 - 10);
-
-      if (remaining > MAX_LAG) {
-        wordsToAdd = 2;
-        currentInterval = MIN_MS;
-      } else if (remaining > 60) {
-        wordsToAdd = 1;
-        currentInterval = BASE_MS * 0.8;
-      }
-
-      const elapsedT = lastTimeRef.current ? (now - lastTimeRef.current) : 1000;
-      if (elapsedT < currentInterval) {
-        rafRef.current = requestAnimationFrame(step);
-        return;
-      }
-      lastTimeRef.current = now;
-
-      let next = current;
-      for (let i = 0; i < wordsToAdd; i++) {
-        const remainingText = target.substring(next + 1);
-        const nextSpace = remainingText.search(/\s/);
-        if (nextSpace === -1) {
-          next = target.length;
-          break;
-        }
-        next = next + 1 + nextSpace;
-      }
-
-      displayedLenRef.current = next;
-      setDisplayContent(target.substring(0, next));
-      rafRef.current = requestAnimationFrame(step);
-    };
-
-    rafRef.current = requestAnimationFrame(step);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [targetContent, msg.role, isAILoading, hasFinishedTyping, isInitiallyFinished]);
-
-  useEffect(() => {
-    let unchangedTimeout: NodeJS.Timeout | null = null;
-    if (targetContent.length === 0) return;
-    if (targetContent.length === displayedLenRef.current && isAILoading) {
-      unchangedTimeout = setTimeout(() => {
-        setHasFinishedTyping(true);
-      }, 1500);
-    }
-    return () => { if (unchangedTimeout) clearTimeout(unchangedTimeout); };
-  }, [targetContent, displayContent, isAILoading]);
-
   const markdownComponents = useMemo(() => {
-    const isAtEnd = (node: any) => {
-      if (hasFinishedTyping) return false;
-      if (!node?.position?.end?.offset) return false;
-      return node.position.end.offset >= displayContent.length - 1;
-    };
-
     return {
+      del: ({ node, children, ...props }: any) => {
+        const text = String(children);
+        if (text === 'AICURSORZX') {
+          return <span className="ai-cursor-inline">█</span>;
+        }
+        return <del className="line-through decoration-white/30" {...props}>{children}</del>;
+      },
       p: ({ node, children }: any) => {
         const inTable = useContext(InTableContext);
         const isStatus = typeof children === 'string' && (children.includes('Preparing tool') || children.includes('Thinking'));
-        const atEnd = isAILoading && !hasFinishedTyping && !isStatus && !inTable && isAtEnd(node) && !!children;
         const isEmpty = !children || (Array.isArray(children) && children.length === 0) || (typeof children === 'string' && !children.trim());
 
         if (isStatus) {
@@ -783,8 +720,8 @@ export const ChatMessage = memo(({
             const textAfter = contentStr.substring(matchIndex + imgMatch[0].length);
 
             return (
-              <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
-                {textBefore && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textBefore)}</span>}
+              <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13.5px' : '17px', letterSpacing: '-0.01em' }}>
+                {textBefore && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13.5px' : '17px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textBefore)}</span>}
                 <ChatImage
                   key={cleanSrc.substring(0, 32) + (description?.length || 0)}
                   src={cleanSrc}
@@ -794,31 +731,26 @@ export const ChatMessage = memo(({
                   onHeightChange={scrollToBottom}
                   onAddToWorkspace={() => handleAddImageToWorkspace(cleanSrc)}
                 />
-                {textAfter && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textAfter)}</span>}
-                {(atEnd && !isEmpty) && <span className="ai-cursor-inline">█</span>}
+                {textAfter && <span style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13.5px' : '17px', letterSpacing: '-0.01em' }}>{renderContentWithStyles(textAfter)}</span>}
               </div>
             );
           }
         }
 
         return (
-          <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
+          <div className="mb-2 last:mb-0 break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13.5px' : '17px', letterSpacing: '-0.01em' }}>
             {renderContentWithStyles(children)}
-            {(atEnd && !isEmpty) && <span className="ai-cursor-inline">█</span>}
           </div>
         );
       },
       h1: ({ node, children }: any) => {
-        const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h1 className="text-2xl font-medium mb-4 text-bone-100 mt-6 first:mt-0" style={{ fontFamily: '"Literata"', fontSize: '26px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h1>;
+        return <h1 className="text-2xl font-medium mb-4 text-bone-100 mt-6 first:mt-0" style={{ fontFamily: '"Literata"', fontSize: compact ? '20px' : '27px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}</h1>;
       },
       h2({ node, children }: any) {
-        const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h2 className="text-xl font-medium mb-3 text-bone-100 mt-5" style={{ fontFamily: '"Literata"', fontSize: '22px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h2>;
+        return <h2 className="text-xl font-medium mb-3 text-bone-100 mt-5" style={{ fontFamily: '"Literata"', fontSize: compact ? '17px' : '23px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}</h2>;
       },
       h3({ node, children }: any) {
-        const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-        return <h3 className="text-lg font-medium mb-2 text-bone-100 mt-4" style={{ fontFamily: '"Literata"', fontSize: '18px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}{atEnd && <span className="ai-cursor-inline">█</span>}</h3>;
+        return <h3 className="text-lg font-medium mb-2 text-bone-100 mt-4" style={{ fontFamily: '"Literata"', fontSize: compact ? '15px' : '19px', letterSpacing: '-0.01em', fontWeight: 500 }}>{renderContentWithStyles(children)}</h3>;
       },
 
       a: ({ href, children }: any) => {
@@ -865,8 +797,6 @@ export const ChatMessage = memo(({
         </ListTypeContext.Provider>
       ),
       li: ({ children, checked, node, ...props }: any) => {
-        const atEnd = isAILoading && !hasFinishedTyping && isAtEnd(node);
-
         // Detect checklist: react-markdown sets checked to true/false for task list items
         const checkedFromProp = checked === true || checked === false;
 
@@ -943,27 +873,24 @@ export const ChatMessage = memo(({
               {isChecklist ? (
                 <span className="mt-[7px] flex items-center justify-center" onClick={handleToggle}>
                   <span className={cn(
-                    "w-[16px] h-[16px] rounded-[4px] border-[1.5px] flex items-center justify-center transition-all cursor-pointer",
-                    isChecked
-                      ? "bg-white/20 border-white/40"
-                      : "border-white/20 hover:border-white/40"
+                    "w-[16px] h-[16px] rounded-[4px] border flex items-center justify-center cursor-pointer",
+                    "bg-[var(--bone-6)] border-[var(--bone-30)] hover:border-[var(--bone-70)]"
                   )}>
                     {isChecked && (
-                      <Check className="w-[12px] h-[12px] text-bone-100" strokeWidth={3} />
+                      <Check className="w-[10px] h-[10px] text-[var(--bone-100)]" strokeWidth={3} />
                     )}
                   </span>
                 </span>
               ) : listType === 'ul' ? (
                 <span className="w-[5.5px] h-[5.5px] rounded-full bg-bone-70/40 mt-[11px] mr-1" />
               ) : listType === 'ol' ? (
-                <span className="text-bone-70/40 font-normal font-serif text-[16px] tracking-tight mt-0 before:content-[counter(list-counter)_'.']" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }} />
+                <span className={cn("text-bone-70/40 font-normal font-serif tracking-tight mt-0 before:content-[counter(list-counter)_'.']", compact ? "text-[13.5px]" : "text-[17px]")} style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }} />
               ) : null}
             </div>
-            <div className="flex-1 min-w-0 leading-[1.6] font-normal tracking-[0] break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '16px', letterSpacing: '-0.01em' }}>
+            <div className="flex-1 min-w-0 leading-[1.6] font-normal tracking-[0] break-words !max-w-full !w-full text-[var(--bone-100)]" style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13.5px' : '17px', letterSpacing: '-0.01em' }}>
               <InListContext.Provider value={true}>
                 {renderContentWithStyles(filteredChildren)}
               </InListContext.Provider>
-              {atEnd && <span className="ai-cursor-inline ml-1">█</span>}
             </div>
           </li>
         );
@@ -974,7 +901,7 @@ export const ChatMessage = memo(({
         return null;
       },
       blockquote: ({ children }: any) => (
-        <blockquote className="border-l-4 border-white/10 pl-4 py-1 my-3 italic bg-white/5 rounded-r text-bone-70">
+        <blockquote className="border-l-4 border-white/10 pl-4 py-1 mt-3 mb-6 italic bg-white/5 rounded-r text-bone-70">
           {children}
         </blockquote>
       ),
@@ -989,13 +916,30 @@ export const ChatMessage = memo(({
           return <ApplyCanvasCard content={String(children).replace(/\n$/, '')} />;
         }
 
-        const atEnd = !hasFinishedTyping && isAtEnd(node);
+        // Intercept block-level code elements that are actually mono-pills
+        let contentStr = String(children).replace(/\n$/, '');
+        const hasCursor = contentStr.endsWith('~~AICURSORZX~~');
+        if (hasCursor) {
+          contentStr = contentStr.replace('~~AICURSORZX~~', '');
+        }
+
+        const isMonoPillBlock = !inline && contentStr.startsWith('[m]') && contentStr.endsWith('[/m]');
+
+        if (isMonoPillBlock) {
+          return (
+            <span className="inline-block my-1">
+              {renderContentWithStyles(contentStr)}
+              {hasCursor && <span className="ai-cursor-inline ml-1">█</span>}
+            </span>
+          );
+        }
+
         const inTable = !!useContext(InTableContext);
 
         if (inline || inTable) {
           return (
-            <code className={cn("bg-[var(--bone-6)] rounded px-1.5 py-0.5 text-[12px] font-mono tracking-[0] font-medium", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
-              {children}{atEnd && <span className="ai-cursor-inline">█</span>}
+            <code className={cn("bg-[var(--bone-6)] rounded px-1.5 py-0.5 font-mono tracking-[0] font-medium", compact ? "text-[11px]" : "text-[12px]", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
+              {contentStr}{hasCursor && <span className="ai-cursor-inline">█</span>}
             </code>
           );
         }
@@ -1004,18 +948,17 @@ export const ChatMessage = memo(({
         const language = matchLang ? matchLang[1] : 'Code';
         const isMono = language !== 'markdown' && language !== 'text';
         const inList = useContext(InListContext);
-        const contentStr = String(children).replace(/\n$/, '');
         const isSingleRow = !contentStr.includes('\n');
 
         return (
           <div className={cn(
-            "my-3 w-full rounded-3xl overflow-hidden border border-[var(--bone-12)] bg-[var(--color-dark)] group/code relative",
+            "mt-3 mb-6 w-full rounded-3xl overflow-hidden border border-[var(--bone-6)] bg-panel group/code relative",
             inList && "ml-[-12px] !w-[calc(100%+12px)]"
           )}>
             <button
               onClick={() => navigator.clipboard.writeText(contentStr)}
               className={cn(
-                "absolute right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-12)] transition-all opacity-0 group-hover/code:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5",
+                "absolute right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-6)] transition-all opacity-0 group-hover/code:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5",
                 isSingleRow ? "top-1/2 -translate-y-1/2" : "top-2.5"
               )}
             >
@@ -1024,8 +967,8 @@ export const ChatMessage = memo(({
 
             <pre className="px-4 py-3 overflow-x-auto m-0 bg-transparent">
 
-              <code className={cn("text-[14px] leading-relaxed font-mono text-[var(--bone-100)]", isMono ? "font-mono" : "font-sans")} style={isMono ? { fontFamily: 'DM Mono' } : undefined} {...props}>
-                {children}{atEnd && <span className="ai-cursor-inline">█</span>}
+              <code className={cn("leading-relaxed font-mono text-[var(--bone-100)]", compact ? "text-[12px]" : "text-[14px]", isMono ? "font-mono" : "font-sans")} style={isMono ? { fontFamily: 'DM Mono' } : undefined} {...props}>
+                {contentStr}{hasCursor && <span className="ai-cursor-inline">█</span>}
               </code>
             </pre>
           </div>
@@ -1054,32 +997,29 @@ export const ChatMessage = memo(({
         return (
           <InTableContext.Provider value={true}>
             <div className={cn(
-              "overflow-x-auto my-3 border border-[var(--bone-12)] rounded-2xl w-full bg-[var(--color-dark)]",
+              "overflow-x-auto mt-3 mb-6 border border-[var(--bone-6)] rounded-2xl w-full bg-panel",
               inList && "ml-[-12px] !w-[calc(100%+12px)]"
             )}>
-              <table className="w-full text-[13px] border-collapse font-sans">{children}</table>
+              <table className={cn("w-full border-collapse font-sans", compact ? "text-[11.5px]" : "text-[13px]")}>{children}</table>
             </div>
           </InTableContext.Provider>
         );
       },
       thead: ({ children }: any) => (
         <InHeaderContext.Provider value={true}>
-          <thead className="border-b border-[var(--bone-12)] bg-[var(--bone-2)]">{children}</thead>
+          <thead className="bg-[var(--bone-2)] border-b border-b-[var(--bone-6)]">{children}</thead>
         </InHeaderContext.Provider>
       ),
-      tbody: ({ children }: any) => <tbody className="divide-y divide-[var(--bone-6)]">{children}</tbody>,
-      tr: ({ children }: any) => {
-        const inHeader = React.useContext(InHeaderContext);
-        return <tr className={cn("transition-colors", !inHeader && "hover:bg-[var(--bone-2)]")}>{children}</tr>;
-      },
-      th: ({ children }: any) => <th className="px-3 py-2.5 text-left text-[10.5px] font-bold uppercase tracking-wider text-bone-100 font-sans">{children}</th>,
+      tbody: ({ children }: any) => <tbody>{children}</tbody>,
+      tr: ({ children }: any) => <tr className="border-b border-b-[var(--bone-6)] last:border-b-0">{children}</tr>,
+      th: ({ children }: any) => <th className={cn("px-3 py-2.5 text-left font-bold uppercase tracking-wider text-bone-100 font-sans border-r border-r-[var(--bone-6)] last:border-r-0", compact ? "text-[9.5px]" : "text-[10.5px]")}>{children}</th>,
       td: ({ children }: any) => (
-        <td className="px-3 py-2.5 text-bone-100 font-sans leading-snug first:font-semibold first:text-bone-100">
+        <td className="px-3 py-2.5 text-bone-100 font-sans leading-snug first:font-semibold first:text-bone-100 border-r border-r-[var(--bone-6)] last:border-r-0">
           {children}
         </td>
       ),
     };
-  }, [scrollToBottom, handleAddImageToWorkspace, hasFinishedTyping, displayContent, isAILoading, targetContent]);
+  }, [scrollToBottom, handleAddImageToWorkspace, isAILoading, targetContent]);
 
   async function submitFeedback(value: 'like' | 'dislike') {
     if (feedbackState === value) return
@@ -1116,6 +1056,10 @@ export const ChatMessage = memo(({
     } catch { setFeedbackState(null) }
   }
 
+  // Advisor card rendering
+  const isAdvisorMessage = !!(msg as any).advisor_questions;
+  const advisorState: any = (msg as any).advisor_state ? (() => { try { return JSON.parse((msg as any).advisor_state); } catch { return null; } })() : null;
+
   const isError = msg.role === 'assistant' && (msg.content || '').startsWith('Error:');
   const isInterrupted = msg.role === 'assistant' && !!msg.interrupted;
 
@@ -1151,7 +1095,7 @@ export const ChatMessage = memo(({
             <div className="w-5 h-5 shrink-0 flex items-center justify-center select-none mb-1 -ml-1">
               <AIAvatar isTyping={false} className="w-3.5 h-3.5" />
             </div>
-            <div className="prose prose-invert max-w-none w-full" style={{ fontFamily: '"Literata"', fontSize: '16px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
+            <div className="prose prose-invert max-w-none w-full" style={{ fontFamily: '"Literata"', fontSize: compact ? '13.5px' : '17px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
               <span>Interrupted</span>
             </div>
           </div>
@@ -1199,7 +1143,7 @@ export const ChatMessage = memo(({
                     return "Working...";
                   })()}
                   className="font-normal text-[var(--bone-100)]"
-                  style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '15px', letterSpacing: '-0.01em' }}
+                  style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: compact ? '13px' : '15px', letterSpacing: '-0.01em' }}
                 />
                 {elapsed > 0 && (
                   <span className="text-[12px] font-medium text-[var(--bone-30)] font-mono opacity-80 select-none mt-0.5">
@@ -1212,7 +1156,7 @@ export const ChatMessage = memo(({
             <>
               {msg.role === 'assistant' && isLast && (
                 <div className="w-5 h-5 shrink-0 flex items-center justify-center select-none mb-1 -ml-1">
-                  <AIAvatar isTyping={!hasFinishedTyping && msg.role === 'assistant'} className="w-3.5 h-3.5" />
+                  <AIAvatar isTyping={isAILoading && msg.role === 'assistant'} className="w-3.5 h-3.5" />
                 </div>
               )}
               {!displayContent && msg.role === 'assistant' ? null : (
@@ -1227,11 +1171,11 @@ export const ChatMessage = memo(({
                       </button>
                     </Tooltip>
                     <div
-                      className="leading-[133%] font-medium text-[17px] px-4 py-2.5 w-fit max-w-full overflow-hidden"
-                      style={{ background: 'var(--bone-6)', borderRadius: '17px 17px 4px 17px', fontFamily: 'DM Sans', fontWeight: 500, fontSize: '14.5px' }}
+                      className={cn("leading-[133%] font-medium px-4 py-2.5 w-fit max-w-full overflow-hidden", compact ? "text-[13px]" : "text-[15px]")}
+                      style={{ backgroundColor: '#121212', borderRadius: '17px 17px 4px 17px', fontFamily: 'DM Sans', fontWeight: 500, fontSize: compact ? '13px' : '15px' }}
                     >
                       <div className="flex flex-col gap-3">
-                        <div className="whitespace-pre-wrap break-words font-medium" style={{ fontFamily: 'DM Sans', fontWeight: 500, fontSize: '14.5px' }}>{targetContent}</div>
+                        <div className="whitespace-pre-wrap break-words font-medium" style={{ fontFamily: 'DM Sans', fontWeight: 500, fontSize: compact ? '13px' : '15px' }}>{targetContent}</div>
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-1">
                             {msg.attachments.map((att: AIAttachment, i: number) => (
@@ -1296,7 +1240,9 @@ export const ChatMessage = memo(({
                       "transition-all duration-500 min-h-[20px] flex flex-col",
                       isAILoading && isLast && !displayContent && "opacity-0"
                     )}>
-                      {isPureImage ? (
+                      {isAdvisorMessage ? (
+                        <AdvisorCard content={displayContent} state={advisorState} compact={compact} />
+                      ) : isPureImage ? (
                         <div className="group/row relative transition-colors">
                           {(() => {
                             const imgMatch = displayContent.match(/!\[(.*?)\]\s*\(\s*([^)]+?)(?:\s+"([^"]+)")?\s*\)/) ||
@@ -1329,8 +1275,8 @@ export const ChatMessage = memo(({
                           "prose-code:text-emerald-300 prose-code:bg-emerald-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none",
                           "prose-blockquote:border-l-emerald-500/50 prose-blockquote:bg-emerald-500/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg",
                           "w-full overflow-hidden relative [&_p]:my-0 break-words",
-                          !hasFinishedTyping && msg.role === 'assistant' && "prose-streaming"
-                        )} style={{ fontFamily: '"Literata"', fontSize: '16px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
+                          isAILoading && msg.role === 'assistant' && "prose-streaming"
+                        )} style={{ fontFamily: '"Literata"', fontSize: compact ? '13.5px' : '17px', fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--bone-100)' }}>
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={markdownComponents as any}
@@ -1367,7 +1313,7 @@ export const ChatMessage = memo(({
                       </div>
                     )}
 
-                    {(hasFinishedTyping || msg.model) && (
+                    {(!isAILoading || msg.model) && (
                       <div className={cn(
                         "flex flex-col gap-3 mt-1 transition-all duration-200",
                         !isLast && "opacity-0 group-hover:opacity-100"
@@ -1404,7 +1350,7 @@ export const ChatMessage = memo(({
                         )}
 
                         <div className="flex items-center gap-1">
-                          {hasFinishedTyping && (
+                          {!isAILoading && (
                             <>
                               <Tooltip content="Copy Text">
                                 <button
@@ -1503,7 +1449,7 @@ export const ChatMessage = memo(({
                                     </Tooltip>
                                   </div>
                                 </>
-                              ) : hasFinishedTyping && (
+                              ) : !isAILoading && (
                                 <Tooltip content="Transcript not available (requires new AI request)">
                                   <div className="flex items-center gap-0 relative h-6 border border-white/5 rounded-md overflow-hidden opacity-30 cursor-not-allowed">
                                     <button disabled className="h-full px-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--bone-40)]">
@@ -1519,7 +1465,7 @@ export const ChatMessage = memo(({
                           {msg.model && (
                             <div className={cn(
                               "flex items-center px-2 py-0.5 rounded-full bg-[var(--bone-6)] opacity-40 hover:opacity-100 transition-all duration-300",
-                              hasFinishedTyping ? "ml-1" : "ml-0"
+                              !isAILoading ? "ml-1" : "ml-0"
                             )}>
                               <span className="text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--bone-40)]">
                                 {msg.model ? msg.model.split('/').pop()?.replace(/-/g, ' ') : 'Model'}

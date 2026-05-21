@@ -2,7 +2,7 @@
 
 import { useStore } from '@/data/store';
 import type { SidebarSectionId } from '@/data/store';
-import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ChevronDown, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings, Plus, Check, ExternalLink } from 'lucide-react';
+import { Star, Link2, FolderInput, Trash2, Edit2, Copy, Palette, ChevronRight, ChevronDown, ArrowUp, ArrowDown, EyeOff, Eye, LayoutPanelLeft, Grid, Type, Calendar, Layers, Settings, Plus, Check, ExternalLink, PanelLeft, Pin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { IconPicker } from './IconPicker';
@@ -144,7 +144,10 @@ export function ContextMenu() {
     setActiveWorkspaceId,
     collapsedIds,
     toggleCollapsed,
-    addTab
+    addTab,
+    toggleSidebar,
+    toggleSidebarPinned,
+    isSidebarPinned
   } = useStore();
   const selectedSidebarIds = useStore(state => state.selectedSidebarIds);
   const clearSelectedSidebarIds = useStore(state => state.clearSelectedSidebarIds);
@@ -213,9 +216,10 @@ export function ContextMenu() {
   const entity = entities.find(e => e.id === contextMenu.entityId);
   const isSectionMenu = contextMenu.source === 'sidebar-section';
   const isSpacesMenu = contextMenu.source === 'spaces';
+  const isSidebarToggle = contextMenu.source === 'sidebar-toggle';
   const isSystemMenu = systemPages.includes(contextMenu.entityId as string);
 
-  if (!isSectionMenu && !isSpacesMenu && !isSystemMenu && !entity) return null;
+  if (!isSectionMenu && !isSpacesMenu && !isSidebarToggle && !isSystemMenu && !entity) return null;
 
   const getItems = (): MenuItem[] => {
     if (isSectionMenu) {
@@ -297,6 +301,21 @@ export function ContextMenu() {
           icon: <Plus className="w-4 h-4" />,
           onClick: () => { openModal({ kind: 'newWorkspace' }); closeContextMenu(); }
         }
+      ];
+    }
+
+    if (isSidebarToggle) {
+      return [
+        {
+          icon: <PanelLeft strokeWidth={2} className="w-4 h-4" />,
+          label: 'Toggle Sidebar',
+          onClick: () => { toggleSidebar(); closeContextMenu(); },
+        },
+        {
+          icon: <Pin strokeWidth={2} className="w-4 h-4" />,
+          label: isSidebarPinned ? 'Auto-collapse Sidebar' : 'Pin Sidebar',
+          onClick: () => { toggleSidebarPinned(); closeContextMenu(); },
+        },
       ];
     }
 

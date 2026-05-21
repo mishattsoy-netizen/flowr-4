@@ -189,7 +189,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             <div 
               onClick={handleChevronClick}
               onPointerDown={(e) => e.stopPropagation()}
-              className="absolute -inset-[4px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-small)] hover:bg-[var(--bone-10)] cursor-pointer"
+              className="absolute top-[-4px] bottom-[-4px] left-[-5px] right-[-3px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-tiny)] hover:bg-[var(--bone-10)] cursor-pointer"
             >
               {isCollapsed 
                 ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" /> 
@@ -240,12 +240,12 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           effectiveMultiSelected
             ? "bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
             : (isActive || contextMenu?.entityId === entity.id)
-              ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-normal tracking-wide" 
+              ? "!bg-dark text-[var(--bone-100)] font-normal tracking-wide" 
               : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
-          "text-[13px]",
+          "text-[14px]",
         )}
-        style={{ paddingLeft: `${depth * 18 + 10}px`, paddingRight: '6px' }}
+        style={{ paddingLeft: `${8 + depth * 18}px`, paddingRight: '3px' }}
       >
         <div className="w-[14px] shrink-0 flex items-center justify-center">
           {(!disableNesting && isCollapsible) ? getIcon(entity.type) : getIcon(entity.type)}
@@ -284,13 +284,13 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         )}
 
         <div className={cn(
-          "flex items-center gap-1 shrink-0",
+          "flex items-center gap-[1px] shrink-0",
           contextMenu?.entityId === entity.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
           {(entity.type === 'workspace' || entity.type === 'collection' || entity.type === 'folder') && (
             <button
                onClick={handlePlusClick}
-               className="btn-sidebar-utility"
+               className="btn-sidebar-utility !rounded-[var(--radius-tiny)]"
             >
               <Plus strokeWidth={2} className="w-3.5 h-3.5" />
             </button>
@@ -298,8 +298,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           <button
              onClick={handleOptionsClick}
              className={cn(
-               "btn-sidebar-utility",
-               contextMenu?.entityId === entity.id && "!bg-[var(--bone-15)] !text-[var(--bone-100)] !opacity-100"
+               "btn-sidebar-utility !rounded-[var(--radius-tiny)]",
+               contextMenu?.entityId === entity.id && "!bg-dark !text-[var(--bone-100)] !opacity-100"
              )}
           >
             <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
@@ -327,11 +327,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           )}
         >
           <div className="overflow-hidden">
-            <div className={cn("relative flex flex-col gap-[3px]", isExpanded && "mt-[3px]")}>
-              <div 
-                className="absolute top-0 bottom-0 w-[1px] bg-[var(--bone-12)]" 
-                style={{ left: `${depth * 18 + 17}px` }}
-              />
+            <div className={cn("relative flex flex-col gap-[1px]", isExpanded && "mt-[1px]")}>
               {children.map((child) => (
                 <TreeItem 
                   key={idOverride ? `${idOverride.split('-')[0]}-${child.id}` : child.id} 

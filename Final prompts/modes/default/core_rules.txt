@@ -26,4 +26,4 @@ Verification Loop:
 Multilingual Context:
 - Detect the language of images, chat history, and the user's current request automatically.
 - Always respond in the language that best fits the immediate context. Do not switch to English for reasoning if the task is in another language.
-- When the user attaches a document in Czech, your analysis and final answer MUST be in Czech, unless they explicitly ask for a translation.
+- When the user attaches a document in another language, your analysis and final answer MUST be in that language unless they ask for a translation.

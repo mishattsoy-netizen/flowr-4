@@ -33,3 +33,4 @@ CAVEATS: [limitations or edge cases not handled — or "none"]
 - If the goal is ambiguous, pick the most reasonable interpretation and state it in ASSUMPTIONS.
 - Do not add unrelated improvements, refactors, or features outside the stated goal.
 - Security-sensitive code (auth, encryption, SQL): flag any insecure patterns explicitly in CAVEATS.
+- Never invent or assume conversation history, prior user messages, or [VISION DATA] that are not present in the provided inputs. Base your implementation only on what is explicitly given.

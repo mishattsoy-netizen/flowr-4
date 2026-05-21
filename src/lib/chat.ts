@@ -41,9 +41,9 @@ export async function fetchConversations(): Promise<ChatConversation[]> {
   }
 }
 
-export async function createConversation(title = 'New Chat'): Promise<ChatConversation> {
+export async function createConversation(title = 'New Chat'): Promise<ChatConversation | null> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  if (!user) return null;
   const { data, error } = await supabase
     .from('conversations')
     .insert({ title, user_id: user.id })
@@ -85,19 +85,40 @@ export async function insertMessage(
   imageDescription?: string,
   imagePrompt?: string
 ): Promise<ChatMessage> {
+  const insertPayload: Record<string, any> = {
+    conversation_id: conversationId,
+    role,
+    content,
+    model,
+  };
+  // Only include extra columns if the table has them (graceful fallback)
+  if (pipelineSteps !== undefined) insertPayload.pipeline_steps = pipelineSteps;
+  if (imageDescription !== undefined) insertPayload.image_description = imageDescription;
+  if (imagePrompt !== undefined) insertPayload.image_prompt = imagePrompt;
+
   const { data, error } = await supabase
     .from('messages')
-    .insert({ 
-      conversation_id: conversationId, 
-      role, 
-      content, 
-      model, 
-      pipeline_steps: pipelineSteps,
-      image_description: imageDescription,
-      image_prompt: imagePrompt
-    })
+    .insert(insertPayload)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    // If column doesn't exist error, retry with only guaranteed columns
+    if (error.message?.includes('column') || error.code === 'PGRST204') {
+      const fallbackPayload = {
+        conversation_id: conversationId,
+        role,
+        content,
+        model,
+      };
+      const { data: retryData, error: retryError } = await supabase
+        .from('messages')
+        .insert(fallbackPayload)
+        .select()
+        .single();
+      if (retryError) throw retryError;
+      return retryData;
+    }
+    throw error;
+  }
   return data;
 }

@@ -8,7 +8,8 @@ import {
   Bot, MessageSquareText, BarChart3, ScrollText, ArrowLeft,
   Database, Brain,
   RotateCcw, MessageCircle, LayoutDashboard, Globe,
-  Telescope, DollarSign, SlidersHorizontal, Monitor
+  Telescope, DollarSign, SlidersHorizontal, Monitor,
+  UserCog
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +21,7 @@ const LogoSimple = ({ className }: { className?: string }) => (
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-[var(--bone-12)]">
+    <aside className="w-64 bg-sidebar flex flex-col overflow-hidden flex-shrink-0 h-full relative z-10 select-none border-r border-[var(--bone-6)]">
       <div className="flex items-center justify-between px-4 py-5 border-b border-[var(--bone-6)] transition-all duration-0">
         <div className="flex items-center gap-3 group">
           <LogoSimple className="w-7 h-7" />
@@ -35,6 +36,7 @@ export default function Sidebar() {
           <NavLink href="/admin/costs" icon={DollarSign}>Costs</NavLink>
           <NavLink href="/admin/logs" icon={ScrollText}>Message Logs</NavLink>
           <NavLink href="/admin/users" icon={Users}>Users</NavLink>
+          <NavLink href="/admin/admins" icon={UserCog}>Admins</NavLink>
         </PlatformSection>
 
         <PlatformSection title="Infrastructure">
@@ -101,7 +103,7 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon: any; chil
       className={cn(
         "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px]",
         isActive
-          ? "!bg-[var(--bone-15)] text-[var(--bone-100)] font-medium tracking-wide"
+          ? "!bg-dark text-[var(--bone-100)] font-medium tracking-wide"
           : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
       )}
     >

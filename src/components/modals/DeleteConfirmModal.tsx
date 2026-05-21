@@ -4,14 +4,16 @@ import { useStore } from '@/data/store';
 import { AlertTriangle } from 'lucide-react';
 
 export function DeleteConfirmModal() {
-  const { modal, entities, closeModal, deleteEntity, clearSelectedSidebarIds } = useStore();
+  const { modal, entities, closeModal, deleteEntity, clearSelectedSidebarIds, chatConversations, deleteChatConversation, activeChatId, startTempChat } = useStore();
 
   if (!modal || modal.kind !== 'deleteConfirm') return null;
 
   const isMulti = !!modal.entityIds && modal.entityIds.length > 0;
   
-  const entity = modal.entityId ? entities.find(e => e.id === modal.entityId) : null;
-  if (!isMulti && !entity) return null;
+  const entity = modal.entityId && !modal.isChat ? entities.find(e => e.id === modal.entityId) : null;
+  const chat = modal.entityId && modal.isChat ? chatConversations.find(c => c.id === modal.entityId) : null;
+  
+  if (!isMulti && !entity && !chat) return null;
 
   const handleDelete = () => {
     if (isMulti) {
@@ -19,13 +21,18 @@ export function DeleteConfirmModal() {
       clearSelectedSidebarIds();
     } else if (entity) {
       deleteEntity(entity.id);
+    } else if (chat) {
+      deleteChatConversation(chat.id);
+      if (chat.id === activeChatId) {
+        startTempChat();
+      }
     }
     closeModal();
   };
 
   const title = isMulti 
     ? `Delete ${modal.entityIds!.length} items?`
-    : `Delete "${entity?.title}"?`;
+    : `Delete "${entity?.title || chat?.title || 'Chat'}"?`;
 
   const description = isMulti
     ? `This will permanently delete ${modal.entityIds!.length} items and all of their contents. This action cannot be undone.`

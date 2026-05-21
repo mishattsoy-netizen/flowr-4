@@ -4,8 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Plus, FileText, Layout, Layers } from 'lucide-react';
 import { useStore } from '@/data/store';
 import { BentoDashboard } from '@/components/bento/BentoDashboard';
+import { useAuth } from '@/components/AuthProvider';
 
 export function Dashboard() {
+  const { user } = useAuth();
+  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
   const openModal = useStore(state => state.openModal);
   const now = new Date();
   const [showNewPagePopup, setShowNewPagePopup] = useState(false);
@@ -38,7 +41,7 @@ export function Dashboard() {
 
   const title = (
     <div>
-      <h1 className="text-4xl font-display font-medium text-foreground mb-1">Welcome back, Misha</h1>
+      <h1 className="text-2xl font-display font-medium text-foreground mb-1">Welcome back{displayName ? `, ${displayName}` : ''}</h1>
       <p className="text-muted-foreground text-sm font-medium">
         {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}
       </p>

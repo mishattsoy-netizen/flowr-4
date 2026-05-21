@@ -43,9 +43,10 @@
 }
 
 :root {
-  --color-background: #191917;
-  --color-panel: #262624;
-  --color-dark: #191917;
+  --app-background: #1F1F1E;
+  --app-panel: #262626;
+  --app-dark: #121212;
+  --sys-color: #1E1E1D;
   --bone-5: rgba(233, 233, 226, 0.05);
   --bone-2: rgba(233, 233, 226, 0.02);
   --bone-3: rgba(233, 233, 226, 0.03);
@@ -74,6 +75,7 @@
   --radius-regular: 12px;
   --radius-medium: 8px;
   --radius-small: 6px;
+  --radius-tiny: 4px;
   --color-brand-blue: #2A78D6;
   --brand-blue: #2A78D6;
   color-scheme: dark;
@@ -118,9 +120,10 @@ html[data-interface-size="big"] {
 /* Legacy light mode removed to enforce provided palette strictly */
 
 @theme inline {
-  --color-background: var(--color-background);
-  --color-sidebar: var(--color-panel);
-  --color-panel: var(--color-panel);
+  --color-background: var(--app-background);
+  --color-sidebar: var(--sys-color);
+  --color-panel: var(--app-panel);
+  --color-dark: var(--app-dark);
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--dim-foreground);
   --color-border: var(--border-outer);
@@ -156,7 +159,7 @@ html[data-interface-size="big"] {
 }
 
 @utility widget {
-  @apply bg-panel border border-[var(--bone-12)] rounded-big p-6;
+  @apply bg-panel border border-[var(--bone-6)] rounded-big p-6;
   box-shadow: none;
 }
 
@@ -261,7 +264,7 @@ html[data-interface-size="big"] {
 
   &:active,
   &[data-active="true"] {
-    @apply bg-[var(--bone-15)] text-[var(--bone-100)];
+    @apply bg-dark text-[var(--bone-100)];
   }
 }
 
@@ -355,7 +358,7 @@ html[data-interface-size="big"] {
 }
 
 .sidebar-item-row {
-  @apply active:scale-[0.99];
+  @apply active:scale-[0.995];
 }
 
 @utility btn-sidebar-utility {
@@ -482,6 +485,7 @@ a {
 
 html {
   font-size: 100%;
+  overscroll-behavior-x: contain;
 }
 
 /* Minimalist Custom Scrollbars - Universal */
@@ -566,6 +570,34 @@ html {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: var(--bone-30);
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  width: 4px !important;
+  background: transparent !important;
+}
+.scrollbar-hover::-webkit-scrollbar-track {
+  background: transparent !important;
+  border: none !important;
+}
+.scrollbar-hover::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border-radius: 10px !important;
+  transition: background 0.15s ease !important;
+}
+.scrollbar-hover:hover::-webkit-scrollbar-thumb,
+.scrollbar-hover.is-scrolling::-webkit-scrollbar-thumb {
+  background: var(--bone-20) !important;
+}
+.scrollbar-hover::-webkit-scrollbar-thumb:hover {
+  background: var(--bone-40) !important;
+}
+.scrollbar-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-hover.is-scrolling {
+  scrollbar-color: var(--bone-20) transparent;
 }
 
 .custom-scrollbar {
@@ -659,8 +691,8 @@ html {
 /* Database block styles */
 .db-cell {
   padding: 6px 10px;
-  border-right: 1px solid var(--border-outer);
-  border-bottom: 1px solid var(--border-outer);
+  border-right: 1px solid var(--bone-6);
+  border-bottom: 1px solid var(--bone-6);
   font-size: 13px;
   outline: none;
   min-height: 34px;
@@ -672,13 +704,13 @@ html {
 
 .db-header-cell {
   padding: 6px 10px;
-  border-right: 1px solid var(--border-outer);
-  border-bottom: 1px solid var(--border-outer);
+  border-right: 1px solid var(--bone-6);
+  border-bottom: 1px solid var(--bone-12);
   font-size: 12px;
   font-weight: 600;
   color: var(--color-muted-foreground);
   letter-spacing: 0.04em;
-  background-color: var(--black-overlay);
+  background-color: var(--color-panel);
 }
 
 .db-header-cell:last-child {
@@ -887,7 +919,7 @@ html {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--bone-10);
+  background-color: var(--color-panel);
   border: 1px solid var(--bone-15);
   border-radius: 34px;
   cursor: pointer;
@@ -1258,4 +1290,42 @@ body.is-dragging-widget [data-widget-id] * {
 
 .widget-skeleton {
   @apply skeleton-shimmer-container rounded-big bg-[var(--bone-5)];
+}
+
+/* Table Style Overrides: bone 6 for row/column dividers, bone 10 for header divider, no row hover highlights */
+table:not(.rdp-table) {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+}
+
+table:not(.rdp-table) th,
+table:not(.rdp-table) td {
+  border-bottom: 1px solid var(--bone-6) !important;
+  border-right: 1px solid var(--bone-6) !important;
+  border-top: none !important;
+  border-left: none !important;
+}
+
+/* Header divider separating header row from body is bone 12 */
+table:not(.rdp-table) thead th,
+table:not(.rdp-table) thead td {
+  border-bottom: 1px solid var(--bone-12) !important;
+}
+
+/* Note tables (no <thead>): first row acts as header, gets bone-12 divider */
+table:not(.rdp-table):not(:has(thead)) tbody tr:first-child td {
+  border-bottom: 1px solid var(--bone-12) !important;
+}
+
+/* Remove outer right column border */
+table:not(.rdp-table) th:last-child,
+table:not(.rdp-table) td:last-child {
+  border-right: none !important;
+}
+
+/* Remove outer bottom row border on the last row */
+table:not(.rdp-table) tbody tr:last-child td,
+table:not(.rdp-table) tr:last-child td {
+  border-bottom: none !important;
 }

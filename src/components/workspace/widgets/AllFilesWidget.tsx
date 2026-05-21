@@ -53,7 +53,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
   };
 
   return (
-    <section className="bg-sidebar group/widget px-4 pb-4 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-4 pb-4 pt-4 widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-0.5">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">All Files</h2>
         {onUpdateData && (
@@ -65,7 +65,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
             </select>
             <button onClick={() => onUpdateData({ ...data, view: view === 'flat' ? 'tree' : 'flat' })}
               className={cn("w-6 h-6 flex items-center justify-center rounded-[4px] transition-colors",
-                view === 'tree' ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]")}>
+                view === 'tree' ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]")}>
               {view === 'tree' ? <GitBranch strokeWidth={2} className="w-3.5 h-3.5" /> : <List strokeWidth={2} className="w-3.5 h-3.5" />}
             </button>
           </div>

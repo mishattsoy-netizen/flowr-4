@@ -1,7 +1,7 @@
 import { getVaultData } from './actions'
 import VaultProviderWidget from '@/components/admin/VaultProviderWidget'
 
-const KNOWN_PROVIDERS = ['cloudflare', 'gemini', 'groq', 'openrouter', 'tavily', 'exa', 'huggingface', 'pollinations', 'siliconflow']
+const KNOWN_PROVIDERS = ['cloudflare', 'gemini', 'groq', 'openrouter', 'tavily', 'exa', 'huggingface', 'pollinations', 'siliconflow', 'nvidia']
 export default async function VaultPage() {
   const { accounts, keys } = await getVaultData()
 

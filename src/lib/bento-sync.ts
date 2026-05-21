@@ -107,7 +107,18 @@ export async function loadBentoLayout(contextId: string): Promise<BentoLayout | 
     return layout;
   }
 
-  const { data: { user } } = await supabase!.auth.getUser();
+  let user = null;
+  try {
+    const sessionPromise = supabase!.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: null } }>(resolve =>
+      setTimeout(() => resolve({ data: { session: null } }), 1500)
+    );
+    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+    user = session?.user ?? null;
+  } catch (e) {
+    console.error('[Bento] Failed to get session for load:', e);
+  }
+
   if (!user) {
     const local = localStorage.getItem(localKey);
     if (!local) return null;
@@ -142,7 +153,19 @@ export async function saveBentoLayout(contextId: string, items: BentoLayoutItem[
   localStorage.setItem(localKey, JSON.stringify(layout));
 
   if (!supabase) return;
-  const { data: { user } } = await supabase!.auth.getUser();
+
+  let user = null;
+  try {
+    const sessionPromise = supabase!.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: null } }>(resolve =>
+      setTimeout(() => resolve({ data: { session: null } }), 1500)
+    );
+    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+    user = session?.user ?? null;
+  } catch (e) {
+    console.error('[Bento] Failed to get session for save:', e);
+  }
+
   if (!user) return;
 
   const { error } = await supabase

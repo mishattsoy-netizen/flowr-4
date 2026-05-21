@@ -21,7 +21,7 @@ export default async function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-sidebar group/widget border border-[var(--bone-12)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
+        <div className="bg-panel group/widget border border-[var(--bone-6)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[80px] -mr-16 -mt-16" />
           
           <div className="space-y-1 relative z-10">
@@ -36,9 +36,9 @@ export default async function AnalyticsPage() {
              <TopicPieChart data={topics} />
           </div>
  
-          <div className="grid grid-cols-2 gap-2 relative z-10 pt-4 border-t border-[var(--bone-12)]">
+          <div className="grid grid-cols-2 gap-2 relative z-10 pt-4 border-t border-[var(--bone-6)]">
             {topics.map((t: any, i: number) => (
-              <div key={t.name} className="flex items-center justify-between gap-3 bg-background/50 border border-[var(--bone-12)] p-2 rounded-regular group hover:border-accent/20 transition-all">
+              <div key={t.name} className="flex items-center justify-between gap-3 bg-background/50 border border-[var(--bone-6)] p-2 rounded-regular group hover:border-accent/20 transition-all">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full opacity-70" style={{ backgroundColor: ['#E9E9E2', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][i % 7] }}></div>
                   <span className="text-[10px] font-bold text-bone-70 group-hover:text-bone-100 uppercase tracking-tight transition-colors">{t.name}</span>
@@ -49,7 +49,7 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="bg-sidebar group/widget border border-[var(--bone-12)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
+        <div className="bg-panel group/widget border border-[var(--bone-6)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col space-y-4 relative overflow-hidden">
           <div className="space-y-1">
             <h2 className="text-[10px] font-bold text-bone-70 uppercase tracking-[0.1em] flex items-center gap-2 opacity-50">
               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
@@ -62,7 +62,7 @@ export default async function AnalyticsPage() {
             <UsageAreaChart data={volume} />
           </div>
           
-          <div className="pt-4 border-t border-[var(--bone-12)] flex items-center justify-center">
+          <div className="pt-4 border-t border-[var(--bone-6)] flex items-center justify-center">
             <p className="text-[10px] text-bone-70 opacity-20 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
               <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} />
               Aggregate Data Pipeline: Production Stream
@@ -71,7 +71,7 @@ export default async function AnalyticsPage() {
         </div>
       </div>
 
-        <div className="widget widget-shadow border border-[var(--bone-12)] space-y-4">
+        <div className="widget widget-shadow border border-[var(--bone-6)] space-y-4">
         <div className="space-y-1">
           <h2 className="text-[10px] font-bold text-bone-70 uppercase tracking-[0.1em] flex items-center gap-2 opacity-50">
             <div className="w-1.5 h-1.5 bg-accent rounded-full" />

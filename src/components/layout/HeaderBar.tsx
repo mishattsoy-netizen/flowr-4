@@ -61,8 +61,10 @@ export const HeaderBar = memo(function HeaderBar() {
   const toggleToolbar = useStore(state => state.toggleToolbar);
   const isToolbarVisible = useStore(state => state.isToolbarVisible);
   const toggleSidebar = useStore(state => state.toggleSidebar);
+  const openContextMenu = useStore(state => state.openContextMenu);
   const isFullWidth = useStore(state => state.isFullWidth);
   const toggleFullWidth = useStore(state => state.toggleFullWidth);
+  const isTabsHeaderVisible = useStore(state => state.isTabsHeaderVisible);
   const openTabIds = useStore(state => state.openTabIds);
   const activeTabId = useStore(state => state.activeTabId);
   const setActiveTab = useStore(state => state.setActiveTab);
@@ -75,8 +77,8 @@ export const HeaderBar = memo(function HeaderBar() {
   const chatConversations = useStore(state => state.chatConversations);
   const activeChatId = useStore(state => state.activeChatId);
 
-  const canGoBack = historyIndex > 0;
-  const canGoForward = historyIndex < navigationHistory.length - 1;
+  const canGoBack = true;
+  const canGoForward = true;
 
   const [hoveredTab, setHoveredTab] = useState<{ id: string, rect: DOMRect, path: any[] } | null>(null);
   const leaveTimer = useRef<NodeJS.Timeout | null>(null);
@@ -160,46 +162,49 @@ export const HeaderBar = memo(function HeaderBar() {
       : 'text-border cursor-default'
     }`;
 
+  if (!isTabsHeaderVisible) return null;
+
   return (
     <div className="h-8 flex items-center px-3 bg-sidebar border-b border-b-[var(--bone-6)] shrink-0 relative z-30">
-      <div className="flex items-center w-[144px] shrink-0">
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={toggleSidebar}
-            className="md:hidden p-1.5 rounded-[var(--radius-small)] hover:bg-hover text-muted-foreground hover:text-foreground mr-1"
-          >
-            <Menu strokeWidth={2} className="w-5 h-5" />
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button 
+          onClick={toggleSidebar}
+          className="md:hidden p-1.5 rounded-[var(--radius-small)] hover:bg-hover text-muted-foreground hover:text-foreground"
+        >
+          <Menu strokeWidth={2} className="w-5 h-5" />
+        </button>
+
+        <Tooltip content="Go Back">
+          <button onClick={goBack} className={btnClass(true)}>
+            <ArrowLeft strokeWidth={2} className="w-4 h-4" />
           </button>
-
-          <Tooltip content="Go Back">
-            <button onClick={goBack} disabled={!canGoBack} className={btnClass(canGoBack)}>
-              <ArrowLeft strokeWidth={2} className="w-4 h-4" />
-            </button>
-          </Tooltip>
-          <Tooltip content="Go Forward">
-            <button onClick={goForward} disabled={!canGoForward} className={btnClass(canGoForward)}>
-              <ArrowRight strokeWidth={2} className="w-4 h-4" />
-            </button>
-          </Tooltip>
-        </div>
-
-        <div className="flex items-center gap-1.5 ml-1">
-          <Tooltip content="Reload">
-            <button onClick={() => { }} className={btnClass(true)}>
-              <RotateCw strokeWidth={2} className="w-3.5 h-3.5" />
-            </button>
-          </Tooltip>
-
-          <Tooltip content="Toggle Sidebar">
-            <button onClick={toggleSidebar} className={btnClass(true)}>
-              <PanelLeft strokeWidth={2} className="w-4 h-4" />
-            </button>
-          </Tooltip>
-        </div>
+        </Tooltip>
+        <Tooltip content="Go Forward">
+          <button onClick={goForward} className={btnClass(true)}>
+            <ArrowRight strokeWidth={2} className="w-4 h-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Reload">
+          <button onClick={() => { }} className={btnClass(true)}>
+            <RotateCw strokeWidth={2} className="w-3.5 h-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Toggle Sidebar">
+          <button
+            onClick={toggleSidebar}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              openContextMenu('sidebar-toggle', e.clientX, e.clientY, 'sidebar-toggle');
+            }}
+            className={btnClass(true)}
+          >
+            <PanelLeft strokeWidth={2} className="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Divider (only if not dashboard or if we want it always) */}
-      <div className="w-px h-5 bg-[var(--bone-6)] mx-3" />
+      <div className="w-px h-5 bg-[var(--bone-6)] mx-2" />
 
       {/* Tabs */}
       <div className="flex-1 flex items-center gap-1 h-full px-2 min-w-0">

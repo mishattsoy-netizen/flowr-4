@@ -1,10 +1,8 @@
 import { logger } from '../../logger'
 import { getProviderKeys } from '../../vault'
 import { getHighestResolution } from '../image-utils'
+import { streamOpenAICompatible } from './stream-utils'
 
-/**
- * SiliconFlow Image Generation
- */
 export async function runSiliconFlow(
   modelId: string,
   prompt: string,
@@ -23,7 +21,7 @@ export async function runSiliconFlow(
 
   try {
     logger.info(`SiliconFlow Image Generation [${modelId}]: ${prompt.slice(0, 50)}...`)
-    
+
     const response = await fetch('https://api.siliconflow.cn/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -34,7 +32,6 @@ export async function runSiliconFlow(
         model: modelId,
         prompt: prompt,
         batch_size: 1,
-        // SiliconFlow standard sizes - using highest supported
         image_size: `${getHighestResolution(modelId, 'siliconflow').width}x${getHighestResolution(modelId, 'siliconflow').height}`
       })
     })
@@ -46,15 +43,13 @@ export async function runSiliconFlow(
 
     const data = await response.json()
     const imageUrl = data?.images?.[0]?.url || data?.data?.[0]?.url
-    
+
     if (!imageUrl) {
       throw new Error('SiliconFlow returned no image URL')
     }
 
-    // If it's a base64 string already, return it (after cleaning)
     if (imageUrl.startsWith('data:image')) return imageUrl
-    
-    // Otherwise return the URL directly, chainRouter will handle it or we fetch it here
+
     return imageUrl
   } catch (error: any) {
     logger.error(`SiliconFlow Image [${modelId}] failed:`, error.message)
@@ -62,9 +57,6 @@ export async function runSiliconFlow(
   }
 }
 
-/**
- * SiliconFlow Text Generation (OpenAI-compatible)
- */
 export async function runSiliconFlowText(
   modelId: string,
   prompt: string,
@@ -83,7 +75,6 @@ export async function runSiliconFlowText(
     return null
   }
 
-  // Convert history to OpenAI format
   const historyMessages = (history || []).map((h: any) => ({
     role: h.role === 'model' ? 'assistant' : 'user',
     content: h.content || (h.parts?.[0]?.text) || ''
@@ -99,43 +90,27 @@ export async function runSiliconFlowText(
       messages.push(...historyMessages)
       messages.push({ role: 'user', content: prompt })
 
-      const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${key}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const result = await streamOpenAICompatible(
+        'https://api.siliconflow.cn/v1/chat/completions',
+        {
           model: modelId,
           messages,
           max_tokens: context?.max_tokens || 4096,
-          stream: false
-        })
-      })
+        },
+        context?.onChunk,
+        context?.signal,
+        { 'Authorization': `Bearer ${key}` }
+      )
 
-      if (!response.ok) {
-        const errText = await response.text()
-        const isKeyExhausted = response.status === 401 || response.status === 402 || response.status === 429
-        if (isKeyExhausted && i < keys.length - 1) {
-          logger.warn(`SiliconFlow key ${i+1} exhausted, trying next...`)
-          continue
-        }
-        throw new Error(`SiliconFlow Text API ${response.status}: ${errText}`)
-      }
+      if (!result) throw new Error('SiliconFlow returned empty content')
 
-      const data = await response.json()
-      const msg = data?.choices?.[0]?.message
-      if (!msg?.content) throw new Error('SiliconFlow returned empty content')
-
-      const usage = data.usage ? {
-        prompt_tokens: data.usage.prompt_tokens,
-        completion_tokens: data.usage.completion_tokens,
-        total_tokens: data.usage.total_tokens,
-      } : undefined
-
-      return { content: msg.content, usage }
+      if (context) context.usedKeyIndex = context.usedKeyIndex || i + 1
+      return result
     } catch (error: any) {
-      logger.error(`SiliconFlow Text [${modelId}] key ${i+1} failed:`, error.message)
+      const errorMsg = error.message || ''
+      const isKeyExhausted = errorMsg.includes('401') || errorMsg.includes('402') || errorMsg.includes('429')
+      logger.error(`SiliconFlow Text [${modelId}] key ${i + 1} failed:`, errorMsg)
+      if (isKeyExhausted && i < keys.length - 1) continue
       if (i === keys.length - 1) return null
     }
   }

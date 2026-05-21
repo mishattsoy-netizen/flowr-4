@@ -310,7 +310,7 @@ export function BlockRenderer({
           isDragging && "opacity-60"
         )}>
           <div className="relative flex flex-col">
-            <div className="border border-[var(--bone-12)] rounded-3xl overflow-hidden bg-[var(--color-dark)]">
+            <div className="border border-[var(--bone-6)] rounded-3xl overflow-hidden bg-panel">
               <table className="w-full border-collapse">
                 <tbody>
                   {tableData.map((row: string[], ri: number) => (
@@ -719,7 +719,7 @@ export function BlockRenderer({
                 const text = contentRef.current?.textContent || '';
                 navigator.clipboard.writeText(text);
               }}
-              className="absolute top-2.5 right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-12)] transition-all opacity-0 group-hover:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5"
+              className="absolute top-2.5 right-3 px-2 py-1.5 rounded-md bg-white/[0.05] text-white/40 hover:bg-white/[0.1] hover:text-white border border-[var(--bone-6)] transition-all opacity-0 group-hover:opacity-100 select-none cursor-pointer z-20 flex items-center gap-1.5"
 
             >
               <Copy className="w-3.5 h-3.5" />
@@ -736,7 +736,7 @@ function getStyleClasses(style?: BlockStyle): string {
     case 'title': return 'text-[28px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
     case 'heading': return 'text-[24px] font-semibold tracking-[-0.02em] font-display leading-snug text-bone-100';
     case 'subheading': return 'text-[20px] font-semibold tracking-[-0.02em] font-display text-bone-100 leading-snug';
-    case 'mono': return 'font-mono text-[15px] bg-[var(--color-dark)] border border-[var(--bone-12)] rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[var(--bone-100)] w-full';
+    case 'mono': return 'font-mono text-[15px] bg-panel border border-[var(--bone-6)] rounded-3xl px-4 py-3 leading-[1.6] overflow-x-auto whitespace-pre text-[var(--bone-100)] w-full';
     case 'body':
     default: return 'text-[16px] font-normal font-display leading-[1.6] tracking-[-0.02em] text-bone-100';
   }

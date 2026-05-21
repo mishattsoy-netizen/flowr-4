@@ -2,6 +2,7 @@ import { Literata, DM_Sans, DM_Mono } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SupabaseProvider from "@/components/SupabaseProvider";
+import AuthProvider from "@/components/AuthProvider";
 import FadeTextObserver from "@/components/ui/FadeTextObserver";
 
 const literata = Literata({
@@ -82,10 +83,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <SupabaseProvider>
-          {children}
-          <FadeTextObserver />
-        </SupabaseProvider>
+        <AuthProvider>
+          <SupabaseProvider>
+            {children}
+            <FadeTextObserver />
+          </SupabaseProvider>
+        </AuthProvider>
         <script
           src="https://js.puter.com/v2/"
           async

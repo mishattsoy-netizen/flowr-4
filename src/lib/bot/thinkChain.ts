@@ -80,7 +80,7 @@ async function runThinkModel(
         res = await runGroq(modelConfig.id, prompt, systemPrompt, undefined, context, history)
       } else if (provider === 'openrouter') {
         const { runOpenRouter } = await import('./providers/openrouter')
-        res = await runOpenRouter(modelConfig.id, prompt, systemPrompt, history, '', { openrouterProvider: modelConfig.openrouter_provider })
+        res = await runOpenRouter(modelConfig.id, prompt, systemPrompt, history, '', { ...(context || {}), openrouterProvider: modelConfig.openrouter_provider })
       }
       if (res) {
         const content = typeof res === 'object' ? (res as any).content : res

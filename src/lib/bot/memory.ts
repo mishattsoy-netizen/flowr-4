@@ -20,11 +20,19 @@ export async function getConversationMemory(telegramId: number, limit: number = 
 
     if (error) throw error
 
-    const history = data.reverse().map((msg: any) => {
+    const reversed = data.reverse()
+    const history = reversed.map((msg: any, i: number) => {
       let cleanContent = msg.content || "";
       if (cleanContent.includes('data:image/')) {
         const description = msg.context_messages?.image_description;
         cleanContent = cleanContent.replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, description ? `[Image: ${description}]` : '[Image: (visual content generated)]');
+      }
+      // Inject digital twin from the following assistant message into user message text
+      // so non-vision chains have full image context in history
+      if (msg.role !== 'model') {
+        const nextMsg = reversed[i + 1]
+        const twin = nextMsg?.context_messages?.image_description
+        if (twin) cleanContent = `${cleanContent}\n\n[VISION CONTEXT - DIGITAL TWIN]\n${twin}`.trim()
       }
       return {
         role: msg.role === 'model' ? 'model' : 'user',
@@ -80,12 +88,20 @@ export async function getWebConversationMemory(authUserId: string, limit: number
       return [];
     }
 
-    const history = (resultData || []).reverse().map((msg: any) => {
+    const reversed = (resultData || []).reverse()
+    const history = reversed.map((msg: any, i: number) => {
       let cleanContent = msg.content || "";
       // Truncate massive base64 images in history to avoid context bloat and model hallucination
       if (cleanContent.includes('data:image/')) {
         const description = msg.context_messages?.image_description;
         cleanContent = cleanContent.replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, description ? `[Image: ${description}]` : '[Image: (visual content generated)]');
+      }
+      // Inject digital twin from the following assistant message into user message text
+      // so non-vision chains have full image context in history
+      if (msg.role !== 'model') {
+        const nextMsg = reversed[i + 1]
+        const twin = nextMsg?.context_messages?.image_description
+        if (twin) cleanContent = `${cleanContent}\n\n[VISION CONTEXT - DIGITAL TWIN]\n${twin}`.trim()
       }
       return {
         role: msg.role === 'model' ? 'model' : 'user',

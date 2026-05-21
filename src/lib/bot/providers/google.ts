@@ -109,6 +109,48 @@ export async function runGoogle(
         let usage: any = undefined
         let reasoning: string | undefined = undefined
 
+        const hasStreaming = !!(context as any)?.onChunk
+        const onChunk = (context as any)?.onChunk
+
+        // Streaming path (no tool calling)
+        if (hasStreaming && !context?.useTools) {
+          if (history && history.length > 0) {
+            const safeHistory: any[] = []
+            for (const msg of history) {
+              const expectedRole = safeHistory.length % 2 === 0 ? 'user' : 'model'
+              if (msg.role === expectedRole) safeHistory.push(msg)
+            }
+            if (safeHistory.length % 2 !== 0) safeHistory.pop()
+
+            const chat = model.startChat({ history: safeHistory })
+            logger.info(`[runGoogle] Stream Chat to ${sanitizedId} (Key ${keyIndex + 1}, Hist ${safeHistory.length})`)
+            const streamResult = await withSignal(chat.sendMessageStream(parts), (context as any)?.signal)
+            for await (const chunk of streamResult.stream) {
+              const chunkText = chunk.text()
+              if (chunkText) {
+                responseContent += chunkText
+                onChunk(chunkText)
+              }
+              usage = extractUsage(chunk) || usage
+              reasoning = extractReasoning(chunk) || reasoning
+            }
+          } else {
+            logger.info(`[runGoogle] Stream Content for ${sanitizedId} (Key ${keyIndex + 1})`)
+            const streamResult = await withSignal(model.generateContentStream({ contents: [{ role: 'user', parts }], safetySettings: [] }), (context as any)?.signal)
+            for await (const chunk of streamResult.stream) {
+              const chunkText = chunk.text()
+              if (chunkText) {
+                responseContent += chunkText
+                onChunk(chunkText)
+              }
+              usage = extractUsage(chunk) || usage
+              reasoning = extractReasoning(chunk) || reasoning
+            }
+          }
+
+          return { content: responseContent, usage, reasoning, capturedToolCalls }
+        }
+
         if (history && history.length > 0) {
           const safeHistory: any[] = []
           for (const msg of history) {

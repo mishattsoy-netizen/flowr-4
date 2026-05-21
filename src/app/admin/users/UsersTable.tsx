@@ -45,10 +45,10 @@ export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
   }
 
   return (
-    <div className="overflow-x-auto bg-panel rounded-big border border-[var(--bone-12)]">
+    <div className="overflow-x-auto bg-panel rounded-big border border-[var(--bone-6)]">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-white/5 border-b border-[var(--bone-12)]">
+          <tr className="bg-white/5 border-b border-[var(--bone-6)]">
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">User details</th>
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">Preset / Plan</th>
             <th className="px-8 py-4 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase">Daily usage</th>

@@ -16,6 +16,7 @@ import { runDeepResearchChain } from './providers/deepResearch'
 import { runCloudflare } from './providers/cloudflare'
 import { runPollinations, runPollinationsText } from './providers/pollinations'
 import { runSiliconFlow, runSiliconFlowText } from './providers/siliconflow'
+import { runNvidia } from './providers/nvidia'
 import { getImageDimensions } from './image-utils'
 import { runHuggingFaceUpscale } from './providers/huggingface'
 import { getConversationMemory, getWebConversationMemory } from './memory'
@@ -173,6 +174,7 @@ export interface ChainResponse {
   tokens_used?: number
   pipeline_steps?: PipelineStep[]
   advisor_questions?: string
+  advisor_state?: string
   text_content?: string
   image_description?: string
   image_prompt?: string
@@ -198,6 +200,7 @@ export async function runChain(
     replyContext?: any;
     thinkingEnabled?: boolean;
     advisorEnabled?: boolean;
+    pendingAdvisorState?: import('./advisor').AdvisorState | null;
     onStatus?: StatusCallback;
     onChunk?: (chunk: string) => void;
     vision_notes?: string;
@@ -205,6 +208,7 @@ export async function runChain(
     _triggerType?: string;
     _triggerValue?: string;
     _skipSessionSummary?: boolean;
+    _visionImageDescription?: string | null;
     isTempChat?: boolean;
     clientHistory?: any[];
   }
@@ -213,7 +217,7 @@ export async function runChain(
 
   // Inject current date context to help bot understand knowledge cutoff and current time
   const now = new Date()
-  const dateContext = `[CURRENT CONTEXT]\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\n`
+  let dateContext = `[CURRENT CONTEXT]\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\n`
 
   // 0. Prefetch independent config in parallel
   const sessionId = context?.chatId?.toString()
@@ -233,8 +237,11 @@ export async function runChain(
   let history: any[] = []
   if (context?.chatId) {
     history = await getConversationMemory(context.chatId, historyLimit)
-  } else if (!context?.isTempChat && context?.userId && context.userId !== 'anonymous') {
-    history = await getWebConversationMemory(context.userId, historyLimit, context.activeChatId ?? null)
+  } else if (context?.userId && context.userId !== 'anonymous' && !context?.isTempChat && context?.activeChatId) {
+    // Only fetch DB history when we have a real chatId to scope the query.
+    // Without activeChatId the query returns messages from ALL the user's chats (cross-chat leakage).
+    // Temp chats and chatId-less requests fall through to clientHistory below.
+    history = await getWebConversationMemory(context.userId, historyLimit, context.activeChatId)
   }
   // Fallback to client-provided history when DB lookup returns nothing
   // (anonymous users, temp chats, or missing message_logs rows)
@@ -264,24 +271,49 @@ export async function runChain(
   if (context?.advisorEnabled && activeBuffers.length === 0) {
     const availableTools = ['web_search', 'deep_research', 'image_gen', 'tool_calling']
     const historyForAdvisor = (!pipelineSettings.historyEnabledCategories || pipelineSettings.historyEnabledCategories.includes('ADVISOR')) ? history : []
+    const pendingState = context?.pendingAdvisorState ?? null
     const advisorResult = await runAdvisor(
       prompt,
       context?.mode ?? 'default',
       context?.thinkingEnabled ?? false,
       availableTools,
       context,
-      historyForAdvisor
+      historyForAdvisor,
+      pendingState
     )
-    if (advisorResult.shouldAsk && advisorResult.questions) {
+
+    logger.info(`[Advisor gate] phase=${advisorResult.phase} hasQuestions=${!!advisorResult.questions} hasState=${!!advisorResult.state} questionsPreview="${(advisorResult.questions || '').slice(0, 200).replace(/\n/g, '\\n')}"`)
+
+    if (advisorResult.phase === 'planning') {
+      const advisorStateJson = advisorResult.state ? JSON.stringify(advisorResult.state) : undefined
       return {
         type: 'text',
-        content: advisorResult.questions,
+        content: advisorResult.questions || '',
         usage_type: 'chat',
         model_chain: 'advisor → (awaiting user response)',
         status: 'success',
-        advisor_questions: advisorResult.questions,
+        advisor_questions: advisorResult.questions || '',
+        advisor_state: advisorStateJson,
       }
     }
+
+    if (advisorResult.phase === 'ready' && advisorResult.state) {
+      // Inject finalized brief, constraints, and plan into the system prompt for execution
+      const readyBlocks: string[] = []
+      if (advisorResult.finalizedBrief) {
+        readyBlocks.push(`[FINALIZED BRIEF]\n${advisorResult.finalizedBrief}`)
+      }
+      if (advisorResult.gatheredConstraintsList && advisorResult.gatheredConstraintsList.length > 0) {
+        readyBlocks.push(`[GATHERED CONSTRAINTS]\n${advisorResult.gatheredConstraintsList.map((c, i) => `${i + 1}. ${c}`).join('\n')}`)
+      }
+      if (advisorResult.approvedPlan) {
+        readyBlocks.push(`[APPROVED PLAN]\n${advisorResult.approvedPlan}`)
+      }
+      if (readyBlocks.length > 0) {
+        dateContext = `[ADVISOR PREPARATION]\n${readyBlocks.join('\n\n')}\n\n` + dateContext
+      }
+    }
+    // phase === 'pass': fall through to normal execution
   }
 
   // 1. Specialized Vision Flow (Buffer or URL)
@@ -335,10 +367,9 @@ export async function runChain(
     const visionTrace: any[] = []
 
     // System Instructions = Persona + Date + Global Rules (respect pipeline settings)
-    // VISION is a pipeline category — excluded from global prompt by default
     const visionGlobalEnabled = pipelineSettings.globalPromptEnabledCategories
       ? pipelineSettings.globalPromptEnabledCategories.includes('VISION')
-      : false
+      : true
     const systemPromptCombined = [
       visionSystemPrompt,
       dateContext,
@@ -368,22 +399,29 @@ export async function runChain(
 
         let visionRes: any = null
 
+        // Never stream the vision chain — its output contains the [VISION_CONTEXT]
+        // block that must be stripped server-side before reaching the user.
+        const visionContext = context ? { ...context, onChunk: undefined } : context
+
         switch (modelConfig.provider.toLowerCase()) {
           case 'google':
           case 'gemini':
             // Strip 'google/' prefix if user added it, as SDK doesn't always like it
             const sanitizedId = modelConfig.id.replace(/^google\//, '')
-            visionRes = await runGoogle(sanitizedId, activePrompt, systemPromptCombined, activeBuffers, context as any, history)
+            visionRes = await runGoogle(sanitizedId, activePrompt, systemPromptCombined, activeBuffers, visionContext as any, history)
             break
           case 'openrouter':
-            visionRes = await runOpenRouter(modelConfig.id, activePrompt, systemPromptCombined, history, context?.aiApiKey, { openrouterProvider: modelConfig.openrouter_provider }, activeBuffers)
+            visionRes = await runOpenRouter(modelConfig.id, activePrompt, systemPromptCombined, history, context?.aiApiKey, { openrouterProvider: modelConfig.openrouter_provider, sessionId }, activeBuffers)
             break
           case 'groq':
-            visionRes = await runGroq(modelConfig.id, activePrompt, systemPromptCombined, context?.aiApiKey, context, history, activeBuffers)
+            visionRes = await runGroq(modelConfig.id, activePrompt, systemPromptCombined, context?.aiApiKey, visionContext, history, activeBuffers)
+            break
+          case 'nvidia':
+            visionRes = await runNvidia(modelConfig.id, activePrompt, systemPromptCombined, history, context?.aiApiKey, visionContext, activeBuffers)
             break
           default:
             logger.warn(`Vision provider ${modelConfig.provider} not specifically handled in router. Falling back to runGoogle.`)
-            visionRes = await runGoogle(modelConfig.id, activePrompt, systemPromptCombined, activeBuffers, context as any, history)
+            visionRes = await runGoogle(modelConfig.id, activePrompt, systemPromptCombined, activeBuffers, visionContext as any, history)
         }
 
         if (visionRes) {
@@ -417,6 +455,28 @@ export async function runChain(
           visionTrace.push({ model: modelConfig.id, provider: modelConfig.provider, status: 'success' })
           let content = typeof visionRes === 'object' ? visionRes.content : visionRes
 
+          // Parse [VISION_CONTEXT] block emitted by vision model in ANSWER MODE
+          // This block contains the full digital twin and is stripped from user-facing output
+          let visionContextTwin: string | null = null
+          const vcMatch = content.match(/\[VISION_CONTEXT\]([\s\S]*?)\[\/VISION_CONTEXT\]/)
+          if (vcMatch) {
+            const raw = vcMatch[1].trim()
+            try {
+              const vcData = JSON.parse(raw)
+              if (vcData.digital_twin) visionContextTwin = vcData.digital_twin
+            } catch {
+              // Long verbatim twins often break strict JSON (unescaped newlines/quotes).
+              // Fall back to extracting the digital_twin value, then the whole block.
+              const dtMatch = raw.match(/"digital_twin"\s*:\s*"([\s\S]*)"\s*}?\s*$/)
+              if (dtMatch) {
+                visionContextTwin = dtMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim()
+              } else {
+                visionContextTwin = raw.replace(/^\{?\s*"?digital_twin"?\s*:?\s*"?/, '').replace(/"?\s*\}?$/, '').trim() || null
+              }
+            }
+            content = content.replace(/\[VISION_CONTEXT\][\s\S]*?\[\/VISION_CONTEXT\]/, '').trim()
+          }
+
           // Check for JSON metadata (The "Autonomous Brain" logic)
           let metadata: any = null
           try {
@@ -435,6 +495,11 @@ export async function runChain(
 
             // If vision model already produced the final answer, return it directly
             if (metadata.logic_nature === 'FAST_SIMPLE' && metadata.next_instructions) {
+              const fastSimpleTwin = metadata.digital_twin ? String(metadata.digital_twin) : null
+              if (context && fastSimpleTwin) {
+                context.vision_notes = `[VISION DATA - DIGITAL TWIN]\n${fastSimpleTwin}`
+                context._visionImageDescription = fastSimpleTwin
+              }
               trackModelUsage(modelConfig.id, modelConfig.provider)
               return {
                 type: 'text',
@@ -443,13 +508,38 @@ export async function runChain(
                 model: modelConfig.id,
                 model_chain: `vision → ${modelConfig.id}`,
                 status: 'success',
+                image_description: fastSimpleTwin ?? String(metadata.next_instructions).slice(0, 600),
                 trace: visionTrace,
                 step_traces: tracer.all.length > 0 ? tracer.all : undefined,
+                transcript_md: buildTranscript({
+                  prompt: activePrompt,
+                  history,
+                  context,
+                  category: 'VISION',
+                  systemPrompt: systemPromptCombined,
+                  globalPrompt,
+                  dateContext,
+                  currentSummary,
+                  replyContext: (context as any)?.replyContext,
+                  thinkingEnabled: (context as any)?.thinkingEnabled,
+                  advisorEnabled: (context as any)?.advisorEnabled,
+                  mode: (context as any)?.mode,
+                  stepTraces: tracer.all.length > 0 ? tracer.all : undefined,
+                  finalContent: metadata.next_instructions,
+                  finalModel: modelConfig.id,
+                  tokensUsed: (visionUsage as any)?.total_tokens,
+                  providerUsage: visionUsage as any,
+                  providerReasoning: visionReasoning as any,
+                  chainDuration: Date.now() - visionT0,
+                  usageType: 'vision',
+                  modelChain: `vision → ${modelConfig.id}`,
+                }),
               } as any
             }
 
             if (context) {
               context.vision_notes = `[VISION DATA - DIGITAL TWIN]\n${metadata.digital_twin || ''}\n\n[VISION INSTRUCTIONS]\n${metadata.next_instructions || ''}`
+              context._visionImageDescription = metadata.digital_twin || null
             }
             forcedCategory = metadata.logic_nature
 
@@ -458,6 +548,10 @@ export async function runChain(
             break // Exit vision loop and proceed to main routing
           }
 
+          if (context && visionContextTwin) {
+            context.vision_notes = `[VISION DATA - DIGITAL TWIN]\n${visionContextTwin}`
+            context._visionImageDescription = visionContextTwin
+          }
           trackModelUsage(modelConfig.id, modelConfig.provider)
           return {
             type: 'text',
@@ -466,8 +560,32 @@ export async function runChain(
             model: modelConfig.id,
             model_chain: `vision → ${modelConfig.id}`,
             status: 'success',
+            image_description: visionContextTwin ?? undefined,
             trace: visionTrace,
             step_traces: tracer.all.length > 0 ? tracer.all : undefined,
+            transcript_md: buildTranscript({
+              prompt: activePrompt,
+              history,
+              context,
+              category: 'VISION',
+              systemPrompt: systemPromptCombined,
+              globalPrompt: pipelineSettings.globalPromptEnabledCategories?.includes('VISION') ? globalPrompt : undefined,
+              dateContext,
+              currentSummary,
+              replyContext: (context as any)?.replyContext,
+              thinkingEnabled: (context as any)?.thinkingEnabled,
+              advisorEnabled: (context as any)?.advisorEnabled,
+              mode: (context as any)?.mode,
+              stepTraces: tracer.all.length > 0 ? tracer.all : undefined,
+              finalContent: content,
+              finalModel: modelConfig.id,
+              tokensUsed: (visionUsage as any)?.total_tokens,
+              providerUsage: visionUsage as any,
+              providerReasoning: visionReasoning as any,
+              chainDuration: Date.now() - visionT0,
+              usageType: 'vision',
+              modelChain: `vision → ${modelConfig.id}`,
+            }),
           } as any
         } else {
           tracer.recordFailed({ ...visionTraceMeta, error: 'Empty response' }, Date.now() - visionT0)
@@ -492,7 +610,25 @@ export async function runChain(
         usage_type: 'vision',
         model_chain: 'vision → (none)',
         status: 'error',
-        trace: visionTrace
+        trace: visionTrace,
+        transcript_md: buildTranscript({
+          prompt: activePrompt,
+          history,
+          context,
+          category: 'VISION',
+          systemPrompt: systemPromptCombined,
+          globalPrompt: pipelineSettings.globalPromptEnabledCategories?.includes('VISION') ? globalPrompt : undefined,
+          dateContext,
+          currentSummary,
+          replyContext: (context as any)?.replyContext,
+          thinkingEnabled: (context as any)?.thinkingEnabled,
+          advisorEnabled: (context as any)?.advisorEnabled,
+          mode: (context as any)?.mode,
+          stepTraces: tracer.all.length > 0 ? tracer.all : undefined,
+          finalContent: "⚡ *Vision Analysis Failed* — Check your model IDs and API keys in the Router.",
+          usageType: 'vision',
+          modelChain: 'vision → (none)',
+        }),
       }
     }
   }
@@ -544,18 +680,35 @@ export async function runChain(
   // Explicit ADVISOR intent override — if classified as advisor, force execution
   if (category === 'ADVISOR') {
     const availableTools = ['web_search', 'deep_research', 'image_gen', 'tool_calling']
-    const advisorResult = await runAdvisor(prompt, context?.mode ?? 'default', context?.thinkingEnabled ?? false, availableTools, context)
-    if (advisorResult.shouldAsk && advisorResult.questions) {
+    const advisorResult = await runAdvisor(prompt, context?.mode ?? 'default', context?.thinkingEnabled ?? false, availableTools, context, [], context?.pendingAdvisorState ?? null)
+    if (advisorResult.phase === 'planning') {
+      const advisorStateJson = advisorResult.state ? JSON.stringify(advisorResult.state) : undefined
       return {
         type: 'text',
-        content: advisorResult.questions,
+        content: advisorResult.questions || '',
         usage_type: 'chat',
         model_chain: 'classifier → advisor → (awaiting user response)',
         status: 'success',
-        advisor_questions: advisorResult.questions,
+        advisor_questions: advisorResult.questions || '',
+        advisor_state: advisorStateJson,
       }
     }
-    // If PASS, fallback to complex thinking to actually process the user query
+    if (advisorResult.phase === 'ready' && advisorResult.state) {
+      const readyBlocks: string[] = []
+      if (advisorResult.finalizedBrief) {
+        readyBlocks.push(`[FINALIZED BRIEF]\n${advisorResult.finalizedBrief}`)
+      }
+      if (advisorResult.gatheredConstraintsList && advisorResult.gatheredConstraintsList.length > 0) {
+        readyBlocks.push(`[GATHERED CONSTRAINTS]\n${advisorResult.gatheredConstraintsList.map((c, i) => `${i + 1}. ${c}`).join('\n')}`)
+      }
+      if (advisorResult.approvedPlan) {
+        readyBlocks.push(`[APPROVED PLAN]\n${advisorResult.approvedPlan}`)
+      }
+      if (readyBlocks.length > 0) {
+        dateContext = `[ADVISOR PREPARATION]\n${readyBlocks.join('\n\n')}\n\n` + dateContext
+      }
+    }
+    // If PASS or ready, fallback to complex thinking to actually process the user query
     category = 'COMPLEX'
   }
 
@@ -783,6 +936,7 @@ export async function runChain(
 
           const routeContext: any = {
             ...(context || {}),
+            sessionId,
             useTools: category === 'TOOLS',
             aiApiKey: activeKey || undefined,
             usedKeyIndex: k + 1,
@@ -790,8 +944,11 @@ export async function runChain(
             setSynthesisModel: (m: string) => { usedSynthesisModel = m }
           }
 
-          // Only stream tokens for text-generation chains — skip search, image gen, vision, tool calling
-          const TEXT_STREAM_CATEGORIES = ['FAST_SIMPLE', 'MEDIUM_THINKING', 'COMPLEX', 'CODING', 'ADVISOR']
+          // Only stream tokens for REGULAR and COMPLEX chains. All other chains
+          // (vision, search, image gen, tools, advisor, coding) buffer their full
+          // response so post-processing (e.g. stripping [VISION_CONTEXT]) runs before
+          // anything reaches the user.
+          const TEXT_STREAM_CATEGORIES = ['COMPLEX', 'REGULAR']
           if (!TEXT_STREAM_CATEGORIES.includes(category)) {
             routeContext.onChunk = undefined
           }
@@ -963,6 +1120,9 @@ export async function runChain(
                 } else {
                   response = await runSiliconFlowText(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0], routeContext)
                 }
+                break
+              case 'nvidia':
+                response = await runNvidia(modelConfig.id, activePromptForGen, system_prompt, historyForChain, activeKey || providerKeys[0], routeContext)
                 break
             }
           } catch (providerErr: any) {
@@ -1196,7 +1356,7 @@ export async function runChain(
               routing_trace: routingTrace,
               citations,
               tokens_used: providerUsage?.total_tokens ?? (typeof finalContent === 'string' ? estimateTokens(prompt + (finalContent as string) + (system_prompt || '')) : undefined),
-              image_description: imageDescription,
+              image_description: imageDescription || (context as any)?._visionImageDescription,
               image_prompt: category === 'IMAGE_GEN' ? activePromptForGen : undefined,
               pipeline_steps: thinkPipelineStepsPrepass.length > 0 ? thinkPipelineStepsPrepass : undefined,
               step_traces: tracer.all.length > 0 ? tracer.all : undefined,

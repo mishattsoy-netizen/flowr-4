@@ -44,7 +44,9 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
     ...(timezone ? { timeZone: timezone } : {}),
   });
 
-  const timeStr = new Intl.DateTimeFormat('en-US', fmtOpts({ hour: 'numeric', minute: '2-digit', hour12 })).format(now);
+  const timeParts = new Intl.DateTimeFormat('en-US', fmtOpts({ hour: 'numeric', minute: '2-digit', hour12 })).formatToParts(now);
+  const timeValue = timeParts.filter(p => p.type !== 'dayPeriod').map(p => p.value).join('').trim();
+  const dayPeriod = timeParts.find(p => p.type === 'dayPeriod')?.value;
   const dateStr = new Intl.DateTimeFormat('en-US', fmtOpts({ weekday: 'long', month: 'long', day: 'numeric' })).format(now);
 
   const hours = Number(new Intl.DateTimeFormat('en-US', fmtOpts({ hour: 'numeric', hour12: false })).format(now));
@@ -61,7 +63,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
   ];
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col relative">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col relative">
       {onUpdateData && isEditing && (
         <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[var(--radius-small)] p-0.5">
@@ -72,7 +74,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
                 className={cn(
                   'px-2.5 py-0.5 text-[10px] font-semibold rounded-[4px] transition-colors',
                   style === s.key
-                    ? 'bg-[var(--bone-15)] text-[var(--bone-100)]'
+                    ? 'bg-dark text-[var(--bone-100)]'
                     : 'text-[var(--bone-30)] hover:text-[var(--bone-100)]'
                 )}
               >
@@ -101,14 +103,20 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
           </div>
         </div>
       )}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-5">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-5">
         {style === 'simple' && (
-           <p className="text-7xl font-display font-normal text-foreground tabular-nums" style={{ letterSpacing: '-0.03em' }}>{timeStr}</p>
+          <div className="flex items-baseline gap-1.5">
+            <p className="text-7xl font-display font-normal text-foreground tabular-nums tracking-tighter">{timeValue}</p>
+            {dayPeriod && <p className="text-2xl font-display font-medium text-muted-foreground uppercase">{dayPeriod}</p>}
+          </div>
         )}
         {style === 'datetime' && (
-          <div className="text-center space-y-1.5">
-             <p className="text-6xl font-display font-normal text-foreground tabular-nums" style={{ letterSpacing: '-0.03em' }}>{timeStr}</p>
-            <p className="text-sm font-medium text-muted-foreground">{dateStr}</p>
+          <div className="text-center space-y-1">
+            <div className="flex items-baseline justify-center gap-1.5">
+              <p className="text-6xl font-display font-normal text-foreground tabular-nums tracking-tighter">{timeValue}</p>
+              {dayPeriod && <p className="text-xl font-display font-medium text-muted-foreground uppercase">{dayPeriod}</p>}
+            </div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{dateStr}</p>
           </div>
         )}
         {style === 'analog' && (

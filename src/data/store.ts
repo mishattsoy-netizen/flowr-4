@@ -225,6 +225,7 @@ export const useStore = create<AppState>()(
       toolbarPosition: null,
       mixedLayoutSplit: 50,
       isFullWidth: false,
+      isTabsHeaderVisible: true,
       appStyle: 'v3',
       dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
       defaultDashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
@@ -259,6 +260,7 @@ export const useStore = create<AppState>()(
       assistantInput: "",
       thinkingEnabled: false,
       advisorEnabled: false,
+      pendingAdvisorState: null,
       showPaidModels: false,
 
       // ─── Actions ─────────────────────────────────────────
@@ -299,6 +301,7 @@ export const useStore = create<AppState>()(
       setToolbarPosition: (pos) => set({ toolbarPosition: pos }),
       setMixedLayoutSplit: (split) => set({ mixedLayoutSplit: split }),
       toggleFullWidth: () => set((state) => ({ isFullWidth: !state.isFullWidth })),
+      toggleTabsHeader: () => set((state) => ({ isTabsHeaderVisible: !state.isTabsHeaderVisible })),
       setAppStyle: (appStyle) => set({ appStyle }),
 
       setWorkspaces: (workspaces) => set({ workspaces }),
@@ -368,7 +371,7 @@ export const useStore = create<AppState>()(
 
       clearAIChat: async () => {
         const { activeEntityId, activeChatId, fetchAISessionContext } = get();
-        set({ aiMessages: [], aiSessionContext: null, activeMode: 'default', activeIntentTag: null });
+        set({ aiMessages: [], aiSessionContext: null, activeMode: 'default', activeIntentTag: null, pendingAdvisorState: null });
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
           if (isSupabaseEnabled) {
@@ -400,21 +403,28 @@ export const useStore = create<AppState>()(
         tempChatMessages: [],
         aiMessages: [],
         aiSessionContext: null,
+        pendingAdvisorState: null,
       }),
 
       startNewChat: async () => {
         try {
           const conv = await createConversation('New Chat');
-          set({
-            activeChatId: conv.id,
-            isTempChat: false,
-            tempChatMessages: [],
-            aiMessages: [],
-            aiSessionContext: null,
-            chatConversations: [conv, ...get().chatConversations],
-          });
+          if (conv) {
+            set({
+              activeChatId: conv.id,
+              isTempChat: false,
+              tempChatMessages: [],
+              aiMessages: [],
+              aiSessionContext: null,
+              pendingAdvisorState: null,
+              chatConversations: [conv, ...get().chatConversations],
+            });
+          } else {
+            get().startTempChat();
+          }
         } catch (e) {
           console.error('Failed to create conversation', e);
+          get().startTempChat();
         }
       },
 
@@ -437,6 +447,7 @@ export const useStore = create<AppState>()(
             tempChatMessages: [],
             aiMessages: aiMsgs,
             aiSessionContext: null,
+            pendingAdvisorState: null,
           });
           // Fetch fresh context for the loaded chat
           get().fetchAISessionContext(id);
@@ -484,6 +495,10 @@ export const useStore = create<AppState>()(
         const { aiMessages, chatConversations, aiSessionContext } = get()
         try {
           const conv = await createConversation('New Chat')
+          if (!conv) {
+            console.warn('Cannot save temp chat — not authenticated')
+            return
+          }
           const userAndAssistant = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant')
           for (const m of userAndAssistant) {
             await insertMessage(conv.id, m.role as 'user' | 'assistant', m.content || '', m.model, undefined, m.image_description, undefined)
@@ -564,6 +579,7 @@ export const useStore = create<AppState>()(
       setActiveMode: (mode) => set({ activeMode: mode }),
       setThinkingEnabled: (enabled) => set({ thinkingEnabled: enabled }),
       setAdvisorEnabled: (enabled) => set({ advisorEnabled: enabled }),
+      setPendingAdvisorState: (state) => set({ pendingAdvisorState: state }),
       setActiveIntentTag: (tag) => set({ activeIntentTag: tag }),
       setReplyMessage: (msg) => set({ activeReplyMessage: msg }),
       setShowPaidModels: (show) => set({ showPaidModels: show }),
@@ -627,7 +643,7 @@ export const useStore = create<AppState>()(
         // Persist user message if in a named conversation
         const activeChatId = get().activeChatId;
         if (activeChatId && !get().isTempChat) {
-          insertMessage(activeChatId, 'user', content).catch(console.error);
+          insertMessage(activeChatId, 'user', content).catch(e => console.warn('[Store] Failed to persist user message:', e));
         }
 
         try {
@@ -640,12 +656,11 @@ export const useStore = create<AppState>()(
             }
           }
 
-          // Handle vision / PDF: extract first image or pdf attachment
-          let imageBuffer: string | undefined = undefined;
-          const firstImage = attachments.find(a => a.type === 'image' || a.type === 'pdf');
-          if (firstImage?.url?.startsWith('data:')) {
-            imageBuffer = firstImage.url.split(',')[1];
-          }
+          // Handle vision / PDF: extract all image/pdf attachments as base64 array
+          const imageAttachments = attachments.filter(a => (a.type === 'image' || a.type === 'pdf') && a.url?.startsWith('data:'));
+          const imageBuffers: string[] = imageAttachments.map(a => a.url.split(',')[1]);
+          const imageBuffer: string | undefined = imageBuffers[0];
+          const imagesArray: string[] | undefined = imageBuffers.length > 1 ? imageBuffers : undefined;
 
           // Send current conversation as history so the bot has context.
           // Strip embedded base64 images — they balloon prompts to 60k+ tokens and
@@ -659,14 +674,22 @@ export const useStore = create<AppState>()(
           }
           const historyMessages = aiMessages
             .filter(m => m.role === 'user' || m.role === 'assistant')
-            .map(m => ({
-              role: m.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: stripHeavyMedia(m.content || '', m.image_description) }],
-            }))
+            .map(m => {
+              let text = stripHeavyMedia(m.content || '', m.image_description)
+              // Inject full digital twin into user message text so non-vision chains
+              // have complete image context in clientHistory
+              if (m.role === 'user' && m.image_description) {
+                text = `${text}\n\n[VISION CONTEXT - DIGITAL TWIN]\n${m.image_description}`.trim()
+              } else if (m.role === 'user' && !m.image_description && m.attachments?.some(a => a.type === 'image' || a.type === 'pdf')) {
+                text = `${text}\n[Image attached]`.trim()
+              }
+              return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text }] }
+            })
 
           const controller = new AbortController();
           set({ aiAbortController: controller });
 
+          const pendingState = get().pendingAdvisorState;
           const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers,
@@ -674,6 +697,7 @@ export const useStore = create<AppState>()(
             body: JSON.stringify({
               prompt: content,
               buffer: imageBuffer,
+              images: imagesArray,
               activeEntityId: get().activeEntityId,
               activeChatId: get().activeChatId,
               aiApiKey: get().aiApiKey,
@@ -684,6 +708,7 @@ export const useStore = create<AppState>()(
               replyContext,
               thinkingEnabled: get().thinkingEnabled,
               advisorEnabled: get().advisorEnabled,
+              pendingAdvisorState: pendingState,
               isTempChat: get().isTempChat,
               clientHistory: historyMessages,
             }),
@@ -709,11 +734,58 @@ export const useStore = create<AppState>()(
             let accumulatedContent = '';
             let sseBuffer = '';
             let lastModel = '';
-            let lastPipelineSteps = undefined;
-            let lastImageDescription = undefined;
-            let lastImagePrompt = undefined;
+            let lastPipelineSteps: any = undefined;
+            let lastImageDescription: string | undefined = undefined;
+            let lastImagePrompt: string | undefined = undefined;
+            let lastClassificationTrace: any = undefined;
+            let lastRoutingTrace: any = undefined;
+            let lastLogId: any = undefined;
+            let lastCitations: any = undefined;
+            let lastTranscriptMd: any = undefined;
+            let lastToolResults: any = undefined;
+            let lastAdvisorQuestions: string | undefined = undefined;
+            let lastAdvisorState: string | undefined = undefined;
 
             if (reader) {
+              let flushTimer: ReturnType<typeof setTimeout> | null = null;
+              let pendingContent = '';
+
+              const flushUpdate = () => {
+                flushTimer = null;
+                const contentToSet = pendingContent;
+                set((s) => ({
+                  aiMessages: s.aiMessages.map((m) =>
+                    m.id === placeholderMessage.id
+                  ? {
+                      ...m,
+                      content: contentToSet,
+                      model: lastModel || m.model,
+                      tokens_used: Math.ceil((content.length + contentToSet.length) / 4),
+                      image_description: lastImageDescription ?? m.image_description,
+                      image_prompt: lastImagePrompt ?? (m as any).image_prompt,
+                      model_chain: (m as any).model_chain,
+                      pipelineSteps: lastPipelineSteps ?? m.pipelineSteps,
+                      classification_trace: lastClassificationTrace ?? m.classification_trace,
+                      routing_trace: lastRoutingTrace ?? m.routing_trace,
+                      logId: lastLogId ?? m.logId,
+                      citations: lastCitations ?? m.citations,
+                      transcript_md: lastTranscriptMd ?? (m as any).transcript_md,
+                      toolResults: lastToolResults ?? (m as any).toolResults,
+                      advisor_questions: lastAdvisorQuestions ?? (m as any).advisor_questions,
+                      advisor_state: lastAdvisorState ?? (m as any).advisor_state,
+                    }
+                      : m
+                  ),
+                  ...(get().isTempChat ? {
+                    tempChatMessages: s.aiMessages.map((m) =>
+                      m.id === placeholderMessage.id
+                        ? { ...m, content: contentToSet, model: lastModel || m.model }
+                        : m
+                    )
+                  } : {}),
+                }));
+              };
+
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -733,42 +805,32 @@ export const useStore = create<AppState>()(
                     try {
                       const parsed = JSON.parse(data);
                       if (parsed.content) {
-                        accumulatedContent += parsed.content;
-                        set((s) => ({
-                          aiMessages: s.aiMessages.map((m) =>
-                            m.id === placeholderMessage.id
-                              ? {
-                                  ...m,
-                                  content: accumulatedContent,
-                                  model: parsed.model || m.model,
-                                  tokens_used: Math.ceil((content.length + accumulatedContent.length) / 4),
-                                  image_description: parsed.image_description ?? m.image_description,
-                                  image_prompt: (parsed as any).image_prompt ?? (m as any).image_prompt,
-                                  model_chain: parsed.model_chain ?? m.model_chain,
-                                  classification_trace: parsed.classification_trace ?? m.classification_trace,
-                                  routing_trace: parsed.routing_trace ?? m.routing_trace,
-                                  pipelineSteps: parsed.pipeline_steps ?? m.pipelineSteps,
-                                  logId: parsed.log_id ?? m.logId,
-                                  citations: parsed.citations ?? m.citations,
-                                  transcript_md: parsed.transcript_md ?? (m as any).transcript_md,
-                                  toolResults: parsed.toolResults ?? (m as any).toolResults,
-                                }
-                              : m
-                          ),
-                          ...(get().isTempChat ? {
-                            tempChatMessages: s.aiMessages.map((m) =>
-                              m.id === placeholderMessage.id
-                                ? { ...m, content: accumulatedContent, model: parsed.model || m.model, image_description: parsed.image_description ?? m.image_description }
-                                : m
-                            )
-                          } : {}),
-                        }));
+                        const isFinalMetadata = parsed.type !== undefined;
+                        if (isFinalMetadata && accumulatedContent.length > 0) {
+                          // Final metadata with streamed content before it — skip to avoid double
+                        } else {
+                          // Streaming chunk, or final metadata with no prior stream (e.g. advisor)
+                          accumulatedContent = isFinalMetadata ? parsed.content : accumulatedContent + parsed.content;
+                          pendingContent = accumulatedContent;
 
-                        // Capture metadata for persistence
+                          if (!flushTimer) {
+                            flushTimer = setTimeout(flushUpdate, 50);
+                          }
+                        }
+
+                        // Capture metadata for persistence (runs for both streaming and final)
                         if (parsed.model) lastModel = parsed.model;
                         if (parsed.pipeline_steps) lastPipelineSteps = parsed.pipeline_steps;
                         if (parsed.image_description) lastImageDescription = parsed.image_description;
                         if ((parsed as any).image_prompt) lastImagePrompt = (parsed as any).image_prompt;
+                        if (parsed.classification_trace) lastClassificationTrace = parsed.classification_trace;
+                        if (parsed.routing_trace) lastRoutingTrace = parsed.routing_trace;
+                        if (parsed.log_id) lastLogId = parsed.log_id;
+                        if (parsed.citations) lastCitations = parsed.citations;
+                        if ((parsed as any).transcript_md) lastTranscriptMd = (parsed as any).transcript_md;
+                        if ((parsed as any).toolResults) lastToolResults = (parsed as any).toolResults;
+                        if ((parsed as any).advisor_questions) lastAdvisorQuestions = (parsed as any).advisor_questions;
+                        if ((parsed as any).advisor_state) lastAdvisorState = (parsed as any).advisor_state;
                       } else if (parsed.status) {
                         set((s) => ({
                           aiMessages: s.aiMessages.map((m) =>
@@ -784,12 +846,45 @@ export const useStore = create<AppState>()(
                   }
                 }
               }
+              // Final flush: ensure all accumulated content is rendered
+              if (flushTimer) clearTimeout(flushTimer);
+              pendingContent = accumulatedContent;
+              flushUpdate();
+            }
+            // Handle advisor state update after stream completes
+            if (lastAdvisorState) {
+              try {
+                const advisorStateJson = JSON.parse(lastAdvisorState);
+                if (advisorStateJson.phase === 'planning') {
+                  set({ pendingAdvisorState: advisorStateJson });
+                } else {
+                  set({ pendingAdvisorState: null });
+                }
+              } catch (e) {
+                set({ pendingAdvisorState: null });
+              }
             }
             set({ isAILoading: false, aiAbortController: null });
+            // Backfill image_description onto the user message so future history
+            // turns can reference what was in the image, even for non-vision chains
+            if (lastImageDescription) {
+              set(s => ({
+                aiMessages: s.aiMessages.map(m =>
+                  m.id === userMessage.id ? { ...m, image_description: lastImageDescription } : m
+                )
+              }))
+            }
+            // Skip persistence for advisor planning messages (not final content)
+            if (lastAdvisorQuestions && lastAdvisorState) {
+              try {
+                const advState = JSON.parse(lastAdvisorState);
+                if (advState.phase === 'planning') return;
+              } catch (e) { /* ignore parse errors */ }
+            }
             // Persist assistant reply
             const chatId = get().activeChatId;
             if (chatId && !get().isTempChat && accumulatedContent) {
-              insertMessage(chatId, 'assistant', accumulatedContent, lastModel, lastPipelineSteps, lastImageDescription, lastImagePrompt).catch(console.error);
+              insertMessage(chatId, 'assistant', accumulatedContent, lastModel, lastPipelineSteps, lastImageDescription, lastImagePrompt).catch(e => console.warn('[Store] Failed to persist assistant message:', e));
               // Auto-set title from first message if still default
               const conv = get().chatConversations.find(c => c.id === chatId);
               if (conv && conv.title === 'New Chat' && content) {
@@ -802,8 +897,8 @@ export const useStore = create<AppState>()(
 
           const data = await res.json();
           set(s => ({
-            aiMessages: s.aiMessages.map(m => m.id === placeholderMessage.id
-              ? {
+            aiMessages: s.aiMessages.map(m => {
+              if (m.id === placeholderMessage.id) return {
                 ...m,
                 content: data.content,
                 model: data.model,
@@ -816,8 +911,10 @@ export const useStore = create<AppState>()(
                 pipelineSteps: data.pipeline_steps,
                 image_description: data.image_description
               }
-              : m
-            ),
+              // Backfill image_description onto the user message for future history context
+              if (m.id === userMessage.id && data.image_description) return { ...m, image_description: data.image_description }
+              return m
+            }),
             isAILoading: false,
             aiAbortController: null,
           }));
@@ -825,7 +922,7 @@ export const useStore = create<AppState>()(
           // Persist non-streaming assistant reply
           const cid = get().activeChatId;
           if (cid && !get().isTempChat && data.content) {
-            insertMessage(cid, 'assistant', data.content, data.model, data.pipeline_steps, data.image_description, data.image_prompt).catch(console.error);
+            insertMessage(cid, 'assistant', data.content, data.model, data.pipeline_steps, data.image_description, data.image_prompt).catch(e => console.warn('[Store] Failed to persist non-stream assistant message:', e));
             // Auto-set title from first message if still default
             const conv = get().chatConversations.find(c => c.id === cid);
             if (conv && conv.title === 'New Chat' && content) {
@@ -854,7 +951,7 @@ export const useStore = create<AppState>()(
               aiAbortController: null,
             });
             if (activeChatId && !isTempChat) {
-              insertMessage(activeChatId, 'assistant', interruptedContent).catch(console.error);
+              insertMessage(activeChatId, 'assistant', interruptedContent).catch(e => console.warn('[Store] Failed to persist interrupted message:', e));
             }
           } else {
             set(s => ({
@@ -948,8 +1045,8 @@ export const useStore = create<AppState>()(
 
       setNavigationState: (id, history, index) => set({ activeEntityId: id, navigationHistory: history, historyIndex: index }),
 
-      goBack: () => { if (get().historyIndex > 0) window.history.back(); },
-      goForward: () => { if (get().historyIndex < get().navigationHistory.length - 1) window.history.forward(); },
+      goBack: () => window.history.back(),
+      goForward: () => window.history.forward(),
 
       addEntity: (entity) => {
         // Content quality gate for AI-generated notes
@@ -1473,6 +1570,7 @@ export const useStore = create<AppState>()(
         aiSidebarWidth: state.aiSidebarWidth,
         mixedLayoutSplit: state.mixedLayoutSplit,
         isFullWidth: state.isFullWidth,
+        isTabsHeaderVisible: state.isTabsHeaderVisible,
         appStyle: state.appStyle,
         dashboardLayout: state.dashboardLayout,
         defaultDashboardLayout: state.defaultDashboardLayout,

@@ -1,60 +1,7 @@
 import { logger } from '../../logger'
 import { getProviderKeys } from '../../vault'
 import { detectMimeType } from '../image-utils'
-
-function parseSSEStream(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  onChunk: (text: string) => void
-): Promise<{ content: string; citations?: any[]; reasoning?: string }> {
-  const decoder = new TextDecoder()
-  let sseBuffer = ''
-  let fullContent = ''
-  let fullReasoning = ''
-  let citations: any[] | undefined
-
-  return new Promise((resolve, reject) => {
-    function pump(): void {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          resolve({ content: fullContent, citations, reasoning: fullReasoning || undefined })
-          return
-        }
-
-        sseBuffer += decoder.decode(value, { stream: true })
-        const parts = sseBuffer.split('\n')
-        sseBuffer = parts.pop() || ''
-
-        for (const line of parts) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta
-            if (delta) {
-              if (delta.content) {
-                fullContent += delta.content
-                onChunk(delta.content)
-              }
-              if (delta.reasoning) {
-                fullReasoning += delta.reasoning
-              }
-            }
-            if (parsed.citations) {
-              citations = parsed.citations
-            }
-          } catch {
-            // Skip malformed SSE lines
-          }
-        }
-
-        pump()
-      }).catch(reject)
-    }
-
-    pump()
-  })
-}
+import { parseSSEStream } from './stream-utils'
 
 export async function runOpenRouter(
   modelId: string,
@@ -65,7 +12,8 @@ export async function runOpenRouter(
   context?: any,
   imageBuffers?: Buffer | Buffer[]
 ): Promise<{ content: string; provider?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number }; reasoning?: string } | null> {
-  logger.info(`[OpenRouter Audit] Entering runOpenRouter: model=${modelId}, provider=${context?.openrouterProvider}, hasImages=${!!imageBuffers}`)
+  const normContext = typeof context === 'string' ? { openrouterProvider: context } : (context || {})
+  logger.info(`[OpenRouter Audit] Entering runOpenRouter: model=${modelId}, provider=${normContext.openrouterProvider}, hasImages=${!!imageBuffers}`)
   let keys = aiApiKey ? [aiApiKey] : []
 
   if (keys.length === 0) {
@@ -86,8 +34,8 @@ export async function runOpenRouter(
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     try {
-      if (context?.openrouterProvider) {
-        logger.info(`OpenRouter: Forcing provider routing to: ${context.openrouterProvider} (Key preview: ${key.substring(0, 10)}...)`)
+      if (normContext.openrouterProvider) {
+        logger.info(`OpenRouter: Forcing provider routing to: ${normContext.openrouterProvider} (Key preview: ${key.substring(0, 10)}...)`)
       }
 
       const isAnthropic = modelId.startsWith('anthropic/')
@@ -129,12 +77,22 @@ export async function runOpenRouter(
         messages.push({ role: 'user', content: prompt })
       }
 
-      const shouldStream = !!(context?.onChunk) && !context?._skipStreaming
+      const resolvedSessionId = normContext.sessionId 
+        || normContext.activeChatId 
+        || normContext.chatId 
+        || normContext.activeEntityId 
+        || undefined
+
+      const shouldStream = !!(normContext.onChunk) && !normContext._skipStreaming
       const requestBody: any = {
         model: modelId,
         messages,
-        max_tokens: context?.max_tokens || 5000,
+        max_tokens: normContext.max_tokens || 5000,
         stream: shouldStream || undefined,
+      }
+
+      if (resolvedSessionId) {
+        requestBody.session_id = String(resolvedSessionId)
       }
 
       if (hasPdf) {
@@ -143,8 +101,8 @@ export async function runOpenRouter(
         ]
       }
 
-      if (context?.openrouterProvider) {
-        const forcedSlug = (context.openrouterProvider || '').trim()
+      if (normContext.openrouterProvider) {
+        const forcedSlug = (normContext.openrouterProvider || '').trim()
         logger.info(`OpenRouter: Dynamic routing requested for provider: "${forcedSlug}" (Key preview: ${key.substring(0, 10)}...)`)
 
         requestBody.provider = {
@@ -172,7 +130,7 @@ export async function runOpenRouter(
         console.log(`[DEBUG openrouter.ts] PAYLOAD:`, JSON.stringify(logBody, null, 2));
       }
 
-      logger.info(`OpenRouter: Preparing request for model ${modelId} with provider type: ${typeof context?.openrouterProvider}, value: "${context?.openrouterProvider}"`)
+      logger.info(`OpenRouter: Preparing request for model ${modelId} with provider type: ${typeof normContext.openrouterProvider}, value: "${normContext.openrouterProvider}"`)
 
       const fetchHeaders: Record<string, string> = {
         'Authorization': `Bearer ${key}`,
@@ -187,7 +145,7 @@ export async function runOpenRouter(
         method: 'POST',
         headers: fetchHeaders,
         body: JSON.stringify(requestBody),
-        signal: context?.signal,
+        signal: normContext.signal,
       })
 
       const actualProvider = response.headers.get('x-openrouter-provider') || undefined
@@ -208,7 +166,7 @@ export async function runOpenRouter(
         // Streaming not supported by model — retry without streaming on same key
         if (shouldStream && (response.status === 400 || response.status === 422) && errBody.toLowerCase().includes('stream')) {
           logger.info(`Model ${modelId} does not support streaming — retrying without stream`)
-          const retryContext = { ...context, _skipStreaming: true }
+          const retryContext = { ...normContext, _skipStreaming: true }
           return runOpenRouter(modelId, prompt, systemPrompt, history, key, retryContext, imageBuffers)
         }
 
@@ -228,7 +186,7 @@ export async function runOpenRouter(
       // Streaming response
       if (shouldStream && response.body) {
         const reader = response.body.getReader()
-        const { content: streamedContent, citations, reasoning: streamedReasoning } = await parseSSEStream(reader, context.onChunk)
+        const { content: streamedContent, citations, reasoning: streamedReasoning } = await parseSSEStream(reader, normContext.onChunk)
 
         if (!streamedContent) {
           throw new Error('OpenRouter returned empty streamed content')

@@ -152,7 +152,7 @@ export function IconPicker({ entityId, anchorRect, onClose }: IconPickerProps) {
                       className={cn(
                         "w-10 h-10 rounded-[var(--radius-small)]  flex items-center justify-center",
                         currentIcon === iconName
-                          ? "bg-[var(--bone-15)] text-[var(--bone-100)] ring-1 ring-inset ring-[var(--bone-30)]"
+                          ? "bg-dark text-[var(--bone-100)] ring-1 ring-inset ring-[var(--bone-30)]"
                           : "text-foreground/40 hover:bg-hover hover:text-foreground"
                       )}
                     >
@@ -182,7 +182,7 @@ export function IconPicker({ entityId, anchorRect, onClose }: IconPickerProps) {
                           className={cn(
                             "w-8 h-8 rounded-[var(--radius-small)]  flex items-center justify-center",
                             currentIcon === iconName
-                              ? "bg-[var(--bone-15)] text-[var(--bone-100)] ring-1 ring-inset ring-[var(--bone-30)]"
+                              ? "bg-dark text-[var(--bone-100)] ring-1 ring-inset ring-[var(--bone-30)]"
                               : "text-foreground/40 hover:bg-hover hover:text-foreground"
                           )}
                         >

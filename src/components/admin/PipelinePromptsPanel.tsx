@@ -78,7 +78,7 @@ export default function PipelinePromptsPanel({ initialPrompts }: Props) {
   useUnsavedChanges(isDirty, handleGlobalSave)
 
   return (
-    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-[var(--bone-12)]">
+    <section className="flex flex-col gap-4 p-4 rounded-[16px] bg-white/5 border border-[var(--bone-6)]">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <Code2 className="w-5 h-5 text-accent" />

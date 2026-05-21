@@ -47,6 +47,8 @@ RESEARCH: Exhaustive topic research and synthesis.
 ADVISOR: Strategic advice, coaching, or planning.
 MULTI_CHAIN: Multiple intents combined.
 
+PRIOR IMAGE: If history contains [VISION CONTEXT - DIGITAL TWIN] or [Image: ...] and the message refers to it ("from my image", "in the picture", "from the document"), the answer is in history, not on the web — classify REGULAR/COMPLEX, NEVER WEB_SEARCH/RESEARCH, even if it names a product.
+
 Respond ONLY with the category name.`
 
 const TAG_CATEGORY_MAP: Record<string, IntentCategory> = {
@@ -219,8 +221,37 @@ export async function classifyIntentWithModel(
     : ''
   const lastWasImage = !!lastModelText && /(!\[|data:image|\[Image[: ])/i.test(lastModelText)
 
-  const contextHint = lastWasImage ? `\n[CONTEXT: The last response contained an image. Follow-up requests like "one more", "make it...", or "change..." should likely be IMAGE_GEN.]` : ''
+  // Vision context: did any recent turn contain an image the user uploaded (carries a
+  // digital twin)? The twin is injected into the USER message text as [VISION CONTEXT...]
+  // or [Image: ...]. If so, follow-ups referring to "my image/picture/photo/screenshot/
+  // document" are about that existing visual content — they must NOT be web-searched.
+  const historyHasVisionContext = history.some(h => {
+    const t = h.content || h.parts?.[0]?.text || ''
+    return /\[VISION CONTEXT|\[Image[: \]]|data:image|\[Image attached\]/i.test(t)
+  })
+  const refersToPriorImage = /\b(my|the|that|this)\s+(image|picture|photo|screenshot|pic|document|doc|file|attachment)\b|\bfrom\s+(the|my)\s+(image|picture|photo|pic|screenshot)\b|\bin\s+the\s+(image|picture|photo|screenshot)\b/i.test(message)
+
+  let contextHint = ''
+  if (lastWasImage) {
+    contextHint = `\n[CONTEXT: The last response contained an image. Follow-up requests like "one more", "make it...", or "change..." should likely be IMAGE_GEN.]`
+  } else if (historyHasVisionContext && refersToPriorImage) {
+    contextHint = `\n[CONTEXT: An image the user already uploaded is described in the conversation history. The user is referring to that existing image's content. Answer from history — classify as REGULAR or COMPLEX, NEVER WEB_SEARCH or RESEARCH.]`
+  } else if (historyHasVisionContext) {
+    contextHint = `\n[CONTEXT: An image the user uploaded earlier is described in the conversation history. If this message refers to it, answer from that context — prefer REGULAR over WEB_SEARCH.]`
+  }
   const finalUserPrompt = `${replyPrefix}${contextHint}\nUser: "${message}"`
+
+  // Hard guard: an explicit reference to a previously-uploaded image must never be
+  // sent to the web. Search chains drop history (incl. the vision digital twin), so the
+  // model would lose all knowledge of the image and answer about something unrelated.
+  // Downgrade WEB_SEARCH/RESEARCH to REGULAR in that case, regardless of model output.
+  const guardCategory = (cat: IntentCategory | 'MULTI_CHAIN'): IntentCategory | 'MULTI_CHAIN' => {
+    if ((cat === 'WEB_SEARCH' || cat === 'RESEARCH') && historyHasVisionContext && refersToPriorImage) {
+      logger.info(`[Classifier guard] Downgrading ${cat} → REGULAR: message refers to a prior uploaded image`)
+      return 'REGULAR'
+    }
+    return cat
+  }
 
   for (const modelConfig of activeChain) {
     if (!modelConfig.is_enabled) continue
@@ -267,12 +298,13 @@ export async function classifyIntentWithModel(
 
         for (const cat of VALID_CATEGORIES) {
           if (categoryText === cat || cleaned === cat) {
+            const finalCat = guardCategory(cat)
             const displayKey = traceContext.usedKeyIndex ? `${key} ${traceContext.usedKeyIndex}` : `${key} 1`
             trace.push({ model: modelConfig.id, key: displayKey, success: true })
-            tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: cat }, Date.now() - t0)
+            tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: finalCat }, Date.now() - t0)
             trackModelUsage(modelConfig.id, modelConfig.provider)
             return {
-              category: cat,
+              category: finalCat,
               classifierModel: modelConfig.id,
               trace,
               trigger_type: 'ai',
@@ -284,12 +316,13 @@ export async function classifyIntentWithModel(
         for (const cat of VALID_CATEGORIES) {
           const regex = new RegExp(`\\b${cat}\\b`, 'i')
           if (regex.test(categoryText)) {
+            const finalCat = guardCategory(cat)
             const displayKey = traceContext.usedKeyIndex ? `${key} ${traceContext.usedKeyIndex}` : `${key} 1`
             trace.push({ model: modelConfig.id, key: displayKey, success: true })
-            tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: cat }, Date.now() - t0)
+            tracer?.recordSuccess({ ...traceMeta, key: displayKey, output: finalCat }, Date.now() - t0)
             trackModelUsage(modelConfig.id, modelConfig.provider)
             return {
-              category: cat,
+              category: finalCat,
               classifierModel: modelConfig.id,
               trace,
               trigger_type: 'ai',

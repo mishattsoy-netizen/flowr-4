@@ -459,12 +459,12 @@ export default function RouterManager({
 
   return (
     <div className={cn(
-      "bg-panel border border-[var(--bone-12)] rounded-big px-3 pb-2 pt-3 h-full flex flex-col relative",
+      "bg-panel border border-[var(--bone-6)] rounded-big px-3 pb-2 pt-3 h-full flex flex-col relative",
       hasChanges ? "ring-1 ring-accent/20" : ""
     )}>
       {/* Preset Manager Popup */}
       {isPresetOpen && (
-        <div className="absolute top-12 right-4 w-72 bg-panel/95 backdrop-blur-xl border border-[var(--bone-12)] rounded-big shadow-2xl z-50 animate-in zoom-in-95 fade-in duration-0 p-4">
+        <div className="absolute top-12 right-4 w-72 bg-panel/95 backdrop-blur-xl border border-[var(--bone-6)] rounded-big shadow-2xl z-50 animate-in zoom-in-95 fade-in duration-0 p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground/80">Chain Presets</h4>
             <button 

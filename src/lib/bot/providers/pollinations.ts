@@ -1,5 +1,6 @@
 import { logger } from '../../logger'
 import { getHighestResolution } from '../image-utils'
+import { streamOpenAICompatible } from './stream-utils'
 
 const POLLINATIONS_TIMEOUT_MS = 60000
 
@@ -15,8 +16,7 @@ export async function runPollinations(prompt: string, model?: string): Promise<B
     const seed = Math.floor(Math.random() * 1000000)
     let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${seed}&nologo=true`
     if (model) url += `&model=${encodeURIComponent(model)}`
-    
-    // Appending resolution last to ensure it takes precedence
+
     const res = getHighestResolution(model || 'default', 'pollinations')
     url += `&width=${res.width}&height=${res.height}`
 
@@ -54,37 +54,25 @@ export async function runPollinationsText(
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
 
-    const response = await withTimeout(
-      fetch('https://gen.pollinations.ai/v1/chat/completions', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ 
-          model: modelId, 
-          messages, 
+    const result = await withTimeout(
+      streamOpenAICompatible(
+        'https://gen.pollinations.ai/v1/chat/completions',
+        {
+          model: modelId,
+          messages,
           seed: Math.floor(Math.random() * 1000000),
-          max_tokens: context?.max_tokens || undefined
-        })
-      }),
+          max_tokens: context?.max_tokens || undefined,
+        },
+        context?.onChunk,
+        context?.signal,
+        apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
+      ),
       POLLINATIONS_TIMEOUT_MS,
       `Pollinations text [${modelId}]`
     )
 
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => '')
-      throw new Error(`Pollinations text [${modelId}] ${response.status}: ${response.statusText} — ${errBody}`)
-    }
-
-    const data = await response.json()
-    const msg = data?.choices?.[0]?.message
-    if (!msg?.content) throw new Error(`Pollinations [${modelId}] returned empty content`)
-
-    const usage = data.usage ? {
-      prompt_tokens: data.usage.prompt_tokens,
-      completion_tokens: data.usage.completion_tokens,
-      total_tokens: data.usage.total_tokens,
-    } : undefined
-
-    return { content: msg.content, usage }
+    if (!result) throw new Error(`Pollinations [${modelId}] returned empty response`)
+    return result
   } catch (error: any) {
     logger.error(`Pollinations text [${modelId}] failed: ${error.message}`)
     return null

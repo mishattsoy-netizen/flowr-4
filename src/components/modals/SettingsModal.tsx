@@ -4,6 +4,9 @@ import { useStore, SettingsTab } from '@/data/store';
 import { X, User, Monitor, Zap, Settings as SettingsIcon, LucideIcon, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import ProfileSection from '@/components/profile/ProfileSection';
+import { useAuth } from '@/components/AuthProvider';
+import { Toggle } from '@/components/ui/Toggle';
 
 
 
@@ -18,7 +21,7 @@ import { cn } from '@/lib/utils';
 
 
 export function SettingsModal() {
-  const { modal, closeModal, theme, toggleTheme, interfaceSize, setInterfaceSize } = useStore();
+  const { modal, closeModal, theme, toggleTheme, interfaceSize, setInterfaceSize, isTabsHeaderVisible, toggleTabsHeader } = useStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('interface');
   const [isVisible, setIsVisible] = useState(false);
 
@@ -44,14 +47,18 @@ export function SettingsModal() {
     }
   }, [isVisible, modal?.kind]);
 
+  const { isAdmin } = useAuth();
+
   if (!isVisible) return null;
 
   const tabs: { id: SettingsTab | 'admin'; label: string; icon: LucideIcon }[] = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'interface', label: 'Interface', icon: Monitor },
     { id: 'account', label: 'Account', icon: SettingsIcon },
-    { id: 'admin', label: 'Admin Suite', icon: ShieldCheck },
+    ...(isAdmin ? [{ id: 'admin' as const, label: 'Admin Suite', icon: ShieldCheck }] : []),
   ];
+
+  if (activeTab === 'admin' && !isAdmin) setActiveTab('interface');
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 overflow-hidden">
@@ -216,17 +223,34 @@ export function SettingsModal() {
                       <span>115% scale</span>
                     </div>
                   </section>
+
+                  {/* Tabs Header Section */}
+                  <section>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-xs font-semibold text-bone-70 uppercase tracking-widest">Tabs Header</h4>
+                        <p className="text-sm text-bone-70 mt-1">Show or hide the tabs navigation bar.</p>
+                      </div>
+                      <Toggle
+                        checked={isTabsHeaderVisible}
+                        onChange={() => toggleTabsHeader()}
+                        size="sm"
+                      />
+                    </div>
+                  </section>
                 </div>
               )}
 
 
-              {activeTab !== 'interface' && activeTab !== 'admin' && (
+              {activeTab === 'profile' && <ProfileSection />}
+
+              {activeTab === 'account' && (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <div className="w-20 h-20 rounded-[24px] bg-accent/5 border border-accent/10 flex items-center justify-center mb-6 overflow-hidden relative group">
                     <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent opacity-0 group-hover:opacity-100" />
                     <Zap strokeWidth={2} className="w-10 h-10 text-accent/60 relative z-10" />
                   </div>
-                  <h4 className="text-2xl font-display font-semibold mb-2">{tabs.find(t => t.id === activeTab)?.label} Settings</h4>
+                  <h4 className="text-2xl font-display font-semibold mb-2">Account Settings</h4>
                   <p className="text-bone-70/80 max-max-w-sm text-[15px] leading-relaxed">
                     This module is currently being optimized for high-fidelity performance. Stay tuned for a seamless experience.
                   </p>

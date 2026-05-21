@@ -29,6 +29,7 @@
 - Semi-transparent glass fills over solid backgrounds
 - Square/rounded-rect shapes (`rounded-[4px]`) for calendar date cells
 - Borderless selected states (no `border` on selected items)
+- **Tab switchers:** Clean, borderless `bg-dark` containers with a rounded active sliding pill (`bg-[var(--bone-10)]`) rather than solid `bg-background` or borders, providing a unified dark aesthetic across widgets.
 - Subtle hover backgrounds (`hover:bg-white/5`) over bordered buttons
 - Compact, tight spacing
 - `font-ui-label` for small uppercase labels (Today, Clear, etc.)

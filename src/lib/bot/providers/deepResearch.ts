@@ -52,7 +52,7 @@ function extractUrls(searchText: string): string[] {
   return urls
 }
 
-async function detectGaps(allFindings: string, originalQuestion: string, gapSystemPrompt: string, gapModel: any): Promise<string[]> {
+async function detectGaps(allFindings: string, originalQuestion: string, gapSystemPrompt: string, gapModel: any, context?: any): Promise<string[]> {
   const gapPrompt = `${gapSystemPrompt}\n\nORIGINAL QUESTION: ${originalQuestion}\n\nFINDINGS SO FAR:\n${allFindings}`
 
   try {
@@ -65,7 +65,7 @@ async function detectGaps(allFindings: string, originalQuestion: string, gapSyst
       raw = typeof res === 'object' && res !== null ? (res as any).content ?? null : res ?? null
     } else if (provider === 'openrouter') {
       const { runOpenRouter } = await import('./openrouter')
-      const res = await runOpenRouter(gapModel.id, gapPrompt, undefined, [], undefined, { openrouterProvider: gapModel.openrouter_provider })
+      const res = await runOpenRouter(gapModel.id, gapPrompt, undefined, [], undefined, { ...(context || {}), openrouterProvider: gapModel.openrouter_provider })
       raw = typeof res === 'object' && res !== null ? (res as any).content ?? null : res ?? null
     } else if (provider === 'groq') {
       const { runGroq } = await import('./groq')
@@ -137,7 +137,7 @@ export async function runDeepResearchChain(prompt: string, context?: any): Promi
 
   // Round 2 — gap detection + targeted follow-up
   if (gapModel) {
-    const gaps = await detectGaps(allFindings, researchQuery, gapSystemPrompt, gapModel)
+    const gaps = await detectGaps(allFindings, researchQuery, gapSystemPrompt, gapModel, context)
     logger.info(`Deep research gaps detected: ${JSON.stringify(gaps)}`)
 
     if (gaps.length > 0) {

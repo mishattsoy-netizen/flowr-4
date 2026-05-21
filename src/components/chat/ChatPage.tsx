@@ -3,6 +3,7 @@
 import { useStore } from '@/data/store';
 import { ChatConversation } from './ChatConversation';
 import { AIAssistant } from '@/components/assistant/AIAssistant';
+import { Trash2 } from 'lucide-react';
 
 export default function ChatPage() {
   const activeChatId = useStore(s => s.activeChatId);
@@ -20,18 +21,33 @@ export default function ChatPage() {
 
         {/* Top fade + title */}
         <div
-          className="absolute top-0 left-0 right-0 h-16 pointer-events-none flex items-start px-6 pt-3 gap-3"
+          className="absolute top-0 left-0 right-0 h-16 pointer-events-none flex items-start justify-between px-6 pt-3 gap-3"
           style={{ zIndex: 40, background: 'linear-gradient(to bottom, var(--color-background) 0%, transparent 100%)' }}
         >
-          <h2 className="text-sm font-medium truncate text-[var(--bone-100)] tracking-wide">
-            {title}
-          </h2>
-          {isTempChat && (
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-medium truncate text-[var(--bone-100)] tracking-wide">
+              {title}
+            </h2>
+            {isTempChat && (
+              <button
+                onClick={() => useStore.getState().saveTempChat()}
+                className="pointer-events-auto text-[10px] font-bold px-2.5 py-1 rounded-[8px] bg-accent/10 text-accent hover:bg-accent/20 transition-colors shrink-0"
+              >
+                Save Chat
+              </button>
+            )}
+          </div>
+          
+          {!isTempChat && activeChatId && (
             <button
-              onClick={() => useStore.getState().saveTempChat()}
-              className="pointer-events-auto text-[10px] font-bold px-2.5 py-1 rounded-[8px] bg-accent/10 text-accent hover:bg-accent/20 transition-colors shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                useStore.getState().openModal({ kind: 'deleteConfirm', entityId: activeChatId, isChat: true });
+              }}
+              className="pointer-events-auto w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+              title="Delete Chat"
             >
-              Save Chat
+              <Trash2 strokeWidth={2} className="w-4 h-4" />
             </button>
           )}
         </div>

@@ -12,9 +12,31 @@ export type BlockInput = {
 export function looksLikeMarkdown(text: string): boolean {
   if (!text.trim()) return false;
   const lines = text.split('\n').filter(l => l.trim().length > 0);
-  const mdLineRe = /^(\s*)(-|\*|\d+\.|#{1,3} |\[[ x]\] |>)/;
+  const mdLineRe = /^(\s*)(-|\*|\d+\.|#{1,3} |\[[ x]\] |>|\|)/;
   const matches = lines.filter(l => mdLineRe.test(l));
   return matches.length >= 2;
+}
+
+// A pipe-delimited table row: "| a | b |" or "a | b". Requires at least one pipe.
+function isTableRow(line: string): boolean {
+  const t = line.trim();
+  if (!t.includes('|')) return false;
+  // Must look like cells, not just prose containing a stray pipe at the end.
+  return /^\|?.*\|.*\|?$/.test(t) && t.replace(/[^|]/g, '').length >= 1;
+}
+
+// The separator row between header and body: "|---|:--:|---|"
+function isTableSeparator(line: string): boolean {
+  const t = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  if (!t.includes('-')) return false;
+  return t.split('|').every(cell => /^\s*:?-{1,}:?\s*$/.test(cell));
+}
+
+function splitTableCells(line: string): string[] {
+  let t = line.trim();
+  if (t.startsWith('|')) t = t.slice(1);
+  if (t.endsWith('|')) t = t.slice(0, -1);
+  return t.split('|').map(c => c.trim());
 }
 
 function escapeHtml(s: string): string {
@@ -102,7 +124,8 @@ export function parseMarkdownToBlocks(md: string): EditorBlock[] {
     stack.push({ block, depth });
   };
 
-  for (const rawLine of lines) {
+  for (let li = 0; li < lines.length; li++) {
+    const rawLine = lines[li];
     if (inFence) {
       if (rawLine.trim() === '```') {
         inFence = false;
@@ -118,6 +141,33 @@ export function parseMarkdownToBlocks(md: string): EditorBlock[] {
         fenceLines.push(rawLine);
       }
       continue;
+    }
+
+    // Table detection: a row, with the next line either another row or a separator.
+    if (rawLine.trim().startsWith('```') === false && isTableRow(rawLine)) {
+      const next = lines[li + 1];
+      const startsTable = next !== undefined && (isTableSeparator(next) || isTableRow(next));
+      if (startsTable) {
+        const tableData: string[][] = [];
+        let j = li;
+        while (j < lines.length && isTableRow(lines[j])) {
+          if (!isTableSeparator(lines[j])) {
+            tableData.push(splitTableCells(lines[j]).map(inlineToHtml));
+          }
+          j++;
+        }
+        if (tableData.length > 0) {
+          const cols = Math.max(...tableData.map(r => r.length));
+          const normalized = tableData.map(r => {
+            const row = [...r];
+            while (row.length < cols) row.push('');
+            return row;
+          });
+          pushBlock({ id: generateId(), type: 'table', content: '', tableData: normalized }, 0);
+          li = j - 1;
+          continue;
+        }
+      }
     }
 
     const { indent, kind } = classifyLine(rawLine);
@@ -201,6 +251,20 @@ function serializeBlocks(blocks: EditorBlock[], depth: number, startIndex: numbe
       case 'divider':
         line = `${indent}---`;
         break;
+      case 'table': {
+        const data = b.tableData ?? [];
+        if (data.length === 0) { line = ''; break; }
+        const cols = Math.max(...data.map(r => r.length));
+        const rowToMd = (row: string[]) => {
+          const cells = [...row];
+          while (cells.length < cols) cells.push('');
+          return `${indent}| ${cells.map(c => htmlToText(c)).join(' | ')} |`;
+        };
+        const out = [rowToMd(data[0]), `${indent}|${' --- |'.repeat(cols)}`];
+        for (let i = 1; i < data.length; i++) out.push(rowToMd(data[i]));
+        line = out.join('\n');
+        break;
+      }
       case 'text':
         if (b.style === 'title') line = `${indent}# ${htmlToText(b.content)}`;
         else if (b.style === 'heading') line = `${indent}## ${htmlToText(b.content)}`;

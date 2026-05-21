@@ -18,7 +18,7 @@ import { NewWorkspaceModal } from '../modals/NewWorkspaceModal';
 import { AIAssistant } from '../assistant/AIAssistant';
 import { CommandPalette } from './CommandPalette';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SmoothScroll } from './SmoothScroll';
 
@@ -28,6 +28,8 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   const modal = useStore(state => state.modal);
   const isSidebarCollapsed = useStore(state => state.isSidebarCollapsed);
+  const isTabsHeaderVisible = useStore(state => state.isTabsHeaderVisible);
+  const isSidebarPinned = useStore(state => state.isSidebarPinned);
   const toggleSidebar = useStore(state => state.toggleSidebar);
   const activeEntityId = useStore(state => state.activeEntityId);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
@@ -42,6 +44,13 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
   const isInternalNavRef = useRef(false);
   const [isMounted, setIsMounted] = useState(false);
   const [storeHydrated, setStoreHydrated] = useState(false);
+
+  // Strip ?guest from URL after guest entry bypass
+  useEffect(() => {
+    if (window.location.search.includes('guest=1')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // 1. Initial Hydration
   useEffect(() => {
@@ -159,13 +168,13 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
   const setAiSidebarWidth = useStore(state => state.setAiSidebarWidth);
 
   // Sync --sidebar-w CSS var on <html> when sidebar width/collapse changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     const existing = document.documentElement.style.getPropertyValue('--sidebar-w');
     if (existing && !hasHydrated) return;
 
     let w: number;
     if (hasHydrated) {
-      w = isSidebarCollapsed ? 0 : sidebarWidth;
+      w = isSidebarCollapsed ? (isTabsHeaderVisible ? 0 : 64) : sidebarWidth;
     } else {
       // Fallback: read localStorage directly when script didn't set it
       try {
@@ -181,13 +190,30 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
       } catch { w = 280; }
     }
     document.documentElement.style.setProperty('--sidebar-w', w + 'px');
-  }, [isSidebarCollapsed, sidebarWidth, hasHydrated]);
+  }, [isSidebarCollapsed, isTabsHeaderVisible, sidebarWidth, hasHydrated]);
 
   const isResizingLeftRef = useRef(false);
   const isResizingRightRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
+
+  // Hot-edge detection: expand unpinned collapsed sidebar when mouse approaches left edge
+  const edgeTriggeredRef = useRef(false);
+  useEffect(() => {
+    const handleEdgeMove = (e: MouseEvent) => {
+      const atEdge = e.clientX <= 8;
+      if (atEdge && isSidebarCollapsed && !isSidebarPinned && !edgeTriggeredRef.current) {
+        edgeTriggeredRef.current = true;
+        toggleSidebar();
+      } else if (!atEdge) {
+        edgeTriggeredRef.current = false;
+      }
+    };
+    document.addEventListener('mousemove', handleEdgeMove);
+    return () => document.removeEventListener('mousemove', handleEdgeMove);
+  }, [isSidebarCollapsed, isSidebarPinned, toggleSidebar]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingLeftRef.current && !isResizingRightRef.current) return;
@@ -198,7 +224,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
           setSidebarWidth(Math.min(Math.max(e.clientX, 250), 400));
         }
         if (isResizingRightRef.current) {
-          setAiSidebarWidth(Math.min(Math.max(window.innerWidth - e.clientX, 400), 800));
+          setAiSidebarWidth(Math.min(Math.max(window.innerWidth - e.clientX, 400), 500));
         }
       });
     };
@@ -227,7 +253,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
 
   const shellClass = "h-screen w-full overflow-hidden bg-background text-foreground";
 
-  const currentAiSidebarWidth = hasHydrated ? aiSidebarWidth : 400;
+  const currentAiSidebarWidth = hasHydrated ? Math.min(aiSidebarWidth, 500) : 400;
   const currentSidebarCollapsed = isSidebarCollapsed;
 
   return (
@@ -248,9 +274,9 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
       {/* 1. Left Sidebar Section */}
       <div
         className={cn(
-          "h-full min-h-0 shrink-0 flex flex-row relative",
+          "h-full min-w-0 min-h-0 shrink-0 flex flex-row relative",
           !currentSidebarCollapsed && "border-r border-[var(--bone-15)]",
-          currentSidebarCollapsed ? "hidden md:flex" : "fixed inset-0 z-50 md:relative md:inset-auto md:flex"
+          currentSidebarCollapsed ? "flex" : "fixed inset-0 z-50 md:relative md:inset-auto md:flex"
         )}
         style={{
           width: 'var(--sidebar-w, 280px)',
@@ -262,7 +288,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
         )}
         <div className="relative h-full w-full overflow-hidden">
           <div className="h-full">
-            <Sidebar forceFull={currentSidebarCollapsed} />
+            <Sidebar forceFull={currentSidebarCollapsed && isTabsHeaderVisible} />
           </div>
         </div>
 
@@ -327,7 +353,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
         <div
           className={cn(
             "h-full bg-sidebar shrink-0 overflow-hidden relative z-40 transition-colors duration-200",
-            (isAIAssistantExtended && isAIAssistantOpen && activeEntityId !== 'chat') && "border-l border-[var(--bone-12)]"
+            (isAIAssistantExtended && isAIAssistantOpen && activeEntityId !== 'chat') && "border-l border-[var(--bone-6)]"
           )}
           style={{
             width: (isAIAssistantExtended && isAIAssistantOpen && activeEntityId !== 'chat') ? `${currentAiSidebarWidth}px` : '0px',

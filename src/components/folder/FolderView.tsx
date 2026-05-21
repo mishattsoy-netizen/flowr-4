@@ -287,7 +287,7 @@ export function FolderView({ entity }: FolderViewProps) {
                             className={cn(
                               "absolute right-3 w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                               contextMenu?.entityId === folder.id 
-                                ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--bone-15)]" 
+                                ? "opacity-100 !text-[var(--bone-100)] !bg-dark" 
                                 : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] group-hover:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                             )}
                           >
@@ -351,7 +351,7 @@ export function FolderView({ entity }: FolderViewProps) {
                           className={cn(
                             "w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                             contextMenu?.entityId === file.id
-                              ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--bone-15)]"
+                              ? "opacity-100 !text-[var(--bone-100)] !bg-dark"
                               : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                           )}
                         >

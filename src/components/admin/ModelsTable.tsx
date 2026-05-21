@@ -477,7 +477,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
     ) : null
 
   return (
-    <div className="bg-panel border border-[var(--bone-12)] rounded-big overflow-hidden space-y-4">
+    <div className="bg-panel border border-[var(--bone-6)] rounded-big overflow-hidden space-y-4">
       {/* Preset Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-[var(--bone-6)] bg-white/[0.01]">
         <div className="flex items-center gap-3">
@@ -520,7 +520,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-white/[0.03] border-b border-[var(--bone-12)]">
+            <tr className="bg-white/[0.03] border-b border-[var(--bone-6)]">
               <th
                 className="px-4 py-3 text-[11px] font-ui-label font-bold text-muted-foreground/40 tracking-widest uppercase cursor-pointer hover:text-muted-foreground/70 transition-colors select-none"
                 onClick={() => handleSort('id')}

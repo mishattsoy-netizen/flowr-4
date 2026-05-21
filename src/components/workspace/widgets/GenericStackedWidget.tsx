@@ -102,7 +102,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
       <div className="flex items-center justify-between mb-0.5 h-8 shrink-0">
         {widgets.length > 1 ? (
           /* Multi-widget Switcher - Dark High Contrast Style */
-          <div className="relative flex items-center p-0.5 bg-background rounded-[8px] no-drag min-w-[160px]">
+          <div className="relative flex items-center p-0.5 bg-panel rounded-[8px] no-drag min-w-[160px]">
             <div 
               className="absolute top-0.5 bottom-0.5 rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
               style={pillStyle}

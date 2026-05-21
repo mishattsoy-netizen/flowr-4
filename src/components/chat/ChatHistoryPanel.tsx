@@ -76,7 +76,7 @@ export function ChatHistoryPanel() {
     <div
       className={cn(
         "h-full flex flex-col bg-sidebar shrink-0 overflow-hidden transition-all duration-300 relative",
-        chatHistoryOpen ? "w-[260px] border-r border-[var(--bone-12)]" : "w-0 border-r-0"
+        chatHistoryOpen ? "w-[260px] border-r border-[var(--bone-6)]" : "w-0 border-r-0"
       )}
     >
       <div className="w-[260px] h-full flex flex-col shrink-0">
@@ -130,7 +130,7 @@ export function ChatHistoryPanel() {
                     key={conv.id}
                     className={cn(
                       "group flex items-center gap-2 pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] cursor-pointer transition-colors",
-                      activeChatId === conv.id ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                      activeChatId === conv.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                     )}
                     onClick={() => loadConversation(conv.id)}
                   >
@@ -177,7 +177,7 @@ export function ChatHistoryPanel() {
         </div>
 
         {/* Collapse toggle */}
-        <div className="shrink-0 border-t border-[var(--bone-12)] p-2 flex justify-end">
+        <div className="shrink-0 border-t border-[var(--bone-6)] p-2 flex justify-end">
           <button
             onClick={() => setChatHistoryOpen(!chatHistoryOpen)}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-hover transition-colors"

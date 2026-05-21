@@ -54,6 +54,9 @@ export async function fetchProviderModels(
     case 'siliconflow':
       raw = await fetchSiliconFlow(apiKey)
       break
+    case 'nvidia':
+      raw = await fetchNvidia(apiKey)
+      break
     default:
       throw new Error(`Unknown provider: ${provider}`)
   }
@@ -334,6 +337,33 @@ async function fetchSiliconFlow(apiKey: string): Promise<DiscoveredModel[]> {
       rpd: null,
       rpm: null,
       modalities: getModalities(m.id),
+      inRegistry: false,
+    }
+  })
+}
+
+async function fetchNvidia(apiKey: string): Promise<DiscoveredModel[]> {
+  const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) throw new Error(`NVIDIA API error: ${res.status} ${res.statusText}`)
+  const data = await res.json()
+
+  return (data.data ?? []).map((m: any) => {
+    const idLower = (m.id ?? '').toLowerCase()
+    const hasVision = idLower.includes('vision') || idLower.includes('vlm') || idLower.includes('multimodal')
+    const isEmbedding = idLower.includes('embed')
+    const defaultInput = isEmbedding ? ['text'] : hasVision ? ['text', 'image'] : ['text']
+    const defaultOutput = isEmbedding ? ['embedding'] : ['text']
+    return {
+      id: m.id,
+      displayName: m.id,
+      provider: 'nvidia',
+      contextWindow: m.context_length ?? null,
+      maxOutputTokens: null,
+      rpd: null,
+      rpm: null,
+      modalities: getModalities(m.id, defaultInput, defaultOutput),
       inRegistry: false,
     }
   })

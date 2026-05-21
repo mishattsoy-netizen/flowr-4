@@ -63,7 +63,7 @@ export const ChatImage = memo(({ src, alt, description, messageId, onHeightChang
   };
 
   return (
-    <div className="my-4 max-w-[50%] relative group rounded-2xl bg-white/5 overflow-hidden min-h-[100px] flex flex-col justify-center">
+    <div className="mt-4 mb-6 max-w-[50%] relative group rounded-2xl bg-white/5 overflow-hidden min-h-[100px] flex flex-col justify-center">
       {loading && !error && (
         <div className="flex flex-col items-center justify-center gap-3 py-10 w-full">
           <div className="relative">

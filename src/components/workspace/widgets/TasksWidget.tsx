@@ -58,7 +58,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
   } : null;
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-0.5">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Tasks</h2>
         <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
               {(['list', 'by-status'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => onUpdateData({ ...data, view: v })}
                   className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-[3px] transition-colors",
-                    view === v ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]"
+                    view === v ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]"
                   )}>{v === 'list' ? 'List' : 'Status'}</button>
               ))}
             </div>

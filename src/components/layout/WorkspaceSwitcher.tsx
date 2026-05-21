@@ -27,7 +27,7 @@ export function WorkspaceSwitcher() {
     <div ref={ref} className="relative px-3 mb-1">
       <button
         onClick={() => setOpen(o => !o)}
-        className={cn("flex items-center w-full px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] group", open && "!bg-[var(--bone-15)] !text-[var(--bone-100)]")}
+        className={cn("flex items-center w-full px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] group", open && "!bg-dark !text-[var(--bone-100)]")}
       >
         <span className="flex-1 text-left text-sm font-semibold text-foreground text-fade">
           {active?.name ?? 'Personal'}
@@ -47,7 +47,7 @@ export function WorkspaceSwitcher() {
               className={cn(
                 "flex items-center w-full px-3 py-2 text-sm text-left gap-2 ",
                 ws.id === activeWorkspaceId
-                  ? "bg-[var(--bone-15)] text-foreground"
+                  ? "bg-dark text-foreground"
                   : "hover:bg-[var(--bone-6)] text-foreground/80 hover:text-foreground"
               )}
             >

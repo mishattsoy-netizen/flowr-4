@@ -28,7 +28,7 @@ export default async function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[10px]">
-        <div className="lg:col-span-2 bg-panel border border-[var(--bone-12)] rounded-big p-6 relative overflow-hidden">
+        <div className="lg:col-span-2 bg-panel border border-[var(--bone-6)] rounded-big p-6 relative overflow-hidden">
           <h2 className="text-[10px] font-bold text-bone-70 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
             <div className="w-1 h-1 bg-accent rounded-full" />
             Traffic activity telemetry
@@ -38,7 +38,7 @@ export default async function AdminOverview() {
           </div>
         </div>
 
-        <div className="bg-panel border border-[var(--bone-12)] rounded-big p-6 flex flex-col">
+        <div className="bg-panel border border-[var(--bone-6)] rounded-big p-6 flex flex-col">
           <h2 className="text-[10px] font-bold text-bone-70 mb-4 flex items-center gap-2 tracking-[0.1em] uppercase opacity-40">
              <div className="w-1 h-1 bg-bone-100 rounded-full" />
              Recent events log
@@ -60,7 +60,7 @@ export default async function AdminOverview() {
 function MetricCard({ title, value, change, icon: Icon, accent = false }: any) {
   return (
     <div className={cn(
-      "bg-panel border border-[var(--bone-12)] rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200",
+      "bg-panel border border-[var(--bone-6)] rounded-big p-5 h-full flex flex-col cursor-pointer relative overflow-hidden transition-all duration-200",
       accent ? "bg-accent/5 border-accent/20" : ""
     )}>
       <div className="flex items-center justify-between mb-4">

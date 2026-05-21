@@ -14,6 +14,7 @@ const PROVIDERS = [
   { value: 'openrouter',  label: 'OpenRouter' },
   { value: 'cloudflare',  label: 'Cloudflare' },
   { value: 'siliconflow', label: 'SiliconFlow' },
+  { value: 'nvidia',      label: 'NVIDIA' },
 ]
 
 const PROVIDER_KEY_PREFIX: Record<string, string> = {
@@ -24,6 +25,7 @@ const PROVIDER_KEY_PREFIX: Record<string, string> = {
   openrouter:   'OPENROUTER',
   cloudflare:   'CLOUDFLARE',
   siliconflow:  'SILICONFLOW',
+  nvidia:       'NVIDIA',
 }
 
 const MODALITY_COLORS: Record<string, string> = {

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     user = data.user
   }
 
-  const { prompt, buffer, images, aiApiKey, activeEntityId, activeChatId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext, thinkingEnabled, advisorEnabled, isTempChat, clientHistory } = await req.json()
+  const { prompt, buffer, images, aiApiKey, activeEntityId, activeChatId, activeWorkspaceId, classificationModelId, mode, intentTag, replyContext, thinkingEnabled, advisorEnabled, pendingAdvisorState, isTempChat, clientHistory } = await req.json()
   const activeMode = (mode === 'pro') ? mode : 'default'
 
   if (!prompt && !buffer) {
@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
             replyContext,
             thinkingEnabled: thinkingEnabled === true,
             advisorEnabled: advisorEnabled === true,
+            pendingAdvisorState: pendingAdvisorState || undefined,
             isTempChat: isTempChat === true,
             clientHistory: clientHistory ?? [],
             onStatus: (step: any) => {
@@ -161,14 +162,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Write transcript file
-        try {
-          const transcriptsDir = path.join(process.cwd(), 'transcripts')
-          fs.mkdirSync(transcriptsDir, { recursive: true })
-          const fileDate = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-          const filePath = path.join(transcriptsDir, `ai-transcript-${fileDate}.md`)
-          fs.writeFileSync(filePath, result.transcript_md || '')
-        } catch (e) {
-          console.error('[Transcript] Failed to write file:', e)
+        if (result.transcript_md) {
+          try {
+            const transcriptsDir = path.join(process.cwd(), 'transcripts')
+            fs.mkdirSync(transcriptsDir, { recursive: true })
+            const fileDate = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+            const filePath = path.join(transcriptsDir, `ai-transcript-${fileDate}.md`)
+            fs.writeFileSync(filePath, result.transcript_md)
+          } catch (e) {
+            console.error('[Transcript] Failed to write file:', e)
+          }
         }
 
         const finalStatus = clientDisconnected ? 'interrupted' : (result.status || 'success')
@@ -188,6 +191,7 @@ export async function POST(req: NextRequest) {
           tokens_used: result.tokens_used,
           pipeline_steps: result.pipeline_steps,
           advisor_questions: result.advisor_questions,
+          advisor_state: result.advisor_state,
           image_description: result.image_description,
           image_prompt: (result as any).image_prompt,
           transcript_md: result.transcript_md,

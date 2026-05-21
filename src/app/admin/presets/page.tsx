@@ -15,7 +15,7 @@ export default async function PresetsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[10px] items-start">
         <div className="lg:col-span-1">
-            <div className="bg-sidebar group/widget border border-[var(--bone-12)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col sticky top-10 transition-all duration-200">
+            <div className="bg-panel group/widget border border-[var(--bone-6)] px-5 pb-5 pt-4 rounded-[var(--radius-big)] widget-shadow h-full flex flex-col sticky top-10 transition-all duration-200">
             <h2 className="text-[10px] font-bold text-bone-70 mb-6 flex items-center gap-2 tracking-[0.05em] uppercase opacity-50">
               <Zap className="w-3.5 h-3.5 text-accent" />
               Register new tier

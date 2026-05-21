@@ -85,6 +85,23 @@ export function SelectionToolbar({ editorRef }: { editorRef: React.RefObject<HTM
         return;
       }
 
+      // Check if selection anchor and focus both reside inside a contenteditable block
+      const getElementFromNode = (n: Node | null) => {
+        if (!n) return null;
+        return (n.nodeType === Node.TEXT_NODE ? n.parentNode : n) as HTMLElement | null;
+      };
+
+      const anchorEl = getElementFromNode(sel.anchorNode);
+      const focusEl = getElementFromNode(sel.focusNode);
+
+      const isAnchorInsideBlock = anchorEl?.closest('[data-block-id]') && (anchorEl?.closest('[contenteditable="true"]') || anchorEl?.closest('[contenteditable=""]'));
+      const isFocusInsideBlock = focusEl?.closest('[data-block-id]') && (focusEl?.closest('[contenteditable="true"]') || focusEl?.closest('[contenteditable=""]'));
+
+      if (!isAnchorInsideBlock || !isFocusInsideBlock) {
+        setVisible(false);
+        return;
+      }
+
       // Position toolbar above the selection
       const rect = range.getBoundingClientRect();
       const toolbarWidth = 280;

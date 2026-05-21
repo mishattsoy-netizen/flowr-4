@@ -232,18 +232,16 @@ function TagItem({
   return (
     <div className="relative flex items-center group">
       <div
-        onClick={() => onEdit(index)}
+        onClick={!isEditing ? () => onEdit(index) : undefined}
         className={cn(
           "px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer flex items-center gap-1 transition-all border",
-          isEditing
-            ? "ring-1 ring-accent bg-background text-foreground border-accent"
-            : "hover:brightness-110"
+          !isEditing && "hover:brightness-110"
         )}
-        style={!isEditing ? { 
+        style={{ 
           backgroundColor: colors.bg, 
           color: colors.text,
           borderColor: colors.border
-        } : {}}
+        }}
       >
         {isEditing ? (
           <input
@@ -257,20 +255,19 @@ function TagItem({
             }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="bg-transparent outline-none w-full text-foreground"
+            className="bg-transparent outline-none text-[11px] font-medium p-0 m-0 border-none text-inherit max-w-[120px]"
+            style={{ width: `${Math.max(editValue.length, 2)}ch`, color: 'inherit' }}
           />
         ) : (
-          <>
-            <span className="truncate max-w-[120px]">{tag || "new tag"}</span>
-            <button
-              onClick={handleDelete}
-              aria-label={`Delete tag ${tag}`}
-              className="hover:text-danger rounded-full p-0.5 transition-colors opacity-60 hover:opacity-100"
-            >
-              <X strokeWidth={2} className="w-3 h-3" />
-            </button>
-          </>
+          <span className="truncate max-w-[120px]">{tag || "new tag"}</span>
         )}
+        <button
+          onClick={handleDelete}
+          aria-label={`Delete tag ${tag}`}
+          className="hover:text-danger rounded-full p-0.5 transition-colors opacity-60 hover:opacity-100"
+        >
+          <X strokeWidth={2} className="w-3 h-3" />
+        </button>
       </div>
 
       {isEditing && showSuggestions && suggestions.length > 0 && (
@@ -342,8 +339,15 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
   useEffect(() => {
     // 1. Entity Switch Protection
     if (entity.id !== lastEntityId.current) {
-       const newContent = entity.content && entity.content.length > 0 
-        ? entity.content 
+       // Flush any pending debounced save for the previous entity before switching
+       if (syncTimeoutRef.current && isUserModified.current) {
+         clearTimeout(syncTimeoutRef.current);
+         syncTimeoutRef.current = null;
+         updateEntityContent(lastEntityId.current, blocksRef.current);
+       }
+
+       const newContent = entity.content && entity.content.length > 0
+        ? entity.content
         : [createBlock('text', { style: 'body' })];
        setBlocks(newContent);
        lastSyncedVersion.current = JSON.stringify(entity.content || []);
@@ -374,7 +378,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
     } else {
       isFirstMount.current = false;
     }
-  }, [entity.id, entity.content, blocks, debouncedSyncToStore, aiCursor]);
+  }, [entity.id, entity.content, blocks, debouncedSyncToStore, aiCursor, updateEntityContent]);
 
   // Flush sync on unmount or entity change
   useEffect(() => {

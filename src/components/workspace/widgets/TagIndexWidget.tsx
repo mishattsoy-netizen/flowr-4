@@ -29,7 +29,7 @@ export function TagIndexWidget() {
   }, [state.entities, state.knowledgeResources, state.knowledgeSnippets, state.knowledgeGuides]);
 
   return (
-    <div className="flex flex-col h-full bg-sidebar group/widget overflow-hidden widget-shadow transition-all">
+    <div className="flex flex-col h-full bg-panel group/widget overflow-hidden widget-shadow transition-all">
       <div className="px-5 py-4 border-b border-[var(--bone-5)] flex items-center justify-between bg-[var(--color-panel)]/50 backdrop-blur-sm">
         <h3 className="font-widget-header text-[15px] font-semibold text-[var(--bone-70)]">Tag Index</h3>
       </div>

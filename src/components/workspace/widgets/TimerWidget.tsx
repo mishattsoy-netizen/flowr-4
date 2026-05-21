@@ -83,7 +83,7 @@ export function TimerWidget({ data, onUpdateData, isEditing }: TimerWidgetProps)
   const progress = mode === 'pomodoro' ? (pomoDuration - seconds) / pomoDuration : 0;
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-0.5">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Timer</h2>
         {sessions > 0 && (

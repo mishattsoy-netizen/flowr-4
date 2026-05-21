@@ -54,6 +54,7 @@ const PROVIDER_INFO: Record<string, ProviderInfo> = {
   huggingface: { name: 'Hugging Face', color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20', dot: 'bg-yellow-400' },
   pollinations: { name: 'Pollinations', color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20',   dot: 'bg-pink-400'   },
   siliconflow: { name: 'SiliconFlow', color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20', dot: 'bg-indigo-400' },
+  nvidia:      { name: 'NVIDIA',      color: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20',  dot: 'bg-green-400'  },
   cloudflare:  { name: 'Cloudflare',  color: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20',  dot: 'bg-amber-400'  },
   core:        { name: 'Core',        color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20', dot: 'bg-emerald-400' },
   general:     { name: 'General',     color: 'text-bone-70',    bg: 'bg-bone-70/10',    border: 'border-bone-70/20',    dot: 'bg-bone-70'    },
@@ -203,7 +204,7 @@ export default function VaultProviderWidget({
   }
 
   return (
-    <div className="bg-panel border border-[var(--bone-12)] rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative gap-4 overflow-hidden">
+    <div className="bg-panel border border-[var(--bone-6)] rounded-big px-5 pb-5 pt-4 h-full flex flex-col relative gap-4 overflow-hidden">
       {/* Provider Header */}
       <div className="px-2 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">

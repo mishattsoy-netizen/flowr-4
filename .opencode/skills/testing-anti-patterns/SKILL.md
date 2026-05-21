@@ -1,0 +1,1 @@
+/Users/mktsoy/Dev/flowr-4-main/skills/testing-anti-patterns/SKILL.md

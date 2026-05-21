@@ -25,7 +25,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
   }, [entities, entity?.id]);
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
       <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground mb-0.5">
         Folders
       </h2>
@@ -88,7 +88,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
                         className={cn(
                           "w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                           contextMenu?.entityId === folder.id
-                            ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--bone-15)]"
+                            ? "opacity-100 !text-[var(--bone-100)] !bg-dark"
                             : "opacity-0 group-hover/item:opacity-100 text-[var(--bone-30)] group-hover/item:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
                         )}
                       >

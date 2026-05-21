@@ -3,7 +3,7 @@
 import { useStore } from '@/data/store';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X } from 'lucide-react';
+import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X, Check } from 'lucide-react';
 import { stripHtml } from '@/lib/utils';
 import type { WidgetProps } from './types';
 import type { AppTask } from '@/data/store.types';
@@ -73,19 +73,23 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
     const tomorrowStr = getLocalDateStr(tomorrow);
 
     return {
-      today: tasks.filter(t => {
-        if (t.completed || !t.dueDate) return false;
-        return t.dueDate === todayStr;
-      }),
-      upcoming: tasks.filter(t => {
-        if (t.completed || !t.dueDate) return false;
-        return t.dueDate >= tomorrowStr;
-      }).sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '')),
-      overdue: tasks.filter(t => {
-        if (t.completed || !t.dueDate) return false;
-        return t.dueDate < todayStr;
-      }),
-      progress: tasks.filter(t => !t.completed && t.status === 'in-progress'),
+      today: tasks
+        .filter(t => t.dueDate === todayStr)
+        .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
+      upcoming: tasks
+        .filter(t => t.dueDate && t.dueDate >= tomorrowStr)
+        .sort((a, b) => {
+          if (a.completed !== b.completed) {
+            return (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
+          }
+          return (a.dueDate || '').localeCompare(b.dueDate || '');
+        }),
+      overdue: tasks
+        .filter(t => t.dueDate && t.dueDate < todayStr)
+        .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
+      progress: tasks
+        .filter(t => t.status === 'in-progress')
+        .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
     };
   }, [tasks]);
 
@@ -152,12 +156,12 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
   const tabCount = visibleTabs.length || 1;
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-0.5 h-8 shrink-0 gap-2">
 
         {/* Tab switcher */}
         {visibleTabs.length > 0 ? (
-          <div className="relative flex items-center p-[3px] bg-background rounded-[8px] no-drag overflow-hidden w-fit">
+          <div className="relative flex items-center p-[3px] bg-dark rounded-[8px] no-drag overflow-hidden w-fit">
             {/* Sliding pill */}
             <div
               className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
@@ -247,11 +251,19 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
         {displayTasks.length > 0 ? (
           <div className="space-y-1">
             {displayTasks.map(t => (
-              <div key={t.id} className="group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
+              <div
+                key={t.id}
+                className={cn(
+                  "group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-all",
+                  t.completed && "opacity-35 line-through decoration-[var(--bone-30)]"
+                )}
+              >
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className="w-4 h-4 rounded-[4px] border border-[var(--bone-30)] hover:border-[var(--bone-70)] flex items-center justify-center shrink-0 hover:scale-105 active:scale-95"
-                />
+                  className="w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)]"
+                >
+                  {t.completed && <Check className="w-[10px] h-[10px] text-[var(--bone-100)] stroke-[3px]" />}
+                </button>
                 <span className="flex-1 text-sm text-foreground/90 font-medium truncate tracking-wide">{stripHtml(t.title || '')}</span>
                 {t.dueDate && (
                   <span className="text-[11px] text-[var(--bone-30)] font-medium tabular-nums shrink-0">{formatDate(t.dueDate)}</span>

@@ -10,6 +10,7 @@ import {
   Hash, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AIAvatar } from '@/components/assistant/components/AIAvatar';
 
 interface CommandDef {
   id: string;
@@ -223,7 +224,7 @@ export function CommandPalette() {
         id: 'ask-ai',
         label: `Ask AI: "${query.slice(4).trim() || '...'}"`,
         description: 'Send this question to the Chat',
-        icon: <Sparkles strokeWidth={2} className="w-4 h-4" />,
+        icon: <AIAvatar className="w-4 h-4" />,
         action: handleAskAI,
         type: 'action' as const,
       }];
@@ -247,7 +248,7 @@ export function CommandPalette() {
           id: 'ask-ai-search-default',
           label: 'Ask AI',
           description: 'Open the AI Assistant',
-          icon: <Sparkles strokeWidth={2} className="w-3.5 h-3.5" />,
+          icon: <AIAvatar className="w-3.5 h-3.5" />,
           shortcut: 'ask:',
           action: () => { setQuery('ask:'); inputRef.current?.focus(); },
           type: 'action' as const,
@@ -269,7 +270,7 @@ export function CommandPalette() {
       id: 'ask-ai-default',
       label: 'Ask AI',
       description: 'Open the AI Assistant',
-      icon: <Sparkles strokeWidth={2} className="w-3.5 h-3.5" />,
+      icon: <AIAvatar className="w-3.5 h-3.5" />,
       shortcut: 'ask:',
       action: () => { setQuery('ask:'); inputRef.current?.focus(); },
       type: 'action' as const,
@@ -347,7 +348,7 @@ export function CommandPalette() {
             {isCommandMode ? (
               <Command strokeWidth={2} className="w-4.5 h-4.5 text-accent" />
             ) : isAskMode ? (
-              <Sparkles strokeWidth={2} className="w-4.5 h-4.5 text-accent" />
+              <AIAvatar className="w-4.5 h-4.5" />
             ) : (
               <Search strokeWidth={2} className="w-4.5 h-4.5 text-[var(--bone-30)]" />
             )}
@@ -455,7 +456,7 @@ export function CommandPalette() {
             onClick={() => { setAIAssistantOpen(true); close(); }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
           >
-            <Sparkles strokeWidth={2} className="w-3 h-3" />
+            <AIAvatar className="w-3.5 h-3.5" />
             Ask AI
           </button>
           <div className="flex items-center gap-4 text-[10px] text-[var(--bone-30)] font-medium tracking-wide">

@@ -34,7 +34,7 @@ export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { fi
   );
 
   return (
-    <section className="bg-sidebar group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
+    <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
       <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-2">
           <Clock strokeWidth={2} className="w-4 h-4 text-muted-foreground group-hover/widget:text-accent transition-colors" />
@@ -45,7 +45,7 @@ export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { fi
             {(['all', 'note', 'canvas'] as Filter[]).map(f => (
               <button key={f} onClick={() => onUpdateData({ ...data, filter: f })}
                 className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-[3px] capitalize transition-colors",
-                  filter === f ? "bg-[var(--bone-15)] text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]")}>
+                  filter === f ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-30)] hover:text-[var(--bone-100)]")}>
                 {f}
               </button>
             ))}

@@ -92,12 +92,13 @@ function RowEl({
   registerRef: (id: string, el: HTMLDivElement | null) => void;
 }) {
   const elRef = useRef<HTMLDivElement>(null);
-  const lastContent = useRef<string>(row.content);
+  const lastContent = useRef<string | null>(null);
 
   useEffect(() => {
     const el = elRef.current;
     if (!el) return;
-    if (el.innerHTML !== row.content && row.content !== lastContent.current) {
+    const isInitialMount = lastContent.current === null;
+    if (isInitialMount || (el.innerHTML !== row.content && row.content !== lastContent.current)) {
       el.innerHTML = row.content;
     }
     lastContent.current = row.content;
@@ -137,10 +138,10 @@ function RowEl({
   return (
     <div className="flex items-start w-full py-0.5" style={{ paddingLeft: `${row.depth * 24}px` }}>
       {blockType === 'checklist' ? (
-        <div className="w-[16px] h-[16px] shrink-0 rounded-[4px] border-[1.5px] flex items-center justify-center transition-all cursor-pointer mt-[5px] mr-1 border-white/20 hover:border-white/40"
+        <div className="w-[16px] h-[16px] shrink-0 rounded-[4px] border flex items-center justify-center cursor-pointer mt-[5px] mr-1 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)]"
           onClick={() => onRowUpdate(row.id, '__toggle_checked__')}
         >
-          {row.checked && <Check className="w-[12px] h-[12px] text-bone-100" strokeWidth={3} />}
+          {row.checked && <Check className="w-[10px] h-[10px] text-[var(--bone-100)]" strokeWidth={3} />}
         </div>
       ) : (
         <div className="shrink-0 flex items-start justify-end pr-1 h-[1.7em]" style={{ width: '20px', paddingTop: '11px' }}>

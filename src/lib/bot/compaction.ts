@@ -38,7 +38,8 @@ export async function saveCompactionConfig(config: Partial<CompactionConfig>): P
 async function runCompactionModel(
   modelConfig: RouterModel,
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  sessionId?: string
 ): Promise<string | null> {
   const provider = modelConfig.provider.toLowerCase()
   try {
@@ -51,7 +52,7 @@ async function runCompactionModel(
         response = await runGroq(modelConfig.id, userMessage, systemPrompt)
         break
       case 'openrouter': {
-        response = await runOpenRouter(modelConfig.id, userMessage, systemPrompt, [], undefined, { openrouterProvider: modelConfig.openrouter_provider })
+        response = await runOpenRouter(modelConfig.id, userMessage, systemPrompt, [], undefined, { openrouterProvider: modelConfig.openrouter_provider, sessionId })
         break
       }
       default:
@@ -93,7 +94,7 @@ export async function compactSession(
   const enabledModels = chain.filter(m => m.is_enabled)
 
   for (const modelConfig of enabledModels) {
-    const result = await runCompactionModel(modelConfig, system_prompt || '', userMessage)
+    const result = await runCompactionModel(modelConfig, system_prompt || '', userMessage, chatId)
     if (result) {
       return result
     }

@@ -81,6 +81,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   const setThinkingEnabled = useStore(state => state.setThinkingEnabled)
   const advisorEnabled = useStore(state => state.advisorEnabled)
   const setAdvisorEnabled = useStore(state => state.setAdvisorEnabled)
+  const pendingAdvisorState = useStore(state => state.pendingAdvisorState)
   const startNewChat = useStore(state => state.startNewChat);
   const startTempChat = useStore(state => state.startTempChat);
   const openChatInPage = useStore(state => state.openChatInPage);
@@ -144,12 +145,25 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   const actualExtended = isFloating ? false : isAIAssistantExtended;
   const sessionId = activeChatId || activeEntityId || 'global';
 
-  // Local token estimate: ~4 chars per token, strip base64 images from accounting.
+  // Local token estimate: ~4 chars per token. Mirrors the exact per-message text the
+  // server builds for history in store.ts.sendAIMessage (stripHeavyMedia + digital twin
+  // injection), so the count reflects every character the model actually receives —
+  // base64 images stripped to a placeholder (the model never sees the raw bytes), but
+  // the vision digital twin (image_description) fully counted since it's re-injected
+  // into history on every follow-up turn.
   // Server-side token_usage_total only updates on compaction, so it stays at 0 until then.
   const localTokenEstimate = (() => {
     let chars = 0
     for (const m of aiMessages) {
-      const text = (m.content || '').replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, '[Image]')
+      if (m.role !== 'user' && m.role !== 'assistant') continue
+      let text = (m.content || '').includes('data:image/')
+        ? (m.content || '').replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, m.image_description ? `[Image: ${m.image_description}]` : '[Image: (visual content generated)]')
+        : (m.content || '')
+      if (m.role === 'user' && m.image_description) {
+        text = `${text}\n\n[VISION CONTEXT - DIGITAL TWIN]\n${m.image_description}`.trim()
+      } else if (m.role === 'user' && !m.image_description && m.attachments?.some(a => a.type === 'image' || a.type === 'pdf')) {
+        text = `${text}\n[Image attached]`.trim()
+      }
       chars += text.length
     }
     return Math.ceil(chars / 4)
@@ -198,7 +212,9 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
       const threshold = 120;
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
       if (isNearBottom) {
-        container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+        requestAnimationFrame(() => {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+        });
       }
     });
 
@@ -371,7 +387,10 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
     const files = Array.from(e.clipboardData?.items || [])
       .map(item => item.getAsFile())
       .filter((file): file is File => file !== null);
-    if (files.length > 0) await processFiles(files);
+    if (files.length > 0) {
+      e.preventDefault();
+      await processFiles(files);
+    }
   };
 
   const CHAIN_TAGS = ['/search', '/research', '/code', '/image'];
@@ -603,7 +622,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
           <div
             ref={messagesContainerRef}
             className={cn(
-              "flex-1 px-6 py-4 space-y-2 flex flex-col",
+              "flex-1 px-6 py-4 space-y-2 flex flex-col @container",
               aiMessages.length === 0 && "pb-0",
               isScrollable ? "overflow-y-auto overflow-x-hidden scrollbar-thin" : "overflow-y-hidden overflow-x-hidden"
             )}
@@ -611,9 +630,9 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
           >
             {aiMessages.length === 0 && !isAILoading && (
               <div className="flex-1 flex flex-col justify-end text-center pb-5 min-h-0">
-                <div className="flex items-center justify-center gap-6">
-                  <StarIcon className="w-8 h-8" style={{ color: 'var(--bone-100)', fill: 'var(--bone-100)' }} />
-                  <p className="text-[26px] font-medium text-[var(--bone-100)] leading-tight tracking-tight font-[family-name:var(--font-display)]">
+                <div className="flex flex-col @[500px]:flex-row items-center justify-center gap-4 @[500px]:gap-6 text-center @[500px]:text-left">
+                  <AIAvatar className="w-8 h-8 opacity-100" />
+                  <p className="text-[26px] font-normal text-[var(--bone-100)] leading-tight tracking-tight font-display">
                     How can I help you today?
                   </p>
                 </div>
@@ -632,6 +651,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                     if (lastUserMsg) handleSend(lastUserMsg.content, lastUserMsg.attachments);
                   }}
                   onReply={setReplyMessage}
+                  compact={true}
                 />
               </div>
             ))}
@@ -806,7 +826,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                 el.style.height = 'auto';
                 el.style.height = Math.min(el.scrollHeight, 120) + 'px';
               }}
-              placeholder="Ask Flowr AI"
+              placeholder={pendingAdvisorState ? "Answer the advisor's questions..." : "Ask Flowr AI"}
               rows={1}
               className="w-full bg-transparent text-foreground text-[14px] placeholder:text-bone-70 focus:outline-none resize-none leading-relaxed px-1 custom-scrollbar tracking-wide"
               style={{ height: 'auto', maxHeight: '120px', overflowY: 'auto', fontSize: chatPageMode ? '15px' : undefined }}
@@ -857,7 +877,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                     }}
                     className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-[8px] ",
-                      showCommandMenu ? "bg-white/10 text-foreground" : "text-bone-70 hover:text-foreground hover:bg-white/5"
+                      showCommandMenu ? "bg-dark text-foreground" : "text-bone-70 hover:text-foreground hover:bg-white/5"
                     )}
                   >
                     <SquareSlash strokeWidth={2} className="w-4 h-4" />
@@ -881,13 +901,13 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         setShowModeMenu(v => !v)
                       }}
                       className={cn(
-                        "flex items-center gap-1.5 px-2 py-1 rounded-[8px] border ",
+                        "flex items-center gap-1.5 px-2 py-1 rounded-[8px]",
                         showModeMenu
-                          ? "bg-white/10 border-[var(--bone-12)] text-bone-100"
-                          : "border-[var(--bone-12)] text-bone-70 hover:text-bone-100 hover:border-white/20"
+                          ? "bg-dark text-foreground"
+                          : "text-bone-70 hover:text-foreground hover:bg-white/5"
                       )}
                     >
-                      <span className="hidden sm:inline text-[11px] font-bold uppercase tracking-widest pt-0.5">{MODE_OPTIONS.find(m => m.key === activeMode)?.label}</span>
+                      <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-widest pt-0.5">{MODE_OPTIONS.find(m => m.key === activeMode)?.label}</span>
                       <ChevronUp strokeWidth={2} className={cn("w-3 h-3 transition-transform duration-300", showModeMenu ? "rotate-180 opacity-100" : "opacity-40")} />
                     </button>
                   </Tooltip>
@@ -909,12 +929,12 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                               onClick={() => { setActiveMode(opt.key); setShowModeMenu(false) }}
                               className={cn(
                                 'w-full flex items-center px-3 py-1.5 rounded-[var(--radius-medium)] text-[13.5px] text-left group transition-none text-[var(--bone-70)] hover:bg-white/[0.08] hover:text-bone-100',
-                                activeMode === opt.key && 'bg-white/10 text-bone-100'
+                                activeMode === opt.key && 'bg-dark text-bone-100'
                               )}
                             >
                               <div className="flex flex-col">
-                                <p className="tracking-tight">{opt.label}</p>
-                                <p className="text-[10px] uppercase tracking-wider opacity-30 leading-none mt-0.5">{opt.description}</p>
+                                <p className="tracking-wide">{opt.label}</p>
+                                <p className="text-[10px] uppercase tracking-[0.06em] opacity-30 leading-none mt-0.5">{opt.description}</p>
                               </div>
                             </button>
                           ))}
@@ -930,8 +950,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           >
                             <Brain className="w-4 h-4 shrink-0 opacity-60" strokeWidth={2} />
                             <div className="flex flex-col items-start">
-                              <span>Thinking</span>
-                              <span className="text-[10px] opacity-30 leading-none mt-0.5">{thinkingEnabled ? 'On' : 'Off'}</span>
+                              <span className="tracking-wide">Thinking</span>
+                              <span className="text-[10px] uppercase tracking-[0.06em] opacity-30 leading-none mt-0.5">{thinkingEnabled ? 'On' : 'Off'}</span>
                             </div>
                             <div className={cn(
                               'ml-auto w-7 h-4 rounded-full flex items-center transition-none',
@@ -949,8 +969,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                           >
                             <Sparkles className="w-4 h-4 shrink-0 opacity-60" strokeWidth={2} />
                             <div className="flex flex-col items-start">
-                              <span>Advisor</span>
-                              <span className="text-[10px] opacity-30 leading-none mt-0.5">{advisorEnabled ? 'On — asks clarifying questions' : 'Off'}</span>
+                              <span className="tracking-wide">Advisor</span>
+                              <span className="text-[10px] uppercase tracking-[0.06em] opacity-30 leading-none mt-0.5">{advisorEnabled ? 'On — asks clarifying questions' : 'Off'}</span>
                             </div>
                             <div className={cn(
                               'ml-auto w-7 h-4 rounded-full flex items-center transition-none',
@@ -1135,7 +1155,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
             {showCommandMenu && filteredCommands.length > 0 && (
               <div className="absolute bottom-full left-0 right-0 mb-4 bg-[var(--color-panel)] backdrop-blur-3xl rounded-[var(--radius-regular)] border border-[var(--bone-12)] overflow-hidden shadow-2xl z-[140] p-1.5 flex flex-col gap-0.5">
                 <div className="px-3 pt-1 pb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--bone-30)] opacity-80">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--bone-30)] opacity-80">
                     Actions & Commands
                   </span>
                 </div>
@@ -1159,14 +1179,14 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         {cmd.icon}
                       </div>
                       <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <p className="text-[13.5px] tracking-tight shrink-0">{cmd.label}</p>
+                        <p className="text-[13.5px] tracking-wide shrink-0">{cmd.label}</p>
                         {cmd.description && (
-                          <p className="text-[11px] text-bone-70 opacity-40 truncate">{cmd.description}</p>
+                          <p className="text-[11px] tracking-wide text-bone-70 opacity-40 truncate">{cmd.description}</p>
                         )}
                       </div>
                       {(cmd.prefix || i === activeCommandIndex) && (
                         <div className="flex items-center gap-0.5 shrink-0 ml-2">
-                          <span className="px-1.5 py-0.5 rounded-[4px] bg-white/5 text-[10px] font-mono text-bone-70">
+                          <span className="px-1.5 py-0.5 rounded-[4px] bg-white/5 text-[10px] font-mono tracking-wide text-bone-70">
                             {cmd.prefix ? cmd.prefix.trim() : 'ENTER'}
                           </span>
                         </div>

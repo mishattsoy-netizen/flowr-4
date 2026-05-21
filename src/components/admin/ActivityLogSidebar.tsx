@@ -83,7 +83,7 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
       )}>
         {/* Toggle button */}
         <div
-          className="flex items-center justify-center h-12 w-full border-b border-[var(--bone-12)] transition-colors shrink-0"
+          className="flex items-center justify-center h-12 w-full border-b border-[var(--bone-6)] transition-colors shrink-0"
         >
           {open ? (
             <div className="flex items-center gap-2 w-full px-3">

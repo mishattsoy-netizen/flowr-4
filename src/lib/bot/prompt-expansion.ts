@@ -36,7 +36,7 @@ export async function expandImagePrompt(
         response = await runGroq(model.id, expansionPrompt, systemPrompt, context?.aiApiKey, context || {}, history)
       } else if (provider === 'openrouter') {
         const keys = await getProviderKeys('OPENROUTER')
-        response = await runOpenRouter(model.id, expansionPrompt, systemPrompt, history, context?.aiApiKey || keys[0], { openrouterProvider: model.openrouter_provider })
+        response = await runOpenRouter(model.id, expansionPrompt, systemPrompt, history, context?.aiApiKey || keys[0], { ...(context || {}), openrouterProvider: model.openrouter_provider })
       } else if (provider === 'pollinations') {
         const { runPollinationsText } = await import('./providers/pollinations')
         response = await runPollinationsText(model.id, expansionPrompt, systemPrompt, history, context?.aiApiKey)

@@ -147,7 +147,7 @@ export function buildTranscript(d: TranscriptData): string {
     lines.push('')
     for (const msg of d.history) {
       const role = msg.role || 'unknown'
-      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+      const content = msg.parts?.[0]?.text ?? (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content))
       lines.push(`### ${role}`)
       lines.push('')
       lines.push(content || '(empty)')
