@@ -10,22 +10,22 @@ const FlowrLogo = () => (
 )
 
 const CONFETTI = [
-  { color: '#d67a3c', x: -180, y: -120, size: 7,  rot: 30,  delay: 0 },
-  { color: '#a78bfa', x:  200, y: -90,  size: 5,  rot: -20, delay: 0.04 },
-  { color: '#34d399', x: -110, y:  160, size: 8,  rot: 45,  delay: 0.08 },
-  { color: '#fb7185', x:  150, y:  130, size: 5,  rot: -35, delay: 0.06 },
-  { color: '#d67a3c', x:  90,  y: -180, size: 6,  rot: 15,  delay: 0.12 },
-  { color: '#a78bfa', x: -200, y:  60,  size: 7,  rot: -50, delay: 0.02 },
-  { color: '#34d399', x:  220, y: -40,  size: 4,  rot: 70,  delay: 0.10 },
-  { color: '#fb7185', x: -70,  y: -200, size: 6,  rot: -15, delay: 0.05 },
-  { color: '#d67a3c', x:  110, y:  200, size: 7,  rot: 55,  delay: 0.14 },
-  { color: '#a78bfa', x: -230, y: -70,  size: 5,  rot: -40, delay: 0.01 },
-  { color: '#34d399', x:  60,  y: -160, size: 8,  rot: 25,  delay: 0.11 },
-  { color: '#fb7185', x: -150, y:  190, size: 5,  rot: -60, delay: 0.07 },
-  { color: '#d67a3c', x:  170, y: -150, size: 4,  rot: 80,  delay: 0.16 },
-  { color: '#a78bfa', x: -90,  y:  80,  size: 6,  rot: -25, delay: 0.09 },
-  { color: '#34d399', x:  240, y:  70,  size: 5,  rot: 35,  delay: 0.13 },
-  { color: '#fb7185', x: -170, y: -160, size: 7,  rot: -45, delay: 0.03 },
+  { color: '#d67a3c', x: -280, y: -180, size: 7,  rot: 30,  delay: 0 },
+  { color: '#a78bfa', x:  300, y: -140, size: 5,  rot: -20, delay: 0.04 },
+  { color: '#34d399', x: -220, y:  260, size: 8,  rot: 45,  delay: 0.08 },
+  { color: '#fb7185', x:  240, y:  220, size: 5,  rot: -35, delay: 0.06 },
+  { color: '#d67a3c', x:  180, y: -280, size: 6,  rot: 15,  delay: 0.12 },
+  { color: '#a78bfa', x: -300, y:  160, size: 7,  rot: -50, delay: 0.02 },
+  { color: '#34d399', x:  320, y: -100, size: 4,  rot: 70,  delay: 0.10 },
+  { color: '#fb7185', x: -160, y: -300, size: 6,  rot: -15, delay: 0.05 },
+  { color: '#d67a3c', x:  200, y:  300, size: 7,  rot: 55,  delay: 0.14 },
+  { color: '#a78bfa', x: -320, y: -160, size: 5,  rot: -40, delay: 0.01 },
+  { color: '#34d399', x:  140, y: -260, size: 8,  rot: 25,  delay: 0.11 },
+  { color: '#fb7185', x: -240, y:  280, size: 5,  rot: -60, delay: 0.07 },
+  { color: '#d67a3c', x:  260, y: -240, size: 4,  rot: 80,  delay: 0.16 },
+  { color: '#a78bfa', x: -180, y:  200, size: 6,  rot: -25, delay: 0.09 },
+  { color: '#34d399', x:  340, y:  160, size: 5,  rot: 35,  delay: 0.13 },
+  { color: '#fb7185', x: -260, y: -240, size: 7,  rot: -45, delay: 0.03 },
 ]
 
 export default function WelcomePage() {
@@ -49,8 +49,8 @@ export default function WelcomePage() {
     <>
       <style>{`
         @keyframes confetti-fly {
-          0%   { opacity: 0; transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) rotate(0deg) scale(1); }
-          15%  { opacity: 1; }
+          0%   { opacity: 0; transform: translate(calc(var(--tx) * 0.4), calc(var(--ty) * 0.4)) rotate(0deg) scale(1); }
+          20%  { opacity: 1; }
           100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.3); }
         }
         @keyframes content-up {
