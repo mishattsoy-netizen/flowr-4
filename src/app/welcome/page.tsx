@@ -102,7 +102,7 @@ export default function WelcomePage() {
         }}
       >
         {/* Confetti burst */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
           {CONFETTI.map((p, i) => (
             <div
               key={i}
@@ -132,7 +132,7 @@ export default function WelcomePage() {
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: 0,
           animation: 'content-up 0.7s 0.25s cubic-bezier(0.25,0.46,0.45,0.94) both',
-          position: 'relative', zIndex: 1,
+          position: 'relative', zIndex: 2,
           textAlign: 'center', padding: '0 32px',
           maxWidth: 520,
         }}>
