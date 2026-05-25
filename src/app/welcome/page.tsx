@@ -62,14 +62,6 @@ export default function WelcomePage() {
           0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
           100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.3); }
         }
-        @keyframes glow-breathe {
-          0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
-          50%       { opacity: 1;   transform: translateX(-50%) scale(1.08); }
-        }
-        @keyframes glow-in {
-          from { opacity: 0; transform: translateX(-50%) scale(0.85); }
-          to   { opacity: 0.7; transform: translateX(-50%) scale(1); }
-        }
         @keyframes content-up {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -94,28 +86,10 @@ export default function WelcomePage() {
           transition: opacity 0.5s ease;
         }
         .welcome-enter-btn {
-          position: relative;
-          overflow: hidden;
-          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          transition: opacity 0.15s ease;
         }
-        .welcome-enter-btn::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: rgba(255,255,255,0);
-          transition: background 0.15s ease;
-        }
-        .welcome-enter-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(214,122,60,0.35);
-        }
-        .welcome-enter-btn:hover::after {
-          background: rgba(255,255,255,0.08);
-        }
-        .welcome-enter-btn:active {
-          transform: translateY(0);
-          box-shadow: 0 2px 8px rgba(214,122,60,0.2);
-        }
+        .welcome-enter-btn:hover { opacity: 0.8; }
+        .welcome-enter-btn:active { opacity: 0.65; }
       `}</style>
 
       <div
@@ -145,17 +119,6 @@ export default function WelcomePage() {
             />
           ))}
         </div>
-
-        {/* Main glow — large, warm, centered */}
-        <div style={{
-          position: 'absolute',
-          top: '15%', left: '50%',
-          width: 700, height: 500,
-          background: 'radial-gradient(ellipse at center, rgba(214,122,60,0.28) 0%, rgba(214,122,60,0.08) 45%, transparent 75%)',
-          borderRadius: '50%',
-          animation: 'glow-in 1s 0.1s ease both, glow-breathe 4s 1.1s ease-in-out infinite',
-          pointerEvents: 'none',
-        }} />
 
         {/* Subtle vignette edges */}
         <div style={{
@@ -237,20 +200,19 @@ export default function WelcomePage() {
             onClick={handleEnter}
             aria-label="Enter app"
             style={{
-              padding: '11px 32px',
-              background: '#d67a3c',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              fontSize: 11.5,
+              padding: '9px 20px',
+              background: 'rgba(214,122,60,0.12)',
+              color: '#d67a3c',
+              border: '1px solid rgba(214,122,60,0.35)',
+              borderRadius: 10,
+              fontSize: 13,
               fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
+              letterSpacing: '0.01em',
               cursor: 'pointer',
               fontFamily: 'var(--font-sans)',
             }}
           >
-            Enter <span aria-hidden="true">→</span>
+            Enter Flowr
           </button>
         </div>
       </div>
