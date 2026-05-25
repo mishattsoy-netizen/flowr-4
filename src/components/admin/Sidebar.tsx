@@ -4,12 +4,12 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Activity, Cpu, ShieldCheck, Users, Zap, Shield,
-  Bot, MessageSquareText, BarChart3, ScrollText, ArrowLeft,
+  Activity, Cpu, Users, Zap, Shield,
+  BarChart3, ScrollText, ArrowLeft,
   Database, Brain,
   RotateCcw, MessageCircle, LayoutDashboard, Globe,
   Telescope, DollarSign, SlidersHorizontal, Monitor,
-  UserCog
+  UserCog, Link2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +37,7 @@ export default function Sidebar() {
           <NavLink href="/admin/logs" icon={ScrollText}>Message Logs</NavLink>
           <NavLink href="/admin/users" icon={Users}>Users</NavLink>
           <NavLink href="/admin/admins" icon={UserCog}>Admins</NavLink>
+          <NavLink href="/admin/beta" icon={Link2}>Beta Invites</NavLink>
         </PlatformSection>
 
         <PlatformSection title="Infrastructure">
