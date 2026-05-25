@@ -49,7 +49,8 @@ export default function WelcomePage() {
     <>
       <style>{`
         @keyframes confetti-fly {
-          0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+          0%   { opacity: 0; transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) rotate(0deg) scale(1); }
+          15%  { opacity: 1; }
           100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.3); }
         }
         @keyframes content-up {
