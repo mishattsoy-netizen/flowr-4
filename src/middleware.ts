@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
   const isAdminPath = request.nextUrl.pathname.startsWith('/admin')
   const isLoginPath = request.nextUrl.pathname === '/login'
   const isGuestPath = request.nextUrl.searchParams.has('guest')
-  const isRootOrApp = request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/app'
+  const isRootOrApp = request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/app' || request.nextUrl.pathname === '/welcome'
   const isAuthCallbackPath = request.nextUrl.pathname === '/auth/callback'
 
   if (!user && !isLoginPath && !isGuestPath && !isAuthCallbackPath) {

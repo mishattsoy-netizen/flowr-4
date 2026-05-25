@@ -35,7 +35,8 @@ export default function WelcomePage() {
       router.replace('/app')
       return
     }
-    document.cookie = 'welcome_seen=1; Max-Age=31536000; Path=/; SameSite=Lax'
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = `welcome_seen=1; Max-Age=31536000; Path=/; SameSite=Lax${secure}`
     setChecked(true)
   }, [router])
 
