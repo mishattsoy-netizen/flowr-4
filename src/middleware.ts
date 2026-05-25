@@ -42,6 +42,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Block authenticated users who are not beta-approved
+  if (user && isRootOrApp && serviceKey) {
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+    const adminClient = createAdminClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    })
+    const { data: approved } = await adminClient
+      .from('beta_approved_users')
+      .select('email')
+      .eq('email', user.email)
+      .maybeSingle()
+
+    if (!approved) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('error', 'not_invited')
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (user && isAdminPath && serviceKey) {
     const { createClient: createAdminClient } = await import('@supabase/supabase-js')
     const adminClient = createAdminClient(supabaseUrl, serviceKey, {
