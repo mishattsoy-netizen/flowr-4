@@ -34,13 +34,16 @@ export default function WelcomePage() {
   const [exiting, setExiting] = useState(false)
 
   useEffect(() => {
-    const seen = document.cookie.split(';').some(c => c.trim().startsWith('welcome_seen=1'))
-    if (seen) {
-      router.replace('/app')
-      return
+    const preview = new URLSearchParams(location.search).get('preview') === '1'
+    if (!preview) {
+      const seen = document.cookie.split(';').some(c => c.trim().startsWith('welcome_seen=1'))
+      if (seen) {
+        router.replace('/app')
+        return
+      }
+      const secure = location.protocol === 'https:' ? '; Secure' : ''
+      document.cookie = `welcome_seen=1; Max-Age=31536000; Path=/; SameSite=Lax${secure}`
     }
-    const secure = location.protocol === 'https:' ? '; Secure' : ''
-    document.cookie = `welcome_seen=1; Max-Age=31536000; Path=/; SameSite=Lax${secure}`
     setChecked(true)
   }, [router])
 
