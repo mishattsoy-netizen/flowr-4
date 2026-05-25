@@ -82,7 +82,7 @@ export const ChatImage = memo(({ src, alt, description, messageId, onHeightChang
           </div>
           <button
             onClick={handleRetry}
-            className="mt-2 flex items-center gap-2.5 px-5 py-2.5 bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground text-[10px] font-bold uppercase tracking-[0.15em] rounded-full transition-colors group/retry"
+            className="mt-2 flex items-center gap-2.5 px-5 py-2.5 bg-[var(--app-dark)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground text-[10px] font-bold uppercase tracking-[0.15em] rounded-full transition-colors group/retry"
           >
             <RefreshCw strokeWidth={2} className="w-3 h-3 group-hover/retry:animate-spin" />
             Retry
@@ -125,7 +125,7 @@ export const ChatImage = memo(({ src, alt, description, messageId, onHeightChang
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-10 h-10 bg-[var(--bone-6)] backdrop-blur-md rounded-full flex items-center justify-center text-muted-foreground hover:bg-[var(--bone-10)] hover:text-foreground transition-colors"
+            className="w-10 h-10 bg-[var(--app-dark)] backdrop-blur-md rounded-full flex items-center justify-center text-muted-foreground hover:bg-[var(--bone-10)] hover:text-foreground transition-colors"
             title="Open original image"
           >
             <ExternalLink strokeWidth={2} className="w-4 h-4 ml-0.5" />

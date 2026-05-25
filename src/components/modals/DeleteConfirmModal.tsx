@@ -17,7 +17,14 @@ export function DeleteConfirmModal() {
 
   const handleDelete = () => {
     if (isMulti) {
-      modal.entityIds!.forEach(id => deleteEntity(id));
+      if (modal.isChat) {
+        modal.entityIds!.forEach(id => deleteChatConversation(id));
+        if (modal.entityIds!.includes(activeChatId ?? '')) {
+          startTempChat();
+        }
+      } else {
+        modal.entityIds!.forEach(id => deleteEntity(id));
+      }
       clearSelectedSidebarIds();
     } else if (entity) {
       deleteEntity(entity.id);
@@ -31,12 +38,14 @@ export function DeleteConfirmModal() {
   };
 
   const title = isMulti 
-    ? `Delete ${modal.entityIds!.length} items?`
+    ? `Delete ${modal.entityIds!.length} ${modal.isChat ? 'chats' : 'items'}?`
     : `Delete "${entity?.title || chat?.title || 'Chat'}"?`;
 
   const description = isMulti
-    ? `This will permanently delete ${modal.entityIds!.length} items and all of their contents. This action cannot be undone.`
-    : `This will permanently delete this item and all of its contents. This action cannot be undone.`;
+    ? `This will permanently delete ${modal.entityIds!.length} ${modal.isChat ? 'conversations' : 'items and all of their contents'}. This action cannot be undone.`
+    : chat
+      ? `This will permanently delete this conversation and all its messages. This action cannot be undone.`
+      : `This will permanently delete this item and all of its contents. This action cannot be undone.`;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={closeModal}>

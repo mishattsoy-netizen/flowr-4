@@ -82,6 +82,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
     return {
       width: `calc(${percent}% - 4px)`,
       left: `calc(${activeTabIndex * percent}% + ${activeTabIndex === 0 ? '3px' : '1px'})`,
+      boxShadow: 'var(--slider-pill-shadow)',
     };
   }, [widgets.length, activeTabIndex]);
 
@@ -101,10 +102,10 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
       {/* Dynamic Header Section */}
       <div className="flex items-center justify-between mb-0.5 h-8 shrink-0">
         {widgets.length > 1 ? (
-          /* Multi-widget Switcher - Dark High Contrast Style */
-          <div className="relative flex items-center p-0.5 bg-panel rounded-[8px] no-drag min-w-[160px]">
+          /* Multi-widget Switcher */
+          <div className="relative flex items-center p-0.5 rounded-[8px] no-drag min-w-[160px]" style={{ background: 'var(--slider-track)' }}>
             <div 
-              className="absolute top-0.5 bottom-0.5 rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
+              className="absolute top-0.5 bottom-0.5 rounded-[6px] bg-[var(--slider-pill)] transition-all duration-300 ease-out"
               style={pillStyle}
             />
             {widgets.map((id, idx) => (

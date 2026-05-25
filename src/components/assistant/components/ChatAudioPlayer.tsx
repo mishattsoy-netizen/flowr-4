@@ -30,7 +30,7 @@ export const ChatAudioPlayer = memo(({ url, name, isPending = false, onRemove }:
 
   return (
     <div className={cn(
-      "flex items-center gap-3 px-3 py-2 bg-[var(--bone-6)] rounded-[var(--radius-small)] min-w-[220px] max-w-full",
+      "flex items-center gap-3 px-3 py-2 bg-[var(--app-dark)] rounded-[var(--radius-small)] min-w-[220px] max-w-full",
       isPending && "bg-transparent! border-none! py-0!"
     )}>
       <audio

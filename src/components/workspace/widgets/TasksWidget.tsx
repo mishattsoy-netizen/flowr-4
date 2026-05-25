@@ -63,7 +63,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Tasks</h2>
         <div className="flex items-center gap-2">
           {onUpdateData && (
-            <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[4px] p-0.5">
+            <div className="flex items-center gap-0.5 bg-[var(--app-dark)] rounded-[4px] p-0.5">
               {(['list', 'by-status'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => onUpdateData({ ...data, view: v })}
                   className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-[3px] transition-colors",
@@ -73,7 +73,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
             </div>
           )}
           <button onClick={() => { setIsAdding(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
+            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]">
             <Plus className="w-4 h-4" />
           </button>
         </div>
@@ -93,7 +93,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
         {view === 'list' ? (
           <div className="space-y-1">
             {incomplete.map(t => (
-              <div key={t.id} className="group flex items-center gap-3 px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] transition-all">
+              <div key={t.id} className="group flex items-center gap-3 px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)] transition-all">
                 <button onClick={() => toggleTask(t.id)} className="shrink-0 text-[var(--bone-20)] hover:text-accent transition-colors">
                   <Circle className="w-4 h-4" />
                 </button>
@@ -114,7 +114,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
               <div key={group}>
                 <div className="text-[10px] font-semibold text-bone-70 uppercase tracking-widest mb-1 px-1">{group}</div>
                 {items.map(t => (
-                  <div key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)]">
+                  <div key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)]">
                     <button onClick={() => toggleTask(t.id)} className="shrink-0 text-[var(--bone-20)] hover:text-accent"><Circle className="w-3.5 h-3.5" /></button>
                     <span className="text-sm text-foreground">{stripHtml(t.title || '')}</span>
                   </div>

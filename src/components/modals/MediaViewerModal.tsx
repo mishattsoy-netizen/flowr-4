@@ -82,7 +82,7 @@ export function MediaViewerModal() {
         >
           <Download className="w-4.5 h-4.5" />
         </button>
-        <div className="w-px h-6 bg-[var(--bone-6)] mx-1" />
+        <div className="w-px h-6 bg-[var(--app-dark)] mx-1" />
         <button 
           onClick={closeModal} 
           className="w-10 h-10 rounded-full bg-white/5 border border-[var(--bone-12)] text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
@@ -141,7 +141,7 @@ export function MediaViewerModal() {
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="space-y-2">
             <h3 className="text-white/40 text-[11px] font-bold uppercase tracking-[0.2em]">Image Narrative</h3>
-            <div className="h-px w-12 bg-[var(--bone-6)]" />
+            <div className="h-px w-12 bg-[var(--app-dark)]" />
           </div>
           
           <div className="text-bone-100/90 text-[17px] leading-[135%] tracking-[0.135em] font-medium font-serif italic selection:bg-bone-100/20">

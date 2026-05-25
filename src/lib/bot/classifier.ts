@@ -87,10 +87,15 @@ export async function classifyIntentWithModel(
     }
   }
 
-  // Retry intent fast-path: short follow-ups like "try again", "retry", "again", "one more time"
+  // Retry and brief continuation intent fast-path: short follow-ups like "try again", "again", "one more", "another"
   // inherit the category of the last user message in history instead of being classified standalone.
-  const RETRY_PHRASES = ['try again', 'retry', 'again', 'one more time', 'redo', 'do it again', 'try once more', 'please retry']
-  const isRetry = RETRY_PHRASES.some(p => lowerMsg === p || lowerMsg === p + '.' || lowerMsg === p + '!')
+  const RETRY_PHRASES = [
+    'try again', 'retry', 'again', 'one more time', 'redo', 'do it again', 
+    'try once more', 'please retry', 'last one', 'one more', 'another', 
+    'more', 'short one', 'longer', 'bigger'
+  ]
+  const cleanMsg = lowerMsg.replace(/[.!?]+$/, '').trim()
+  const isRetry = RETRY_PHRASES.includes(cleanMsg)
   if (isRetry && history.length > 0) {
     const lastUserMsg = [...history].reverse().find(h => h.role === 'user')
     if (lastUserMsg) {

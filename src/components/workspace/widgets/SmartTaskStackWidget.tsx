@@ -151,9 +151,32 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
     }
   }
 
-  // Sliding pill: position by index among visible tabs
-  const activeIndex = visibleTabs.findIndex(t => t.id === activeId);
-  const tabCount = visibleTabs.length || 1;
+  const tabContainerRef = useRef<HTMLDivElement>(null);
+  const [pillStyle, setPillStyle] = useState({ left: 3, width: 80 });
+
+  useEffect(() => {
+    if (!tabContainerRef.current) return;
+    const measure = () => {
+      const activeEl = tabContainerRef.current?.querySelector('[data-active="true"]') as HTMLElement;
+      if (activeEl) {
+        const next = { left: activeEl.offsetLeft, width: activeEl.offsetWidth };
+        setPillStyle(prev =>
+          prev.left === next.left && prev.width === next.width ? prev : next
+        );
+      }
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(tabContainerRef.current);
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
+  }, [activeId, visibleTabs, showAddMenu]);
 
   return (
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
@@ -161,25 +184,30 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
 
         {/* Tab switcher */}
         {visibleTabs.length > 0 ? (
-          <div className="relative flex items-center p-[3px] bg-dark rounded-[8px] no-drag overflow-hidden w-fit">
+          <div ref={tabContainerRef} className="relative flex items-center p-[3px] rounded-[8px] no-drag overflow-hidden w-fit" style={{ background: 'var(--slider-track)' }}>
             {/* Sliding pill */}
             <div
-              className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] shadow-sm transition-all duration-300 ease-out"
+              className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--slider-pill)] transition-all duration-300 ease-out"
               style={{
-                left: `calc(3px + ${activeIndex * 80}px)`,
-                width: '80px',
+                left: `${pillStyle.left}px`,
+                width: `${pillStyle.width}px`,
+                boxShadow: 'var(--slider-pill-shadow)'
               }}
             />
             {visibleTabs.map(tab => (
-              <div key={tab.id} className="relative z-10 w-20 flex items-center justify-center group/tab">
+              <div
+                key={tab.id}
+                data-active={activeId === tab.id ? "true" : undefined}
+                className="relative z-10 flex items-center justify-center px-3.5 group/tab shrink-0"
+              >
                 <button
                   onClick={() => handleTabSwitch(tab.id)}
                   className={cn(
-                    "w-full flex items-center justify-center py-1 px-1 transition-colors duration-200",
+                    "flex items-center justify-center py-1 transition-colors duration-200",
                     activeId === tab.id ? "text-[var(--bone-100)]" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <span className="text-[11px] font-semibold truncate">{tab.label}</span>
+                  <span className="text-[11px] font-semibold">{tab.label}</span>
                 </button>
                 {/* X to hide this tab — visible on hover in edit mode */}
                 {isEditing && visibleTabs.length > 1 && (
@@ -211,7 +239,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
                         key={tab.id}
                         onPointerDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); showTab(tab.id); }}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)] transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--app-dark)] transition-colors"
                       >
                         <tab.icon strokeWidth={2} className={cn("w-3 h-3", tab.color)} />
                         {tab.label}
@@ -229,7 +257,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
         {/* Right side: count badge + add-task button */}
         <div className="flex items-center gap-1.5 shrink-0">
           {displayTasks.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bone-6)] border border-[var(--bone-3)]">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--app-dark)] border border-[var(--bone-3)]">
               <div className={cn("w-1 h-1 rounded-full animate-pulse", activeTabDef.color.replace('text-', 'bg-'))} />
               <span className="text-[10px] text-[var(--bone-40)] font-semibold uppercase tracking-wider">
                 {displayTasks.length}
@@ -239,7 +267,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
 
           <button
             onClick={handleToggleAdding}
-            className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--bone-6)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--app-dark)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
             title="Add task"
           >
             <Plus strokeWidth={2} className="w-3.5 h-3.5" />
@@ -254,13 +282,13 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
               <div
                 key={t.id}
                 className={cn(
-                  "group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-all",
+                  "group flex items-center gap-3 px-2 py-1.5 rounded-[var(--radius-medium)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] transition-all",
                   t.completed && "opacity-35 line-through decoration-[var(--bone-30)]"
                 )}
               >
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className="w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)]"
+                  className="w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--app-dark)]"
                 >
                   {t.completed && <Check className="w-[10px] h-[10px] text-[var(--bone-100)] stroke-[3px]" />}
                 </button>

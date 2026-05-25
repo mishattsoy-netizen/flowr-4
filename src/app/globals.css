@@ -1,38 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&display=swap');
 @import "tailwindcss";
 
-/* Global font weight tracking - adds 0.025em letter-spacing to all font weights */
-
-.font-thin,
-.font-extralight,
-.font-light,
-.font-normal,
-.font-medium,
-.font-semibold,
-.font-bold,
-.font-extrabold,
-.font-black {
+/* Unified letter-spacing: dark mode 0.03em, light mode -0.01em (DM Sans only, mono excluded) */
+.dark body, .dark body *:not(code):not(pre):not(kbd):not(samp):not(.font-mono) {
   letter-spacing: 0.04em;
 }
 
-.font-sans {
-  letter-spacing: 0.06em;
-}
-
-/* Global small text tracking */
-.text-xs,
-.text-\[9px\],
-.text-\[10px\],
-.text-\[11px\],
-.text-\[12px\] {
-  letter-spacing: 0.03em;
-}
-
-/* Global body text tracking */
-.text-sm,
-.text-\[13px\],
-.text-\[14px\] {
-  letter-spacing: 0.02em;
+:root body, :root body *:not(code):not(pre):not(kbd):not(samp):not(.font-mono) {
+  letter-spacing: -0.01em;
 }
 
 /* Prevent accidental transitions and flying elements during page load/hydration */
@@ -43,10 +18,73 @@
 }
 
 :root {
+  --app-background: #F8F8F6;
+  --app-panel: #FFFFFF;
+  --app-dark: #EFEEEB;
+  --sys-color: #F7F7F6;
+  --slider-pill: var(--app-panel);
+  --slider-track: rgba(0, 0, 0, 0.08);
+  --slider-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --popup-shadow-color: rgba(0, 0, 0, 0.1);
+
+  /* Dynamic Font Weights for Light Mode (Bolder) */
+  --weight-medium: 600;
+  --weight-semibold: 700;
+
+  /* Black-based overlays for light mode */
+  --bone-5: rgba(0, 0, 0, 0.05);
+  --bone-2: rgba(0, 0, 0, 0.02);
+  --bone-3: rgba(0, 0, 0, 0.03);
+  --bone-6: rgba(0, 0, 0, 0.06);
+  --bone-10: rgba(0, 0, 0, 0.10);
+  --bone-12: rgba(0, 0, 0, 0.12);
+  --bone-15: rgba(0, 0, 0, 0.15);
+  --bone-30: rgba(0, 0, 0, 0.30);
+  --bone-70: rgba(0, 0, 0, 0.70);
+  --bone-100: #242423;
+  /* Dark text on light background */
+
+  --white-overlay: rgba(255, 255, 255, 0.6);
+  /* Needs adjusting for light mode buttons */
+  --black-overlay: rgba(0, 0, 0, 0.06);
+
+  --border-inner: var(--bone-10);
+  --border-outer: var(--bone-12);
+  --border-hover: var(--bone-30);
+  --icon-default: var(--bone-30);
+  --icon-active: var(--bone-70);
+  --dim-foreground: var(--bone-70);
+  --foreground: var(--bone-100);
+
+  --accent: #d67a3c;
+  --on-accent: #FFFFFF;
+  --color-danger: #ff6060;
+
+  --radius-big: 24px;
+  --radius-regular: 12px;
+  --radius-medium: 8px;
+  --radius-small: 6px;
+  --radius-tiny: 4px;
+
+  --color-brand-blue: #2A78D6;
+  --brand-blue: #2A78D6;
+  color-scheme: light;
+}
+
+.dark {
   --app-background: #1F1F1E;
   --app-panel: #262626;
   --app-dark: #121212;
   --sys-color: #1E1E1D;
+  --slider-pill: var(--bone-6);
+  --slider-track: rgba(233, 233, 226, 0.06);
+  --slider-pill-shadow: none;
+  --popup-shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* Standard Font Weights for Dark Mode */
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
   --bone-5: rgba(233, 233, 226, 0.05);
   --bone-2: rgba(233, 233, 226, 0.02);
   --bone-3: rgba(233, 233, 226, 0.03);
@@ -56,7 +94,7 @@
   --bone-15: rgba(233, 233, 226, 0.15);
   --bone-30: rgba(233, 233, 226, 0.30);
   --bone-70: rgba(233, 233, 226, 0.70);
-  --bone-100: #E9E9E2;
+  --bone-100: #eeeee8;
   --white-overlay: rgba(255, 255, 255, 0.03);
   --black-overlay: rgba(0, 0, 0, 0.06);
   --border-inner: var(--bone-10);
@@ -67,9 +105,7 @@
   --dim-foreground: var(--bone-70);
   --foreground: var(--bone-100);
   --accent: #d67a3c;
-  /* Orange accent color */
   --on-accent: #242423;
-  /* Neutral color for items on bone-fill */
   --color-danger: #ff6060;
   --radius-big: 24px;
   --radius-regular: 12px;
@@ -85,6 +121,32 @@
   body {
     font-weight: 400;
   }
+}
+
+/* Font weight overrides — outside @layer so they beat Tailwind's @layer utilities */
+:root .font-medium {
+  font-weight: 600 !important;
+}
+
+:root .font-weight-medium {
+  font-weight: 500 !important;
+}
+
+:root .font-semibold {
+  font-weight: 700 !important;
+}
+
+.dark .font-medium {
+  font-weight: 500 !important;
+}
+
+.dark .font-semibold {
+  font-weight: 600 !important;
+}
+
+/* Mono: always 0 letter-spacing, no weight changes */
+code, pre, kbd, samp, .font-mono {
+  letter-spacing: 0 !important;
 }
 
 .toggle-switch:checked {
@@ -127,13 +189,19 @@ html[data-interface-size="big"] {
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--dim-foreground);
   --color-border: var(--border-outer);
-  --color-hover: var(--bone-6);
+  --color-hover: var(--app-dark);
 
   --font-display: var(--font-display);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-semibold: var(--weight-semibold);
+
+  --color-bone-2: var(--bone-2);
+  --color-bone-3: var(--bone-3);
   --color-bone-5: var(--bone-5);
+  --color-bone-6: var(--bone-6);
   --color-bone-10: var(--bone-10);
   --color-bone-12: var(--bone-12);
   --color-bone-15: var(--bone-15);
@@ -362,23 +430,23 @@ html[data-interface-size="big"] {
 }
 
 @utility btn-sidebar-utility {
-  @apply w-[22px] h-[22px] flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-10)] transition-none;
+  @apply w-[22px] h-[22px] flex items-center justify-center rounded-[var(--radius-tiny)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] transition-none;
 }
 
 @utility popup-glass-big {
   background-color: var(--color-panel);
   @apply border border-[var(--bone-12)] rounded-[var(--radius-big)];
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px var(--popup-shadow-color);
 }
 
 @utility popup-glass-small {
   background-color: var(--color-panel);
   @apply border border-[var(--bone-12)] rounded-[var(--radius-regular)] transition-none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--popup-shadow-color);
 }
 
 @utility popup-item {
-  @apply flex items-center gap-3 w-full px-3 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-white/10 rounded-[var(--radius-medium)] transition-none;
+  @apply flex items-center gap-3 w-full px-3 py-1.5 text-[13.5px] cursor-pointer whitespace-nowrap text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] rounded-[var(--radius-medium)] transition-none;
 }
 
 @utility popup-divider {
@@ -576,26 +644,32 @@ html {
   width: 4px !important;
   background: transparent !important;
 }
+
 .scrollbar-hover::-webkit-scrollbar-track {
   background: transparent !important;
   border: none !important;
 }
+
 .scrollbar-hover::-webkit-scrollbar-thumb {
   background: transparent !important;
   border-radius: 10px !important;
   transition: background 0.15s ease !important;
 }
+
 .scrollbar-hover:hover::-webkit-scrollbar-thumb,
 .scrollbar-hover.is-scrolling::-webkit-scrollbar-thumb {
   background: var(--bone-20) !important;
 }
+
 .scrollbar-hover::-webkit-scrollbar-thumb:hover {
   background: var(--bone-40) !important;
 }
+
 .scrollbar-hover {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
+
 .scrollbar-hover.is-scrolling {
   scrollbar-color: var(--bone-20) transparent;
 }
@@ -1004,6 +1078,52 @@ html {
   cursor: grabbing !important;
 }
 
+/* The pointer is held down throughout a drag, so `:active` stays true. The
+   active scale-down compounds with dnd-kit's translate transform and makes the
+   dragged row jitter — suppress it while dragging. */
+.is-dragging .sidebar-item-row {
+  scale: 1 !important;
+}
+
+/* Folder "drop inside" target — shown when dragging an item over a folder row.
+   Accent ring + soft tinted fill + gentle pulse signals the item will nest.
+   Selector is scoped under `.is-dragging` and uses two classes so it outranks
+   the `.is-dragging .sidebar-item-row:hover` transparent-override above (the
+   cursor is over the row, so that hover rule would otherwise win). */
+.is-dragging .sidebar-item-row.sidebar-folder-drop-target,
+.is-dragging .sidebar-item-row.sidebar-folder-drop-target:hover {
+  background-color: color-mix(in srgb, var(--accent) 16%, transparent) !important;
+  color: var(--bone-100) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
+  animation: sidebar-folder-drop-pulse 1.1s ease-in-out infinite;
+}
+
+/* Tint the folder icon to accent so the nest cue is unmistakable. */
+.is-dragging .sidebar-item-row.sidebar-folder-drop-target svg {
+  color: var(--accent) !important;
+}
+
+@keyframes sidebar-folder-drop-pulse {
+
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent) 24%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 75%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+      0 0 16px color-mix(in srgb, var(--accent) 42%, transparent);
+  }
+}
+
 /* â”€â”€â”€ Widget Dragging Lock â”€â”€â”€ */
 body.is-dragging-widget {
   cursor: grabbing !important;
@@ -1096,27 +1216,19 @@ body.is-dragging-widget [data-widget-id] * {
 
 .selected-block .flex-1.flex.items-start,
 .selected-block .relative.w-full {
-  background-color: var(--bone-5);
-  box-shadow: 0 0 0 1px var(--bone-15);
-}
-
-.dragging-active-content .editor-block:not(.selected-block) {
-  opacity: 0.5;
-  filter: blur(0.5px);
-  transition: all 0.3s ease;
+  background-color: var(--bone-6);
+  box-shadow: none;
 }
 
 .editor-block.dragging-ghost {
-  opacity: 0.4;
   scale: 0.98;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
   z-index: 1000;
 }
 
-/* Premium Drag Animation */
-.dragging-active-content .editor-block {
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
-}
+/* Reordering siblings get their position transition from dnd-kit's inline
+   `transition` style. The actively dragged item sets `transition: none` inline
+   (see BlockRenderer) so it tracks the pointer 1:1 — do NOT add a transform
+   transition here or the drag will rubber-band. */
 
 /* Selection Box Styles */
 .selection-box {

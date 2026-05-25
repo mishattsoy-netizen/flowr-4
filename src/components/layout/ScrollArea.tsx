@@ -17,6 +17,7 @@ export function ScrollArea({ children, className, innerRef, onScroll }: ScrollAr
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [visible, setVisible] = useState(false);
   const isDragging = useRef(false);
+  const isHoveringTrack = useRef(false);
   const dragStartY = useRef(0);
   const dragStartScroll = useRef(0);
 
@@ -57,16 +58,10 @@ export function ScrollArea({ children, className, innerRef, onScroll }: ScrollAr
     updateThumb();
     const ro = new ResizeObserver(updateThumb);
     ro.observe(el);
-    const onMouseEnter = () => { updateThumb(); show(); };
-    const onMouseLeave = () => { if (!isDragging.current) hide(); };
-    el.addEventListener('mouseenter', onMouseEnter);
-    el.addEventListener('mouseleave', onMouseLeave);
     return () => {
       ro.disconnect();
-      el.removeEventListener('mouseenter', onMouseEnter);
-      el.removeEventListener('mouseleave', onMouseLeave);
     };
-  }, [scrollRef, updateThumb, show, hide]);
+  }, [scrollRef, updateThumb]);
 
   const onThumbMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -86,7 +81,9 @@ export function ScrollArea({ children, className, innerRef, onScroll }: ScrollAr
     };
     const onUp = () => {
       isDragging.current = false;
-      hide();
+      if (!isHoveringTrack.current) {
+        hide();
+      }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
@@ -103,18 +100,23 @@ export function ScrollArea({ children, className, innerRef, onScroll }: ScrollAr
       >
         {children}
       </div>
-      {/* Floating thumb */}
+      {/* Scrollbar Track / Hover Zone */}
       <div
-        className="absolute right-[2px] top-0 bottom-0 w-[4px] pointer-events-none"
-        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.15s ease' }}
+        className="absolute right-0 top-0 bottom-0 w-3 z-50 pointer-events-auto cursor-pointer"
+        onMouseEnter={() => { isHoveringTrack.current = true; updateThumb(); show(); }}
+        onMouseLeave={() => { isHoveringTrack.current = false; if (!isDragging.current) hide(); }}
       >
         <div
-          ref={thumbRef}
-          onMouseDown={onThumbMouseDown}
-          className="absolute w-full rounded-full cursor-pointer pointer-events-auto"
-          style={{ background: 'rgba(233,233,226,0.2)' }}
-          onMouseEnter={show}
-        />
+          className="absolute right-[2px] top-0 bottom-0 w-[4px] pointer-events-none"
+          style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.15s ease' }}
+        >
+          <div
+            ref={thumbRef}
+            onMouseDown={onThumbMouseDown}
+            className="absolute w-full rounded-full cursor-pointer pointer-events-auto"
+            style={{ background: 'rgba(233,233,226,0.2)' }}
+          />
+        </div>
       </div>
     </div>
   );

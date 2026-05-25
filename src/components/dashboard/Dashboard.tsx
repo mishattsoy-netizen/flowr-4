@@ -48,43 +48,7 @@ export function Dashboard() {
     </div>
   );
 
-  const actions = (
-    <div className="flex gap-3 items-start">
-      <button onClick={() => openModal({ kind: 'newItem', defaultToFirstCollection: true })} className="btn-accent">
-        <Plus strokeWidth={2} className="w-4 h-4" /> New Task
-      </button>
-      <div className="relative" ref={popupRef}>
-        <button onClick={() => setShowNewPagePopup(!showNewPagePopup)} className="btn-task">
-          <Plus strokeWidth={2} className="w-4 h-4" /> New Page
-        </button>
-        {showNewPagePopup && (
-          <div className="absolute top-full left-0 mt-2 w-48 bg-[var(--bone-6)] border border-[var(--bone-15)] rounded-[var(--radius-medium)] shadow-lg overflow-hidden z-50">
-            <button
-              onClick={handleCreateNote}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground/80 hover:bg-[var(--bone-10)] transition-colors"
-            >
-              <FileText strokeWidth={2} className="w-4 h-4 text-accent" />
-              Note page
-            </button>
-            <button
-              onClick={handleCreateCanvas}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground/80 hover:bg-[var(--bone-10)] transition-colors"
-            >
-              <Layout strokeWidth={2} className="w-4 h-4 text-accent" />
-              Canvas
-            </button>
-            <button
-              onClick={handleCreateMixed}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground/80 hover:bg-[var(--bone-10)] transition-colors border-t border-[var(--bone-15)]"
-            >
-              <Layers strokeWidth={2} className="w-4 h-4 text-accent" />
-              Mixed
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const actions = null;
 
   return <BentoDashboard contextId="dashboard" title={title} actions={actions} />;
 }

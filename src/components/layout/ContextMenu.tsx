@@ -92,8 +92,8 @@ function MenuItemComponent({
         className={cn(
           "popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm",
           item.danger && "popup-item-danger",
-          isOpen && "bg-[var(--bone-10)] text-[var(--bone-100)]",
-          item.selected && "bg-[var(--bone-6)]"
+          isOpen && "bg-[var(--app-dark)] text-[var(--bone-100)]",
+          item.selected && "bg-[var(--app-dark)]"
         )}
       >
         {item.icon && <div className="w-4 h-4 shrink-0">{item.icon}</div>}

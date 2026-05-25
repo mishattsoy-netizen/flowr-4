@@ -367,7 +367,7 @@ export function CommandPalette() {
           {query && (
             <button
               onClick={() => { setQuery(''); setActiveIndex(0); inputRef.current?.focus(); }}
-              className="p-1 rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] ml-2"
+              className="p-1 rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] ml-2"
             >
               <X strokeWidth={2} className="w-3.5 h-3.5" />
             </button>
@@ -426,7 +426,7 @@ export function CommandPalette() {
               {'tags' in item && (item as any).tags?.length > 0 && (
                 <div className="flex items-center gap-1 shrink-0 ml-2">
                   {((item as any).tags as string[]).slice(0, 2).map((tag: string) => (
-                    <span key={tag} className="px-1.5 py-0.5 rounded-full bg-[var(--bone-6)] text-[9px] font-bold text-[var(--bone-30)] uppercase tracking-wider">
+                    <span key={tag} className="px-1.5 py-0.5 rounded-full bg-[var(--app-dark)] text-[9px] font-bold text-[var(--bone-30)] uppercase tracking-wider">
                       <Hash strokeWidth={2} className="w-2 h-2 inline mr-0.5 -mt-px" />{tag}
                     </span>
                   ))}
@@ -439,7 +439,7 @@ export function CommandPalette() {
               )}
               {((item as any).shortcut) && (
                 <div className="flex items-center gap-0.5 shrink-0 ml-2">
-                  <span className="px-1.5 py-0.5 rounded-[var(--radius-small)] bg-[var(--bone-6)] text-[10px] font-mono text-[var(--bone-30)] group-hover:text-[var(--bone-70)]">
+                  <span className="px-1.5 py-0.5 rounded-[var(--radius-small)] bg-[var(--app-dark)] text-[10px] font-mono text-[var(--bone-30)] group-hover:text-[var(--bone-70)]">
                     {(item as any).shortcut}
                   </span>
                 </div>
@@ -454,7 +454,7 @@ export function CommandPalette() {
         <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--bone-6)] bg-[var(--bone-3)]">
           <button
             onClick={() => { setAIAssistantOpen(true); close(); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-medium)] text-[11px] font-bold text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
           >
             <AIAvatar className="w-3.5 h-3.5" />
             Ask AI
@@ -470,7 +470,7 @@ export function CommandPalette() {
               Open
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-[var(--bone-6)] text-[9px] font-bold">ESC</kbd>
+              <kbd className="px-1 py-0.5 rounded bg-[var(--app-dark)] text-[9px] font-bold">ESC</kbd>
               Close
             </span>
           </div>

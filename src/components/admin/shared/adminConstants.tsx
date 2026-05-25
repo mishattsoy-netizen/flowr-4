@@ -23,5 +23,5 @@ export const PROVIDER_COLORS: Record<string, string> = {
   local:           'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
   ollama:          'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
   'ollama(my pc)': 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
-  flowr:           'text-accent bg-[var(--bone-6)] border-white/5',
+  flowr:           'text-accent bg-[var(--app-dark)] border-white/5',
 };

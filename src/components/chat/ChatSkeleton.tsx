@@ -9,8 +9,8 @@ export function ChatHistorySkeleton() {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Top Buttons Skeleton */}
       <div className="flex flex-col px-3 pt-3 pb-1 shrink-0 gap-1">
-        <Skeleton className="h-7 w-full rounded-[var(--radius-small)] bg-[var(--bone-6)]" />
-        <Skeleton className="h-7 w-full rounded-[var(--radius-small)] bg-[var(--bone-6)]" />
+        <Skeleton className="h-7 w-full rounded-[var(--radius-small)] bg-[var(--app-dark)]" />
+        <Skeleton className="h-7 w-full rounded-[var(--radius-small)] bg-[var(--app-dark)]" />
       </div>
 
       {/* List Area Skeleton */}

@@ -184,14 +184,25 @@ export function TrackerPage() {
       >
         <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 scrollbar-thin">
           <div className="flex gap-6 h-full min-w-max py-2">
-            {COLUMN_KEYS.map((id) => (
-              <KanbanColumn
-                key={id}
-                id={id}
-                title={id === 'inProgress' ? 'In Progress' : id.charAt(0).toUpperCase() + id.slice(1)}
-                tasks={columns[id]}
-              />
-            ))}
+            {COLUMN_KEYS.map((id) => {
+              let title = '';
+              switch (id) {
+                case 'upcoming': title = 'To do'; break;
+                case 'today': title = 'Today'; break;
+                case 'inProgress': title = 'In progress'; break;
+                case 'overdue': title = 'Overdue'; break;
+                case 'completed': title = 'Done'; break;
+                default: title = (id as string).charAt(0).toUpperCase() + (id as string).slice(1);
+              }
+              return (
+                <KanbanColumn
+                  key={id}
+                  id={id}
+                  title={title}
+                  tasks={columns[id]}
+                />
+              );
+            })}
           </div>
         </div>
 

@@ -130,24 +130,30 @@ function RowEl({
         if (i < rowIndex && rows[i].depth < row.depth) count = 0;
       }
       if (rowIndex === 0 && row.depth === 0 && listNumber != null) count = listNumber;
-      return <span className="text-bone-70/40 text-[16px] font-normal leading-none" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }}>{formatCounter(count, counterStyle)}.</span>;
+      return <span className="text-bone-70/40 text-[16px] font-normal leading-[1.6]" style={{ fontFamily: '"Literata"', letterSpacing: '-0.01em' }}>{formatCounter(count, counterStyle)}.</span>;
     }
     return null;
   };
 
   return (
     <div className="flex items-start w-full py-0.5" style={{ paddingLeft: `${row.depth * 24}px` }}>
-      {blockType === 'checklist' ? (
-        <div className="w-[16px] h-[16px] shrink-0 rounded-[4px] border flex items-center justify-center cursor-pointer mt-[5px] mr-1 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)]"
-          onClick={() => onRowUpdate(row.id, '__toggle_checked__')}
-        >
-          {row.checked && <Check className="w-[10px] h-[10px] text-[var(--bone-100)]" strokeWidth={3} />}
-        </div>
-      ) : (
-        <div className="shrink-0 flex items-start justify-end pr-1 h-[1.7em]" style={{ width: '20px', paddingTop: '11px' }}>
-          {marker()}
-        </div>
-      )}
+      <div 
+        className="shrink-0 flex items-start justify-center mr-2.5 h-[1.7em]" 
+        style={{ 
+          width: '16px', 
+          paddingTop: blockType === 'checklist' ? '5px' : (blockType === 'numberedList' ? '0px' : '11px') 
+        }}
+      >
+        {blockType === 'checklist' ? (
+          <div className="w-[16px] h-[16px] shrink-0 rounded-[4px] border flex items-center justify-center cursor-pointer border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--app-dark)]"
+            onClick={() => onRowUpdate(row.id, '__toggle_checked__')}
+          >
+            {row.checked && <Check className="w-[10px] h-[10px] text-[var(--bone-100)]" strokeWidth={3} />}
+          </div>
+        ) : (
+          marker()
+        )}
+      </div>
       <div
         ref={elRef}
         contentEditable

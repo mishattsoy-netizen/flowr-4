@@ -16,6 +16,7 @@ import { AIAvatar } from './components/AIAvatar';
 import { ChatAudioPlayer } from './components/ChatAudioPlayer';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatSkeleton } from './components/ChatSkeleton';
+import { StatusTyping } from './components/StatusTyping';
 import { useDeferredLoading } from '@/hooks/use-deferred-loading';
 import { supabase, isSupabaseEnabled } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
@@ -43,7 +44,7 @@ const ContextMeter = ({ usage, limit, threshold = 0.8, size = 30 }: { usage: num
           strokeDashoffset={strokeDashoffset}
           className={cn(
             "",
-            (usage / limit) > threshold ? "text-white/60" : "text-[var(--brand-blue)]"
+            (usage / limit) > threshold ? "text-white/60" : "text-blue-400"
           )}
           strokeLinecap="round"
         />
@@ -62,6 +63,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   const stopAIGeneration = useStore(state => state.stopAIGeneration);
   const openModal = useStore(state => state.openModal);
   const sendAIMessage = useStore(state => state.sendAIMessage);
+  const regenerateAIMessage = useStore(state => state.regenerateAIMessage);
   const clearAIChat = useStore(state => state.clearAIChat);
   const isAILoading = useStore(state => state.isAILoading);
   const activeEntityId = useStore(state => state.activeEntityId);
@@ -124,7 +126,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   const [, setIsTranscribing] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
-  const [isCompacting, setIsCompacting] = useState(false);
+  const isCompacting = useStore(state => state.isCompacting);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyConfirmDeleteId, setHistoryConfirmDeleteId] = useState<string | null>(null);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -133,6 +135,18 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   const contextMeterRef = useRef<HTMLDivElement>(null);
   const [showContextTooltip, setShowContextTooltip] = useState(false);
   const [contextTooltipPos, setContextTooltipPos] = useState<{ bottom: number; right: number } | null>(null);
+  const contextTooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const openContextTooltip = () => {
+    if (contextTooltipTimeoutRef.current) clearTimeout(contextTooltipTimeoutRef.current);
+    setShowContextTooltip(true);
+  };
+  const closeContextTooltip = () => {
+    if (contextTooltipTimeoutRef.current) clearTimeout(contextTooltipTimeoutRef.current);
+    contextTooltipTimeoutRef.current = setTimeout(() => setShowContextTooltip(false), 150);
+  };
+  useEffect(() => () => {
+    if (contextTooltipTimeoutRef.current) clearTimeout(contextTooltipTimeoutRef.current);
+  }, []);
   const [contextEnabled, setContextEnabled] = useState(false);
 
   const showSkeleton = useDeferredLoading(isAILoading, 200);
@@ -154,8 +168,14 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
   // Server-side token_usage_total only updates on compaction, so it stays at 0 until then.
   const localTokenEstimate = (() => {
     let chars = 0
-    for (const m of aiMessages) {
-      if (m.role !== 'user' && m.role !== 'assistant') continue
+    const filteredMsgs = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant')
+    
+    // If distilled summary exists, we only count the last 5 messages (redundant ones are trimmed by chainRouter)
+    const messagesToCount = (aiSessionContext?.distilled_summary)
+      ? filteredMsgs.slice(-5)
+      : filteredMsgs
+
+    for (const m of messagesToCount) {
       let text = (m.content || '').includes('data:image/')
         ? (m.content || '').replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, m.image_description ? `[Image: ${m.image_description}]` : '[Image: (visual content generated)]')
         : (m.content || '')
@@ -168,7 +188,9 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
     }
     return Math.ceil(chars / 4)
   })();
-  const displayedTokens = Math.max(aiSessionContext?.token_usage_total ?? 0, localTokenEstimate);
+  const displayedTokens = aiSessionContext?.distilled_summary
+    ? (aiSessionContext.token_usage_total ?? 0) + localTokenEstimate
+    : localTokenEstimate;
 
   useEffect(() => {
     setIsMounted(true);
@@ -567,14 +589,14 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
             <div className="flex items-center gap-1">
               <button
                 onClick={startNewChat}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
                 title="New chat"
               >
-                <Plus strokeWidth={2} className="w-5 h-5" />
+                <Plus strokeWidth={2} className="w-4 h-4" />
               </button>
               <button
                 onClick={openChatInPage}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
                 title="Open in Chat"
               >
                 <ExternalLink strokeWidth={2} className="w-4 h-4" />
@@ -582,8 +604,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
               <button
                 onClick={startTempChat}
                 className={cn(
-                  "w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] hover:bg-[var(--bone-6)]",
-                  isTempChat ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  "btn-sidebar-utility",
+                  isTempChat && "text-[var(--bone-100)] bg-[var(--app-dark)]"
                 )}
                 title="Temporary chat"
               >
@@ -591,28 +613,28 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
               </button>
               <button
                 onClick={() => { loadChatConversations(); setShowHistoryModal(true); }}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
                 title="Session history"
               >
                 <History strokeWidth={2} className="w-4 h-4" />
               </button>
               <button
                 onClick={toggleAIAssistantExtended}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
               >
-                {isAIAssistantExtended ? <PanelLeft strokeWidth={2} className="w-5 h-5" /> : <PanelRight strokeWidth={2} className="w-5 h-5 rotate-180" />}
+                {isAIAssistantExtended ? <PanelLeft strokeWidth={2} className="w-4 h-4" /> : <PanelRight strokeWidth={2} className="w-4 h-4 rotate-180" />}
               </button>
               <button
                 onClick={clearAIChat}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
               >
-                <Trash2 strokeWidth={2} className="w-5 h-5" />
+                <Trash2 strokeWidth={2} className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setAIAssistantOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-small)] text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+                className="btn-sidebar-utility"
               >
-                <X strokeWidth={2} className="w-6 h-6" />
+                <X strokeWidth={2} className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -628,6 +650,27 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
             )}
             style={{ overflowAnchor: 'auto' }}
           >
+            {aiSessionContext?.distilled_summary && (
+              <div
+                onClick={() => openModal({ kind: 'summaryPreview', summary: aiSessionContext.distilled_summary! })}
+                className="my-3 mx-1 p-3 rounded-[12px] border border-[var(--bone-12)] bg-white/[0.02] hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between group select-none shadow-sm"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-7 h-7 rounded-full bg-white/[0.04] border border-[var(--bone-12)] flex items-center justify-center text-bone-70 group-hover:text-accent group-hover:border-accent/30 transition-all shrink-0">
+                    <Brain className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col items-start text-left min-w-0">
+                    <span className="text-[11px] font-semibold text-bone-90 group-hover:text-bone-100 tracking-tight leading-none">Conversation Condensed</span>
+                    <span className="text-[9.5px] text-bone-40 tracking-tight mt-1 truncate max-w-full">Prior messages distilled to maximize context. Click to view.</span>
+                  </div>
+                </div>
+                <div className="text-[10px] font-semibold text-bone-30 group-hover:text-accent flex items-center gap-1 shrink-0 ml-2 transition-colors">
+                  <span>View</span>
+                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            )}
+
             {aiMessages.length === 0 && !isAILoading && (
               <div className="flex-1 flex flex-col justify-end text-center pb-5 min-h-0">
                 <div className="flex flex-col @[500px]:flex-row items-center justify-center gap-4 @[500px]:gap-6 text-center @[500px]:text-left">
@@ -646,15 +689,34 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                   isLast={idx === filtered.length - 1}
                   scrollToBottom={scrollToBottom}
                   handleAddImageToWorkspace={handleAddImageToWorkspace}
-                  onRegenerate={() => {
+                  onRegenerate={msg.role === 'assistant' && msg.id ? () => {
                     const lastUserMsg = [...filtered.slice(0, idx + 1)].reverse().find(m => m.role === 'user');
-                    if (lastUserMsg) handleSend(lastUserMsg.content, lastUserMsg.attachments);
-                  }}
+                    if (lastUserMsg && msg.id) regenerateAIMessage(msg.id, lastUserMsg.content ?? '', lastUserMsg.attachments);
+                  } : undefined}
                   onReply={setReplyMessage}
                   compact={true}
                 />
               </div>
             ))}
+
+            {isCompacting && (
+              <div className="w-full pb-3 flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+                  <AIAvatar isTyping={true} className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusTyping
+                    text={(() => {
+                      const custom = aiSessionContext?.status_messages?.COMPACTION;
+                      if (custom) return `${custom.emoji} ${custom.label}`.trim();
+                      return "🚀 Compressing...";
+                    })()}
+                    className="font-normal text-[var(--bone-100)]"
+                    style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '13px', letterSpacing: '-0.01em' }}
+                  />
+                </div>
+              </div>
+            )}
 
             {showSkeleton && (
               <div className="w-full pb-2">
@@ -859,7 +921,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         fileInputRef.current?.click();
                       }
                     }}
-                    className="p-1.5 rounded-[8px] text-bone-70 hover:text-foreground hover:bg-white/5 "
+                    className="p-1.5 rounded-[8px] text-bone-70 hover:text-foreground hover:bg-dark "
                   >
                     <Plus strokeWidth={2} className="w-4 h-4" />
                   </button>
@@ -876,12 +938,11 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                       }
                     }}
                     className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-[8px] ",
-                      showCommandMenu ? "bg-dark text-foreground" : "text-bone-70 hover:text-foreground hover:bg-white/5"
+                      "p-1.5 rounded-[8px] ",
+                      showCommandMenu ? "bg-dark text-foreground" : "text-bone-70 hover:text-foreground hover:bg-dark"
                     )}
                   >
                     <SquareSlash strokeWidth={2} className="w-4 h-4" />
-                    <span className="text-[11px] font-semibold uppercase tracking-widest pt-0.5">Tools</span>
                   </button>
                 </Tooltip>
               </div>
@@ -904,7 +965,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         "flex items-center gap-1.5 px-2 py-1 rounded-[8px]",
                         showModeMenu
                           ? "bg-dark text-foreground"
-                          : "text-bone-70 hover:text-foreground hover:bg-white/5"
+                          : "text-bone-70 hover:text-foreground hover:bg-dark"
                       )}
                     >
                       <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-widest pt-0.5">{MODE_OPTIONS.find(m => m.key === activeMode)?.label}</span>
@@ -979,6 +1040,24 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                               <div className="w-3 h-3 rounded-full bg-white mx-0.5" />
                             </div>
                           </button>
+                          {aiSessionContext?.distilled_summary && (
+                            <>
+                              <div className="popup-divider" />
+                              <button
+                                onClick={() => {
+                                  openModal({ kind: 'summaryPreview', summary: aiSessionContext.distilled_summary! });
+                                  setShowModeMenu(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[var(--radius-medium)] text-[13.5px] transition-none text-[var(--bone-70)] hover:bg-white/[0.08] hover:text-bone-100"
+                              >
+                                <Brain className="w-4 h-4 shrink-0 opacity-60 text-accent animate-pulse" strokeWidth={2} />
+                                <div className="flex flex-col items-start">
+                                  <span className="tracking-wide text-accent font-semibold">View Memory Summary</span>
+                                  <span className="text-[10px] uppercase tracking-[0.06em] opacity-30 leading-none mt-0.5">Preview condensed history</span>
+                                </div>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </>,
@@ -998,9 +1077,9 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                       const r = contextMeterRef.current.getBoundingClientRect();
                       setContextTooltipPos({ bottom: window.innerHeight - r.top + 8, right: window.innerWidth - r.right });
                     }
-                    setShowContextTooltip(true);
+                    openContextTooltip();
                   }}
-                  onMouseLeave={() => setShowContextTooltip(false)}
+                  onMouseLeave={closeContextTooltip}
                 >
                   <div className="flex items-center gap-2 z-10 cursor-help">
                     {aiSessionContext && (
@@ -1025,8 +1104,8 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                     <div
                       className="fixed bg-[var(--color-panel)] p-4 rounded-[16px] border border-[var(--bone-12)] backdrop-blur-3xl min-w-[280px]"
                       style={{ bottom: contextTooltipPos.bottom, right: contextTooltipPos.right, zIndex: 150 }}
-                      onMouseEnter={() => setShowContextTooltip(true)}
-                      onMouseLeave={() => setShowContextTooltip(false)}
+                      onMouseEnter={openContextTooltip}
+                      onMouseLeave={closeContextTooltip}
                     >
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center text-[11px] font-bold text-bone-80">
@@ -1077,9 +1156,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                setIsCompacting(true);
                                 await compactAIChat();
-                                setIsCompacting(false);
                               }}
                               disabled={!canCompact}
                               className={cn(
@@ -1103,6 +1180,19 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                             </button>
                           )
                         })()}
+                        {aiSessionContext?.distilled_summary && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openModal({ kind: 'summaryPreview', summary: aiSessionContext.distilled_summary! });
+                              setShowContextTooltip(false);
+                            }}
+                            className="w-full mt-1.5 py-1.5 rounded-[8px] text-[10px] font-bold tracking-tight pointer-events-auto flex items-center justify-center gap-2 bg-accent/20 border border-accent/40 text-bone-100 hover:bg-accent/35 hover:text-white transition-all active:scale-[0.98]"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-accent" />
+                            <span>View Distilled Summary</span>
+                          </button>
+                        )}
                       </div>
                     </div>,
                     document.body
@@ -1129,7 +1219,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
                         "w-7 h-7 rounded-[8px] flex items-center justify-center relative shrink-0  group/mic",
                         isRecording
                           ? "bg-red-500 text-white scale-110"
-                          : cn("text-bone-70 hover:text-foreground hover:bg-white/5", showMicSettings && "!bg-[var(--bone-15)] !text-[var(--bone-100)] !opacity-100")
+                          : cn("text-bone-70 hover:text-foreground hover:bg-dark", showMicSettings && "!bg-[var(--bone-15)] !text-[var(--bone-100)] !opacity-100")
                       )}
                     >
                       <Mic strokeWidth={2} className={cn("w-3.5 h-3.5", isRecording && "animate-pulse")} />

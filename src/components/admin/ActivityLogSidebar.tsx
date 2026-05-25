@@ -113,7 +113,7 @@ export default function ActivityLogSidebar({ defaultOpen = false }: Props) {
           ) : (
             <button
               onClick={() => setOpen(true)}
-              className="flex items-center justify-center w-full h-full hover:bg-[var(--bone-6)] transition-colors"
+              className="flex items-center justify-center w-full h-full hover:bg-[var(--app-dark)] transition-colors"
               title="Open activity log"
             >
               <ClipboardList className="w-3.5 h-3.5 text-[var(--bone-40)]" strokeWidth={2} />

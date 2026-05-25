@@ -71,7 +71,10 @@ export function BlockRenderer({
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    transition,
+    // The actively dragged item must track the pointer 1:1 — any transition on
+    // its transform makes it chase a moving target and stutter. dnd-kit only sets
+    // `transition` for the reordering siblings, so keep it off while dragging.
+    transition: isDragging ? 'none' : transition,
     position: 'relative' as const,
     zIndex: isDragging ? 50 : undefined,
   };
@@ -260,11 +263,11 @@ export function BlockRenderer({
         style={style}
         className={cn("editor-block group flex flex-col items-start relative px-1 before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="2px" />
         <div className={cn(
           "flex items-center w-full py-4 relative group rounded-[var(--radius-medium)] transition-colors duration-0",
-          isSelected && "bg-white/[0.01]",
-          isDragging && "opacity-60 bg-sidebar/80 rounded-[var(--radius-medium)]"
+          isSelected && "bg-[var(--app-dark)]",
+          isDragging && "bg-sidebar/80 rounded-[var(--radius-medium)]"
         )}>
           <div className="flex-1 h-px bg-[var(--bone-12)]" />
         </div>
@@ -281,11 +284,10 @@ export function BlockRenderer({
         style={{ ...style, ...colorStyle }}
         className={cn("editor-block group py-2 relative flex flex-col items-stretch before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
         <div className={cn(
           "relative w-full rounded-3xl transition-colors duration-0",
-          isSelected && "bg-white/[0.01]",
-          isDragging && "opacity-60"
+          isSelected && "bg-[var(--app-dark)]"
         )}>
           <DatabaseBlock block={block} onUpdate={onUpdate} />
         </div>
@@ -303,11 +305,10 @@ export function BlockRenderer({
         style={{ ...style, ...colorStyle }}
         className={cn("editor-block group py-2 relative flex flex-col items-stretch before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
         <div className={cn(
           "relative w-full rounded-3xl transition-colors duration-0 group/table",
-          isSelected && "bg-white/[0.01]",
-          isDragging && "opacity-60"
+          isSelected && "bg-[var(--app-dark)]"
         )}>
           <div className="relative flex flex-col">
             <div className="border border-[var(--bone-6)] rounded-3xl overflow-hidden bg-panel">
@@ -436,11 +437,10 @@ export function BlockRenderer({
         )}
         style={{ ...style }}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
         <div className={cn(
           "relative w-full transition-colors duration-0",
-          isSelected && "bg-white/[0.01] rounded-3xl",
-          isDragging && "opacity-60"
+          isSelected && "bg-[var(--app-dark)] rounded-3xl"
         )}>
           <div className={cn("relative group/media border border-white/5 bg-white/5", widthClass, "rounded-3xl ")}>
             <MediaControls blockId={block.id} currentWidth={block.mediaWidth || 4} onWidthChange={(w) => onUpdate(block.id, { mediaWidth: w as any })} />
@@ -470,11 +470,10 @@ export function BlockRenderer({
         style={{ ...style, ...colorStyle }}
         className={cn("editor-block group py-2 relative before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
         <div className={cn(
           "relative w-full transition-colors duration-0 rounded-3xl",
-          isSelected && "bg-white/[0.01]",
-          isDragging && "opacity-60"
+          isSelected && "bg-[var(--app-dark)]"
         )}>
           <div onClick={() => linked && setActiveEntityId(linked.id)} className="border border-white/5 rounded-3xl px-5 py-4 group-hover:bg-white/5 flex items-center gap-4 transition-colors">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent text-lg font-bold border border-accent/20 group-hover/embed:bg-accent/20">{linked?.title?.charAt(0) ?? '?'}</div>
@@ -503,7 +502,7 @@ export function BlockRenderer({
         style={{ ...style, ...colorStyle }}
         className={cn("editor-block group py-1.5 relative flex flex-col items-start before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="6px" />
         <div className="flex items-center gap-3 group/link ml-4 relative z-10">
           <a
             href={block.linkUrl || '#'}
@@ -554,13 +553,13 @@ export function BlockRenderer({
         style={style}
         className={cn(
           "flex-1 basis-0 min-w-0 break-words rounded-[var(--radius-medium)] pl-14 pr-4 column-container relative group/column group-hover:bg-hover/10 group-focus-within:bg-hover/10 transition-colors duration-0",
-          isSelected && "bg-white/[0.01]",
+          isSelected && "bg-[var(--app-dark)]",
           isDragging && "z-50",
           !block.children?.length && "empty"
         )}
       >
-        <BlockControls variant="column" blockId={block.id} menuOpen={menuOpen} onInsertAfter={onInsertAfter} onOpenMenu={onOpenMenu} onDragStart={onDragStart} listeners={listeners} attributes={attributes} isSelected={isSelected} isFocused={false} />
-        <div className={cn("flex flex-col gap-2 relative z-10", isDragging && "opacity-60")}>
+        <BlockControls variant="column" blockId={block.id} menuOpen={menuOpen} onInsertAfter={onInsertAfter} onOpenMenu={onOpenMenu} onDragStart={onDragStart} listeners={listeners} attributes={attributes} isSelected={isSelected} isFocused={false} topOffset="6px" />
+        <div className={cn("flex flex-col gap-2 relative z-10")}>
           {(block.children || []).map((subBlock: EditorBlock, sIdx: number) => (
             <BlockRenderer key={subBlock.id} block={subBlock} index={sIdx} onUpdate={onUpdate} onDelete={onDelete} onIndent={onIndent} onUnindent={onUnindent} onInsertAfter={onInsertAfter} onSlash={onSlash} onOpenMenu={onOpenMenu} onFocus={onFocus} isInsideColumn={true} onDragStart={onDragStart} />
           ))}
@@ -577,8 +576,8 @@ export function BlockRenderer({
         style={{ ...style, ...colorStyle }}
         className={cn("editor-block py-2 relative flex flex-col transition-colors duration-0 before:absolute before:right-full before:top-0 before:bottom-0 before:w-16 before:content-['']", isDragging && "z-50")}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
-        <div className={cn("flex gap-4 w-full h-full relative z-10 group", isDragging && "opacity-60")}>
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
+        <div className={cn("flex gap-4 w-full h-full relative z-10 group")}>
           <div className="flex gap-4 w-full h-full">
             {(block.children || []).map((colBlock: EditorBlock, cIdx: number) => (
               <div key={colBlock.id} className="relative flex-1 basis-0 min-w-0 flex flex-col">
@@ -605,10 +604,10 @@ export function BlockRenderer({
         )}
         style={{ ...style, fontFamily: '"Literata"', letterSpacing: '-0.01em' }}
       >
-        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+        <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset="8px" />
         <div className={cn(
-          "flex-1 flex items-start w-full relative rounded-[var(--radius-medium)] px-1 py-1 transition-all duration-0",
-          isSelected ? "bg-white/[0.01]" : "group-hover:bg-white/[0.01]"
+          "flex-1 flex items-start w-full relative rounded-[var(--radius-medium)] pl-3 pr-1 py-1 transition-all duration-0",
+          isSelected ? "bg-[var(--app-dark)]" : "group-hover:bg-white/[0.01]"
         )}>
           <ListBlock
             block={block}
@@ -629,6 +628,8 @@ export function BlockRenderer({
     );
   }
 
+  const textTopOffset = effectiveStyle === 'mono' ? '20px' : (block.bgColor ? '10px' : '6px');
+
   return (
     <div
       ref={setNodeRef}
@@ -646,15 +647,14 @@ export function BlockRenderer({
       style={{ ...style, fontFamily: '"Literata"', letterSpacing: '-0.01em' }}
       onMouseDown={() => onFocus?.(block.id)}
     >
-      <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} />
+      <BlockControls {...controlsProps} listeners={listeners} attributes={attributes} topOffset={textTopOffset} />
       <div
         className={cn(
           effectiveStyle === 'mono'
             ? "relative w-full rounded-3xl transition-colors duration-0"
-            : "flex-1 flex items-start w-full relative min-h-[1.5em] transition-all duration-0 rounded-[var(--radius-medium)] px-1 py-1",
+            : "flex-1 flex items-start w-full relative min-h-[1.5em] transition-all duration-0 rounded-[var(--radius-medium)] pl-3 pr-1 py-1",
           (!isSelected && effectiveStyle !== 'mono') && (isFocused ? "bg-white/[0.01]" : "group-hover:bg-white/[0.01]"),
-          block.bgColor && "border px-[16px] py-[8px]",
-          isDragging && "opacity-60"
+          block.bgColor && "border px-[16px] py-[8px]"
         )}
         style={{ ... (block.bgColor ? colorStyle : {}) }}
       >
@@ -809,6 +809,7 @@ interface ControlsProps {
 
 interface BlockControlsProps extends ControlsProps {
   onDragStart?: (id: string, e: React.DragEvent) => void;
+  topOffset?: string;
 }
 
 function BlockControls({
@@ -823,7 +824,8 @@ function BlockControls({
   blockStyle,
   hasBgColor,
   isFocused,
-  isSelected
+  isSelected,
+  topOffset
 }: BlockControlsProps) {
   const markerBtnClass = "w-7 h-7 flex items-center justify-center rounded-sm hover:bg-white/10 text-muted-foreground/40 hover:text-foreground transition-none";
 
@@ -841,14 +843,14 @@ function BlockControls({
   return (
     <div
       className={cn(
-        "absolute right-full pr-[8px] flex items-center justify-center gap-1",
+        "absolute right-full pr-[8px] flex items-start justify-center gap-1",
         heightClass,
         (menuOpen || isDragging || isFocused || isSelected) ? "opacity-100 visible" : "opacity-0 invisible group-hover:opacity-100 group-hover:visible has-[:active]:opacity-100 has-[:active]:visible"
       )}
       style={{
         width: 'auto',
         minWidth: '42px',
-        top: hasBgColor ? '0.5rem' : '0',
+        top: topOffset ?? (hasBgColor ? '0.5rem' : '0'),
         zIndex: 101,
         height: heightClass ? undefined : '1.5em'
       }}

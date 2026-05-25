@@ -19,6 +19,7 @@ export interface ChatMessage {
   image_description?: string;
   image_prompt?: string;
   created_at: string;
+  attachments?: any[];
 }
 
 export async function fetchConversations(): Promise<ChatConversation[]> {
@@ -73,7 +74,29 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  
+  return (data ?? []).map((m: any) => {
+    let cleanContent = m.content;
+    let attachments: any[] | undefined = undefined;
+    
+    if (m.content) {
+      const match = m.content.match(/[\s\S]*?\n\n<!-- ATTACHMENTS_JSON:([\s\S]*?) -->/);
+      if (match) {
+        try {
+          attachments = JSON.parse(match[1]);
+          cleanContent = m.content.replace(/\n\n<!-- ATTACHMENTS_JSON:[\s\S]*? -->/, '');
+        } catch (e) {
+          console.error('Failed to parse attachments JSON from content:', e);
+        }
+      }
+    }
+    
+    return {
+      ...m,
+      content: cleanContent,
+      attachments,
+    };
+  });
 }
 
 export async function insertMessage(
@@ -83,12 +106,18 @@ export async function insertMessage(
   model?: string,
   pipelineSteps?: any,
   imageDescription?: string,
-  imagePrompt?: string
+  imagePrompt?: string,
+  attachments?: any[]
 ): Promise<ChatMessage> {
+  let finalContent = content;
+  if (attachments && attachments.length > 0) {
+    finalContent = `${content}\n\n<!-- ATTACHMENTS_JSON:${JSON.stringify(attachments)} -->`;
+  }
+
   const insertPayload: Record<string, any> = {
     conversation_id: conversationId,
     role,
-    content,
+    content: finalContent,
     model,
   };
   // Only include extra columns if the table has them (graceful fallback)
@@ -107,7 +136,7 @@ export async function insertMessage(
       const fallbackPayload = {
         conversation_id: conversationId,
         role,
-        content,
+        content: finalContent,
         model,
       };
       const { data: retryData, error: retryError } = await supabase
@@ -116,9 +145,45 @@ export async function insertMessage(
         .select()
         .single();
       if (retryError) throw retryError;
-      return retryData;
+      
+      let cleanContent = retryData.content;
+      let parsedAttachments: any[] | undefined = undefined;
+      if (retryData.content) {
+        const match = retryData.content.match(/[\s\S]*?\n\n<!-- ATTACHMENTS_JSON:([\s\S]*?) -->/);
+        if (match) {
+          try {
+            parsedAttachments = JSON.parse(match[1]);
+            cleanContent = retryData.content.replace(/\n\n<!-- ATTACHMENTS_JSON:[\s\S]*? -->/, '');
+          } catch (e) {
+            console.error('Failed to parse attachments JSON from content:', e);
+          }
+        }
+      }
+      return {
+        ...retryData,
+        content: cleanContent,
+        attachments: parsedAttachments,
+      };
     }
     throw error;
   }
-  return data;
+
+  let cleanContent = data.content;
+  let parsedAttachments: any[] | undefined = undefined;
+  if (data.content) {
+    const match = data.content.match(/[\s\S]*?\n\n<!-- ATTACHMENTS_JSON:([\s\S]*?) -->/);
+    if (match) {
+      try {
+        parsedAttachments = JSON.parse(match[1]);
+        cleanContent = data.content.replace(/\n\n<!-- ATTACHMENTS_JSON:[\s\S]*? -->/, '');
+      } catch (e) {
+        console.error('Failed to parse attachments JSON from content:', e);
+      }
+    }
+  }
+  return {
+    ...data,
+    content: cleanContent,
+    attachments: parsedAttachments,
+  };
 }

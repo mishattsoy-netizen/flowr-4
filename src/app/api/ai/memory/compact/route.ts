@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin as supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin as supabase, isSupabaseEnabled } from '@/lib/supabase'
 import { getSessionState, summarizeSession } from '@/lib/bot/context'
 import { getWebConversationMemory } from '@/lib/bot/memory'
 import { logger } from '@/lib/logger'
@@ -11,14 +12,36 @@ export async function POST(req: NextRequest) {
 
     logger.info(`Manual compaction requested for session: ${sessionId}`)
 
-    // 1. Get current history
-    const history = await getWebConversationMemory(sessionId)
+    // 1. Authenticate user from the authorization token
+    let user = null;
+    if (isSupabaseEnabled) {
+      const supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } }
+      )
+      const { data } = await supabaseClient.auth.getUser()
+      user = data.user
+    }
+    const authUserId = user?.id || 'anonymous'
+
+    // 2. Fetch history with correct authUserId and chatId (sessionId)
+    const history = await getWebConversationMemory(authUserId, 100, sessionId)
     
-    // 2. Get current state
+    if (!history || history.length === 0) {
+      logger.info(`Compaction skipped for session ${sessionId}: history is empty`)
+      return NextResponse.json({ 
+        success: true, 
+        summary: null, 
+        message: 'No conversation history available to compact' 
+      })
+    }
+    
+    // 3. Get current session state
     const sessionState = await getSessionState(sessionId)
     const currentSummary = sessionState?.distilled_summary || null
 
-    // 3. Trigger summarization
+    // 4. Trigger summarization
     const newSummary = await summarizeSession(sessionId, history, currentSummary)
 
     if (!newSummary) {

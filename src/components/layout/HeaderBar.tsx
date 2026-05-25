@@ -158,7 +158,7 @@ export const HeaderBar = memo(function HeaderBar() {
 
   const btnClass = (enabled: boolean) =>
     `w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] ${enabled
-      ? 'text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] cursor-pointer'
+      ? 'text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] cursor-pointer'
       : 'text-border cursor-default'
     }`;
 
@@ -204,7 +204,7 @@ export const HeaderBar = memo(function HeaderBar() {
       </div>
 
       {/* Divider (only if not dashboard or if we want it always) */}
-      <div className="w-px h-5 bg-[var(--bone-6)] mx-2" />
+      <div className="w-px h-5 bg-[var(--app-dark)] mx-2" />
 
       {/* Tabs */}
       <div className="flex-1 flex items-center gap-1 h-full px-2 min-w-0">
@@ -256,8 +256,8 @@ export const HeaderBar = memo(function HeaderBar() {
                   "flex items-center gap-1 h-6 rounded-[var(--radius-small)] cursor-pointer select-none min-w-0 max-w-[160px] flex-shrink",
                   openTabIds.length > 1 ? "pl-2.5 pr-1" : "px-2.5",
                   isActive 
-                    ? "bg-[var(--bone-6)] text-[var(--bone-100)]" 
-                    : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
+                    ? "bg-[var(--app-dark)] text-[var(--bone-100)]" 
+                    : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]",
                   "group"
                 )}
               >
@@ -268,7 +268,7 @@ export const HeaderBar = memo(function HeaderBar() {
                   <button 
                     onClick={(e) => { e.stopPropagation(); removeTab(tabId); }}
                     className={cn(
-                      "ml-0 opacity-0 group-hover:opacity-100 hover:bg-[var(--bone-10)] rounded-[4px] p-0.5 shrink-0",
+                      "ml-0 opacity-0 group-hover:opacity-100 hover:bg-[var(--app-dark)] rounded-[4px] p-0.5 shrink-0",
                       isActive && tabId === 'dashboard' && "opacity-100" // Always show for active dashboard if closable
                     )}
                   >
@@ -283,7 +283,7 @@ export const HeaderBar = memo(function HeaderBar() {
         <Tooltip content="New Tab">
           <button 
             onClick={(e) => { e.stopPropagation(); addTab('dashboard'); }} 
-            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] shrink-0 ml-1"
+            className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] shrink-0 ml-1"
           >
             <Plus strokeWidth={2} className="w-3.5 h-3.5" />
           </button>
@@ -308,7 +308,7 @@ export const HeaderBar = memo(function HeaderBar() {
                   <button 
                     key={p.id} 
                     onClick={() => { setActiveEntityId(p.id); setHoveredTab(null); }}
-                    className="flex items-center gap-2 text-[11px] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] px-2 py-1.5 rounded-md group/item"
+                    className="flex items-center gap-2 text-[11px] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] px-2 py-1.5 rounded-md group/item"
                   >
                     {p.icon && (() => { const PIcon = getEntityIcon(p.icon); return <PIcon strokeWidth={2} className="w-3.5 h-3.5 opacity-60 group-hover/item:opacity-100" />; })()}
                     <span className="text-fade">{stripHtml(p.title || '')}</span>
@@ -368,7 +368,7 @@ export const HeaderBar = memo(function HeaderBar() {
                   <button 
                     onClick={() => toggleEntityCloudSync(activeEntity.id)}
                     className={cn(
-                      "flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-small)] bg-[var(--bone-6)]",
+                      "flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-small)] bg-[var(--app-dark)]",
                       isSynced 
                         ? "text-accent" 
                         : "text-[var(--bone-40)] hover:text-[var(--bone-100)]"

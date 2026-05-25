@@ -10,35 +10,29 @@ interface TooltipProps {
   delay?: number;
   className?: string;
   disabled?: boolean;
+  position?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export function Tooltip({ children, content, delay = 500, className, disabled }: TooltipProps) {
+export function Tooltip({ children, content, delay = 500, className, disabled, position = 'top' }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
   const [renderedPos, setRenderedPos] = useState({ x: 0, y: 0 });
   const [hasCalculated, setHasCalculated] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
+  const handleMouseEnter = () => {
     if (disabled || !content) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     
-    setPos({ x: e.clientX, y: e.clientY });
     if (delay > 0) {
       timerRef.current = setTimeout(() => {
         setIsVisible(true);
       }, delay);
     } else {
       setIsVisible(true);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isVisible) {
-      setPos({ x: e.clientX, y: e.clientY });
     }
   };
 
@@ -63,33 +57,72 @@ export function Tooltip({ children, content, delay = 500, className, disabled }:
   }, [disabled, isVisible]);
 
   useEffect(() => {
-    if (isVisible && tooltipRef.current) {
-      const rect = tooltipRef.current.getBoundingClientRect();
-      const padding = 12;
-      let x = pos.x + 12;
-      let y = pos.y + 12;
+    if (!isVisible || !tooltipRef.current || !triggerRef.current) return;
 
-      // Viewport bounds
-      if (x + rect.width > window.innerWidth - padding) {
-        x = pos.x - rect.width - 12;
+    const updatePosition = () => {
+      if (!tooltipRef.current || !triggerRef.current) return;
+      const tooltipEl = tooltipRef.current;
+      const triggerEl = triggerRef.current;
+      
+      let rect = triggerEl.getBoundingClientRect();
+      if ((rect.width === 0 || rect.height === 0) && triggerEl.firstElementChild) {
+        rect = triggerEl.firstElementChild.getBoundingClientRect();
       }
-      if (y + rect.height > window.innerHeight - padding) {
-        y = pos.y - rect.height - 12;
+      
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+      const padding = 8;
+      const gap = 6;
+      
+      let x = 0;
+      let y = 0;
+      
+      const posAttr = position || 'top';
+      
+      if (posAttr === 'top') {
+        x = rect.left + (rect.width - tooltipRect.width) / 2;
+        y = rect.top - tooltipRect.height - gap;
+      } else if (posAttr === 'bottom') {
+        x = rect.left + (rect.width - tooltipRect.width) / 2;
+        y = rect.bottom + gap;
+      } else if (posAttr === 'left') {
+        x = rect.left - tooltipRect.width - gap;
+        y = rect.top + (rect.height - tooltipRect.height) / 2;
+      } else if (posAttr === 'right') {
+        x = rect.right + gap;
+        y = rect.top + (rect.height - tooltipRect.height) / 2;
       }
-
-      x = Math.max(padding, x);
-      y = Math.max(padding, y);
-
+      
+      // Auto-fallback boundary check (if offscreen top -> bottom)
+      if (posAttr === 'top' && y < padding) {
+        y = rect.bottom + gap;
+      } else if (posAttr === 'bottom' && y + tooltipRect.height > window.innerHeight - padding) {
+        y = rect.top - tooltipRect.height - gap;
+      }
+      
+      // Left/Right bounds constraint
+      x = Math.max(padding, Math.min(x, window.innerWidth - tooltipRect.width - padding));
+      y = Math.max(padding, Math.min(y, window.innerHeight - tooltipRect.height - padding));
+      
       setRenderedPos({ x, y });
       setHasCalculated(true);
-    }
-  }, [isVisible, pos]);
+    };
+
+    updatePosition();
+
+    window.addEventListener('resize', updatePosition, { passive: true });
+    window.addEventListener('scroll', updatePosition, { capture: true, passive: true });
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [isVisible, position]);
 
   const tooltipBody = isVisible && mounted && createPortal(
     <div
       ref={tooltipRef}
       className={cn(
-        "fixed pointer-events-none z-[9999] px-1.5 py-0.5 bg-background border border-[var(--bone-12)] rounded-sm text-[11px] font-medium text-[var(--bone-70)] backdrop-blur-xl",
+        "fixed pointer-events-none z-[9999] px-2 py-1 bg-neutral-950 rounded-[var(--radius-small)] text-[11px] font-medium text-neutral-300 shadow-xl",
         !hasCalculated && "invisible",
         className
       )}
@@ -105,9 +138,9 @@ export function Tooltip({ children, content, delay = 500, className, disabled }:
 
   return (
     <div 
+      ref={triggerRef}
       className="contents" 
       onMouseEnter={handleMouseEnter} 
-      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClickCapture={handleClick}
     >

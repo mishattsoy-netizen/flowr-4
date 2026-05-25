@@ -41,7 +41,7 @@ export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { fi
           <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Recent</h2>
         </div>
         {onUpdateData && (
-          <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[4px] p-0.5">
+          <div className="flex items-center gap-0.5 bg-[var(--app-dark)] rounded-[4px] p-0.5">
             {(['all', 'note', 'canvas'] as Filter[]).map(f => (
               <button key={f} onClick={() => onUpdateData({ ...data, filter: f })}
                 className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-[3px] capitalize transition-colors",
@@ -60,18 +60,18 @@ export function RecentWidget({ data, onUpdateData }: WidgetProps & { data?: { fi
           const ws = entity.workspaceId ? workspaces.find(w => w.id === entity.workspaceId) : null;
           return (
             <button key={entity.id} onClick={() => setActiveEntityId(entity.id)}
-              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[var(--bone-6)] transition-all group/item text-left">
-              <div className="w-8 h-8 rounded-lg bg-[var(--bone-10)] border border-[var(--bone-3)] flex items-center justify-center text-[var(--bone-70)] group-hover/item:text-accent group-hover/item:border-accent/30 transition-all shadow-sm">
+              className="sidebar-item-row w-full flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] transition-all group/item text-left text-[14px]">
+              <div className="w-4 shrink-0 flex items-center justify-center text-[var(--bone-60)] group-hover/item:text-[var(--bone-100)]">
                 <Icon strokeWidth={2} className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-foreground truncate">{stripHtml(entity.title || '')}</div>
-                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <div className="text-[13px] leading-snug truncate text-[var(--bone-100)]">{stripHtml(entity.title || '')}</div>
+                <div className="text-[10px] text-[var(--bone-40)] flex items-center gap-1">
                   <span>{formatAge(entity.lastModified)} ago</span>
                   {ws && <><span>·</span><span className="truncate max-w-[80px]">{ws.name}</span></>}
                 </div>
               </div>
-              <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-20)] opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-all" />
+              <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-30)] opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-all" />
             </button>
           );
         }) : (

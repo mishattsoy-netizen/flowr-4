@@ -43,7 +43,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
     return (
       <div key={entity.id}>
         <button onClick={() => setActiveEntityId(entity.id)} style={{ paddingLeft: `${8 + depth * 16}px` }}
-          className="w-full flex items-center gap-2 pr-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] transition-all group/item text-left">
+          className="w-full flex items-center gap-2 pr-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)] transition-all group/item text-left">
           <Icon strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-40)] group-hover/item:text-accent shrink-0 transition-colors" />
           <span className="text-sm text-foreground truncate flex-1">{stripHtml(entity.title || 'Untitled')}</span>
         </button>
@@ -59,7 +59,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
         {onUpdateData && (
           <div className="flex items-center gap-1">
             <select value={sort} onChange={e => onUpdateData({ ...data, sort: e.target.value as SortBy })}
-              className="text-[10px] bg-[var(--bone-6)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-70)] outline-none">
+              className="text-[10px] bg-[var(--app-dark)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-70)] outline-none">
               <option value="modified">Modified</option>
               <option value="name">Name</option>
             </select>

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SupabaseProvider from "@/components/SupabaseProvider";
 import AuthProvider from "@/components/AuthProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import FadeTextObserver from "@/components/ui/FadeTextObserver";
 
 const literata = Literata({
@@ -68,9 +69,7 @@ export default function RootLayout({
                     } else {
                       document.documentElement.style.setProperty('--dashboard-max-w', 'none');
                     }
-                    if (state.theme) {
-                      document.documentElement.setAttribute('data-theme', state.theme);
-                    }
+
                     if (state.activeEntityId) {
                       document.documentElement.setAttribute('data-initial-entity', state.activeEntityId);
                       document.cookie = "flowr-initial-entity=" + state.activeEntityId + "; path=/; max-age=31536000; SameSite=Lax";
@@ -83,12 +82,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <AuthProvider>
-          <SupabaseProvider>
-            {children}
-            <FadeTextObserver />
-          </SupabaseProvider>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <AuthProvider>
+            <SupabaseProvider>
+              {children}
+              <FadeTextObserver />
+            </SupabaseProvider>
+          </AuthProvider>
+        </ThemeProvider>
         <script
           src="https://js.puter.com/v2/"
           async

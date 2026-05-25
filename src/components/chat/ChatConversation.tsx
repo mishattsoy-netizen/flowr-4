@@ -4,6 +4,8 @@ import { useStore } from '@/data/store';
 import { ChatMessage } from '@/components/assistant/components/ChatMessage';
 import { AIAvatar } from '@/components/assistant/components/AIAvatar';
 import { useRef, useEffect, useCallback } from 'react';
+import { Brain, ArrowRight } from 'lucide-react';
+import { StatusTyping } from '@/components/assistant/components/StatusTyping';
 
 const SUGGESTED_PROMPTS = [
   'Deep-search the web for [topic] and summarize',
@@ -16,8 +18,12 @@ export function ChatConversation() {
   const aiMessages = useStore(s => s.aiMessages);
   const isAILoading = useStore(s => s.isAILoading);
   const sendAIMessage = useStore(s => s.sendAIMessage);
+  const regenerateAIMessage = useStore(s => s.regenerateAIMessage);
   const setAssistantInput = useStore(s => s.setAssistantInput);
   const setReplyMessage = useStore(s => s.setReplyMessage);
+  const openModal = useStore(s => s.openModal);
+  const aiSessionContext = useStore(s => s.aiSessionContext);
+  const isCompacting = useStore(s => s.isCompacting);
   const messages = aiMessages;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,7 +48,28 @@ export function ChatConversation() {
         className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-10 pb-36 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
         style={{ overflowAnchor: 'auto' }}
       >
-        <div className="max-w-3xl mx-auto space-y-0.5">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {aiSessionContext?.distilled_summary && (
+            <div
+              onClick={() => openModal({ kind: 'summaryPreview', summary: aiSessionContext.distilled_summary! })}
+              className="my-3 mx-1 p-3 rounded-[12px] border border-[var(--bone-12)] bg-white/[0.02] hover:bg-white/[0.06] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between group select-none shadow-sm"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-white/[0.04] border border-[var(--bone-12)] flex items-center justify-center text-bone-70 group-hover:text-accent group-hover:border-accent/30 transition-all shrink-0">
+                  <Brain className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col items-start text-left min-w-0">
+                  <span className="text-[11px] font-semibold text-bone-90 group-hover:text-bone-100 tracking-tight leading-none">Conversation Condensed</span>
+                  <span className="text-[9.5px] text-bone-40 tracking-tight mt-1 truncate max-w-full">Prior messages distilled to maximize context. Click to view.</span>
+                </div>
+              </div>
+              <div className="text-[10px] font-semibold text-bone-30 group-hover:text-accent flex items-center gap-1 shrink-0 ml-2 transition-colors">
+                <span>View</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </div>
+          )}
+
           {displayMessages.length === 0 && !isAILoading ? (
             <div className="flex-1 flex flex-col items-center justify-center h-[50vh] text-center gap-6 pt-24">
               <AIAvatar className="w-12 h-12 opacity-100" />
@@ -72,14 +99,32 @@ export function ChatConversation() {
                     isLast={idx === displayMessages.length - 1}
                     scrollToBottom={scrollToBottom}
                     handleAddImageToWorkspace={handleAddImageToWorkspace}
-                    onRegenerate={() => {
+                    onRegenerate={msg.role === 'assistant' && msg.id ? () => {
                       const lastUser = [...displayMessages.slice(0, idx + 1)].reverse().find(m => m.role === 'user');
-                      if (lastUser) sendAIMessage(lastUser.content ?? '', lastUser.attachments);
-                    }}
+                      if (lastUser && msg.id) regenerateAIMessage(msg.id, lastUser.content ?? '', lastUser.attachments);
+                    } : undefined}
                     onReply={setReplyMessage}
                   />
                 </div>
               ))}
+              {isCompacting && (
+                <div className="w-full pb-3 flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+                    <AIAvatar isTyping={true} className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusTyping
+                      text={(() => {
+                        const custom = aiSessionContext?.status_messages?.COMPACTION;
+                        if (custom) return `${custom.emoji} ${custom.label}`.trim();
+                        return "🚀 Compressing...";
+                      })()}
+                      className="font-normal text-[var(--bone-100)]"
+                      style={{ fontFamily: '"Literata"', fontWeight: 400, fontSize: '13px', letterSpacing: '-0.01em' }}
+                    />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </>
           )}

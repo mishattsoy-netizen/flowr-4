@@ -2,7 +2,7 @@
 
 import { useStore, SettingsTab } from '@/data/store';
 import { X, User, Monitor, Zap, Settings as SettingsIcon, LucideIcon, ShieldCheck } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import ProfileSection from '@/components/profile/ProfileSection';
 import { useAuth } from '@/components/AuthProvider';
@@ -20,8 +20,15 @@ import { Toggle } from '@/components/ui/Toggle';
 
 
 
+import { useTheme } from '@/components/ThemeProvider';
+
 export function SettingsModal() {
-  const { modal, closeModal, theme, toggleTheme, interfaceSize, setInterfaceSize, isTabsHeaderVisible, toggleTabsHeader } = useStore();
+  const { modal, closeModal, interfaceSize, setInterfaceSize, isTabsHeaderVisible, toggleTabsHeader } = useStore();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  
+  const toggleTheme = useCallback(() => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  }, [resolvedTheme, setTheme]);
   const [activeTab, setActiveTab] = useState<SettingsTab>('interface');
   const [isVisible, setIsVisible] = useState(false);
 
@@ -143,10 +150,10 @@ export function SettingsModal() {
                     <p className="text-sm text-bone-70 mb-6">Choose an aesthetic that fits your focus.</p>
                     <div className="grid grid-cols-2 gap-4">
                       <button
-                        onClick={() => theme === 'light' && toggleTheme()}
+                        onClick={() => resolvedTheme === 'light' && toggleTheme()}
                         className={cn(
                           "group relative flex flex-col items-center gap-4 p-4 rounded-2xl border",
-                          theme === 'dark' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
+                          resolvedTheme === 'dark' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
                         )}
                       >
                         <div className="w-full aspect-video bg-[#0D0D0C] rounded-lg border border-white/10 overflow-hidden p-3 flex flex-col gap-2">
@@ -158,16 +165,16 @@ export function SettingsModal() {
                           <div className="mt-auto h-2 w-1/4 bg-white/5 rounded-full" />
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={cn("text-sm font-medium", theme === 'dark' ? "text-accent" : "text-foreground")}>Dark Stealth</span>
-                          {theme === 'dark' && <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
+                          <span className={cn("text-sm font-medium", resolvedTheme === 'dark' ? "text-accent" : "text-foreground")}>Dark Stealth</span>
+                          {resolvedTheme === 'dark' && <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
                         </div>
                       </button>
 
                       <button
-                        onClick={() => theme === 'dark' && toggleTheme()}
+                        onClick={() => resolvedTheme === 'dark' && toggleTheme()}
                         className={cn(
                           "group relative flex flex-col items-center gap-4 p-4 rounded-2xl border",
-                          theme === 'light' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
+                          resolvedTheme === 'light' ? "border-accent bg-accent/5 ring-1 ring-accent/20" : "border-[var(--bone-6)] bg-white/5 hover:border-muted-foreground/30"
                         )}
                       >
                         <div className="w-full aspect-video bg-[#F8F7F7] rounded-lg border border-black/5 overflow-hidden p-3 flex flex-col gap-2">
@@ -179,8 +186,8 @@ export function SettingsModal() {
                           <div className="mt-auto h-2 w-1/4 bg-black/5 rounded-full" />
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={cn("text-sm font-medium", theme === 'light' ? "text-accent" : "text-foreground")}>Light Bloom</span>
-                          {theme === 'light' && <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
+                          <span className={cn("text-sm font-medium", resolvedTheme === 'light' ? "text-accent" : "text-foreground")}>Light Bloom</span>
+                          {resolvedTheme === 'light' && <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
                         </div>
                       </button>
                     </div>

@@ -27,7 +27,7 @@ export function WorkspaceSwitcher() {
     <div ref={ref} className="relative px-3 mb-1">
       <button
         onClick={() => setOpen(o => !o)}
-        className={cn("flex items-center w-full px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] group", open && "!bg-dark !text-[var(--bone-100)]")}
+        className={cn("flex items-center w-full px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)] group", open && "!bg-dark !text-[var(--bone-100)]")}
       >
         <span className="flex-1 text-left text-sm font-semibold text-foreground text-fade">
           {active?.name ?? 'Personal'}
@@ -48,7 +48,7 @@ export function WorkspaceSwitcher() {
                 "flex items-center w-full px-3 py-2 text-sm text-left gap-2 ",
                 ws.id === activeWorkspaceId
                   ? "bg-dark text-foreground"
-                  : "hover:bg-[var(--bone-6)] text-foreground/80 hover:text-foreground"
+                  : "hover:bg-[var(--app-dark)] text-foreground/80 hover:text-foreground"
               )}
             >
               <span className="flex-1 text-fade">{ws.name}</span>
@@ -60,7 +60,7 @@ export function WorkspaceSwitcher() {
           <div className="h-px bg-border mx-3 my-1" />
           <button
             onClick={() => { openModal({ kind: 'newWorkspace' }); setOpen(false); }}
-            className="flex items-center w-full px-3 py-2 text-sm hover:bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)] gap-2"
+            className="flex items-center w-full px-3 py-2 text-sm hover:bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)] gap-2"
           >
             <Plus strokeWidth={2} className="w-3.5 h-3.5 shrink-0" />
             New space

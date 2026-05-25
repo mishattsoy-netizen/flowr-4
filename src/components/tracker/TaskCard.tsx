@@ -50,7 +50,7 @@ export function TaskCardUI({
       className={cn(
         "group relative bg-[var(--bone-2)] border border-[var(--bone-6)] p-3 rounded-[12px] cursor-pointer active:cursor-grabbing shrink-0",
         "touch-none select-none",
-        !isDragging && "hover:bg-[var(--bone-6)] transition-colors duration-150",
+        !isDragging && "hover:bg-[var(--app-dark)] transition-colors duration-150",
         "flex flex-col gap-2"
       )}
     >

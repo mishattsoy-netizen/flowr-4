@@ -673,12 +673,12 @@ export async function runChain(
 
   // Single-chain path
   let category: IntentCategory = rawCategory
-  logger.info(`[Router] Starting runChain for category: ${category} | prompt: "${prompt.slice(0, 50)}..."`)
+  logger.info(`[Router] Starting runChain for category: ${category} | prompt: "${prompt.slice(0, 50)}${prompt.length > 50 ? '...' : ''}"`)
 
   const routingTrace: RoutingTrace[] = []
 
   // Explicit ADVISOR intent override — if classified as advisor, force execution
-  if (category === 'ADVISOR') {
+  if (category === 'ADVISOR' && context?.advisorEnabled) {
     const availableTools = ['web_search', 'deep_research', 'image_gen', 'tool_calling']
     const advisorResult = await runAdvisor(prompt, context?.mode ?? 'default', context?.thinkingEnabled ?? false, availableTools, context, [], context?.pendingAdvisorState ?? null)
     if (advisorResult.phase === 'planning') {

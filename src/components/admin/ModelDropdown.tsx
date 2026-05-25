@@ -136,7 +136,7 @@ export default function ModelDropdown({
                     }}
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-1.5 rounded-[8px]",
-                      value === model.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                      value === model.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
                     )}
                   >
                     <div className="flex items-center gap-3 truncate">

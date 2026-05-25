@@ -285,7 +285,7 @@ export function DatabaseBlock({ block, onUpdate }: DatabaseBlockProps) {
       {/* Header with view tabs */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <span className="text-sm font-semibold text-foreground">Database</span>
-        <div className="relative flex items-center p-0.5 bg-dark rounded-[8px] no-drag min-w-[280px]">
+        <div className="relative flex items-center p-0.5 bg-panel rounded-[8px] no-drag min-w-[280px]">
           {/* Sliding Background Pill */}
           <div 
             className="absolute top-[3px] bottom-[3px] rounded-[6px] bg-[var(--bone-10)] transition-all duration-300 ease-out"

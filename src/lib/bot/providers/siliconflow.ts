@@ -20,7 +20,7 @@ export async function runSiliconFlow(
   }
 
   try {
-    logger.info(`SiliconFlow Image Generation [${modelId}]: ${prompt.slice(0, 50)}...`)
+    logger.info(`SiliconFlow Image Generation [${modelId}]: ${prompt.slice(0, 50)}${prompt.length > 50 ? '...' : ''}`)
 
     const response = await fetch('https://api.siliconflow.cn/v1/images/generations', {
       method: 'POST',

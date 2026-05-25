@@ -45,7 +45,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
                   }}
                   className={cn(
                     "group/item flex items-center gap-2.5 px-3 py-1.5 rounded-[var(--radius-medium)] cursor-pointer transition-all duration-200",
-                    activeEntityId === folder.id ? "bg-[var(--bone-6)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                    activeEntityId === folder.id ? "bg-[var(--app-dark)] text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
                   )}
                   role="button"
                 >
@@ -89,7 +89,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
                           "w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
                           contextMenu?.entityId === folder.id
                             ? "opacity-100 !text-[var(--bone-100)] !bg-dark"
-                            : "opacity-0 group-hover/item:opacity-100 text-[var(--bone-30)] group-hover/item:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]"
+                            : "opacity-0 group-hover/item:opacity-100 text-[var(--bone-30)] group-hover/item:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
                         )}
                       >
                         <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />

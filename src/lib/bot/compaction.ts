@@ -46,6 +46,7 @@ async function runCompactionModel(
     let response: any = null
     switch (provider) {
       case 'google':
+      case 'gemini':
         response = await runGoogle(modelConfig.id, userMessage, systemPrompt)
         break
       case 'groq':
@@ -73,12 +74,7 @@ export async function compactSession(
   history: any[],
   currentSummary: string | null
 ): Promise<string | null> {
-  const { chain, system_prompt } = await getRouterChain('COMPACTION')
-
-  if (!chain || chain.length === 0) {
-    logger.warn(`Compaction aborted for ${chatId}: COMPACTION chain is empty`)
-    return currentSummary
-  }
+  const { chain, system_prompt } = await getRouterChain('COMPACTION').catch(() => ({ chain: [] as RouterModel[], system_prompt: undefined as string | undefined }))
 
   const historyText = history
     .map(h => `${h.role}: ${h.parts?.[0]?.text || h.content}`)
@@ -91,7 +87,7 @@ export async function compactSession(
     .filter(Boolean)
     .join('\n\n')
 
-  const enabledModels = chain.filter(m => m.is_enabled)
+  const enabledModels = (chain || []).filter(m => m.is_enabled)
 
   for (const modelConfig of enabledModels) {
     const result = await runCompactionModel(modelConfig, system_prompt || '', userMessage, chatId)
@@ -103,3 +99,4 @@ export async function compactSession(
   logger.warn(`Compaction failed for ${chatId}: all models failed, keeping old summary`)
   return currentSummary
 }
+

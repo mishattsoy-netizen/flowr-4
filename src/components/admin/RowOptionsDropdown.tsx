@@ -66,7 +66,7 @@ export default function RowOptionsDropdown({
             <span>{isEnabled ? 'Disable' : 'Enable'}</span>
           </button>
 
-          <div className="h-[1px] bg-[var(--bone-6)] my-[2px]" />
+          <div className="h-[1px] bg-[var(--app-dark)] my-[2px]" />
 
           {/* Delete Option */}
           <button

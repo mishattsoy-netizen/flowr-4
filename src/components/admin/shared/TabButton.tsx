@@ -15,8 +15,8 @@ export const TabButton: React.FC<{
     className={clsx(
       "flex items-center gap-2 px-4 py-2 rounded-sm text-[11px] font-ui-label shrink-0 ",
       active
-        ? "bg-[var(--bone-6)] text-foreground"
-        : "text-muted-foreground hover:text-foreground hover:bg-[var(--bone-6)]"
+        ? "bg-[var(--app-dark)] text-foreground"
+        : "text-muted-foreground hover:text-foreground hover:bg-[var(--app-dark)]"
     )}
   >
     <span className={clsx(active ? "text-accent" : "text-muted-foreground")}>{icon}</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from '@/data/store';
-import { Plus, Clock, ChevronLeft, ChevronRight, Trash2, Pencil } from 'lucide-react';
+import { Plus, Clock, ChevronLeft, Trash2, Pencil, MoreHorizontal } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import type { ChatConversation } from '@/lib/chat';
@@ -36,12 +36,15 @@ export function ChatHistoryPanel() {
   const loadChatConversations = useStore(s => s.loadChatConversations);
   const deleteChatConversation = useStore(s => s.deleteChatConversation);
   const renameChatConversation = useStore(s => s.renameChatConversation);
-  const openModal = useStore(s => s.openModal);
   const isTempChat = useStore(s => s.isTempChat);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadChatConversations();
@@ -53,10 +56,6 @@ export function ChatHistoryPanel() {
       editInputRef.current.select();
     }
   }, [editingId]);
-
-  const handleDeleteRequest = (id: string) => setConfirmDeleteId(id);
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleDeleteConfirm = () => {
     if (confirmDeleteId) {
@@ -121,7 +120,7 @@ export function ChatHistoryPanel() {
             if (convs.length === 0) return null;
             return (
               <div key={label}>
-                <div className="flex items-center pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]">
+                <div className="flex items-center pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]">
                   <span className="text-[10px] font-ui-label font-medium uppercase tracking-wide">{label}</span>
                 </div>
                 <div className="space-y-0.5">
@@ -130,7 +129,7 @@ export function ChatHistoryPanel() {
                     key={conv.id}
                     className={cn(
                       "group flex items-center gap-2 pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] cursor-pointer transition-colors",
-                      activeChatId === conv.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+                      activeChatId === conv.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:text-[var(--bone-100)]"
                     )}
                     onClick={() => loadConversation(conv.id)}
                   >
@@ -148,22 +147,22 @@ export function ChatHistoryPanel() {
                         className="flex-1 bg-transparent text-[13px] outline-none border-b border-white/30"
                       />
                     ) : (
-                      <span className="flex-1 text-[13px] truncate">{conv.title}</span>
+                      <span className="flex-1 text-[13px] truncate font-weight-medium dark:font-normal">{conv.title}</span>
                     )}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={e => { e.stopPropagation(); setEditingId(conv.id); setEditTitle(conv.title); }}
-                        className="p-1 rounded hover:bg-[var(--bone-6)]"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteRequest(conv.id); }}
-                        className="p-1 rounded hover:bg-[var(--bone-6)] text-danger"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setMenuPos({ x: rect.right + 4, y: rect.top });
+                        setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
+                      }}
+                      className={cn(
+                        "btn-sidebar-utility",
+                        menuOpenId === conv.id && "!bg-dark !text-[var(--bone-100)]"
+                      )}
+                    >
+                      <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
                 </div>
@@ -186,6 +185,36 @@ export function ChatHistoryPanel() {
           </button>
         </div>
       </div>
+
+      {/* Floating context menu */}
+      {menuOpenId && (
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={() => setMenuOpenId(null)} />
+          <div
+            className="fixed z-[300] popup-glass-small min-w-[160px] p-1.5 flex flex-col gap-[3px]"
+            style={{ left: menuPos.x, top: menuPos.y }}
+          >
+            <button
+              onClick={() => {
+                setEditingId(menuOpenId);
+                setEditTitle(chatConversations.find(c => c.id === menuOpenId)?.title ?? '');
+                setMenuOpenId(null);
+              }}
+              className="popup-item"
+            >
+              <Pencil strokeWidth={2} className="w-4 h-4 shrink-0" />
+              Rename
+            </button>
+            <button
+              onClick={() => { setConfirmDeleteId(menuOpenId); setMenuOpenId(null); }}
+              className="popup-item-danger"
+            >
+              <Trash2 strokeWidth={2} className="w-4 h-4 shrink-0" />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

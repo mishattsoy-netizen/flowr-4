@@ -66,7 +66,7 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col relative">
       {onUpdateData && isEditing && (
         <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
-          <div className="flex items-center gap-0.5 bg-[var(--bone-6)] rounded-[var(--radius-small)] p-0.5">
+          <div className="flex items-center gap-0.5 bg-[var(--app-dark)] rounded-[var(--radius-small)] p-0.5">
             {STYLES.map((s) => (
               <button
                 key={s.key}
@@ -85,14 +85,14 @@ export function ClockWidget({ data, onUpdateData, isEditing }: ClockWidgetProps)
           <div className="flex items-center gap-1">
             <button
               onClick={() => onUpdateData({ ...data, hour12: !hour12 })}
-              className="px-2 py-0.5 text-[10px] font-semibold rounded-[4px] bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)] transition-colors"
+              className="px-2 py-0.5 text-[10px] font-semibold rounded-[4px] bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)] transition-colors"
             >
               {hour12 ? '12h' : '24h'}
             </button>
             <select
               value={timezone}
               onChange={(e) => onUpdateData({ ...data, timezone: e.target.value })}
-              className="text-[10px] bg-[var(--bone-6)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-70)] outline-none"
+              className="text-[10px] bg-[var(--app-dark)] border-none rounded-[4px] px-1.5 py-0.5 text-[var(--bone-70)] outline-none"
             >
               {TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>

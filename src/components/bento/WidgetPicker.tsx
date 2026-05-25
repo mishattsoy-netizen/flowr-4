@@ -91,7 +91,7 @@ export function WidgetPicker({ open, onAdd, onDragStart, onDragEnd, contextId, l
                             {isAdded && (
                               <span className="text-[9px] font-bold uppercase text-accent bg-accent/10 px-1 rounded">Added</span>
                             )}
-                            <span className="text-[10px] font-medium text-muted-foreground/60 bg-[var(--bone-6)] px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-medium text-muted-foreground/60 bg-[var(--app-dark)] px-1.5 py-0.5 rounded">
                               {entry.defaultW}×{entry.defaultH}
                             </span>
                           </div>

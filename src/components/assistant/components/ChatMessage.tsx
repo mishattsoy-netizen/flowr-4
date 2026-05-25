@@ -1,7 +1,8 @@
 "use client";
 
 import React, { memo, useState, useRef, useEffect, useMemo, createContext, useContext } from 'react';
-import { Copy, ThumbsUp, ThumbsDown, RotateCcw, Paperclip, CornerUpLeft, FileText, ClipboardCopy, ChevronDown, ChevronRight, Sparkles, CheckCircle2, Brain, Check, ExternalLink } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
+import { Copy, ThumbsUp, ThumbsDown, RotateCcw, Paperclip, CornerUpLeft, FileText, ClipboardCopy, ChevronDown, ChevronRight, ChevronLeft, Sparkles, CheckCircle2, Brain, Check, ExternalLink } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '../../ui/popover';
 import { useStore } from '@/data/store';
 import type { AIMessage, AIAttachment, EditorBlock } from '@/data/store';
@@ -115,7 +116,7 @@ const renderContentWithStyles = (content: any): any => {
               key={i}
               className={cn(
                 stack,
-                isMono && "bg-[var(--bone-6)] rounded-[4px] px-1.5 py-[1px] mx-[1px] text-[calc(1em-1px)] text-[var(--bone-70)] tracking-tight font-medium"
+                isMono && "bg-[var(--app-dark)] rounded-[4px] px-1.5 py-[1px] mx-[1px] text-[calc(1em-1px)] text-[var(--bone-70)] tracking-tight font-medium"
               )}
               style={isMono ? { fontFamily: 'DM Mono' } : undefined}
             >
@@ -225,9 +226,132 @@ export const sanitizeContent = (content: string, isAILoading: boolean, isLastMes
   text = text.replace(/\{[\s\n\r]*"action"[\s\S]*?\}/g, '');
   text = text.replace(/(?<![!\[])(add_note|add_folder|add_canvas|add_task|update_note_content|append_note_content|generate_image)\s*\([\s\S]*?\);?/g, '');
 
+  // Positive math signal: equation operators, sub/superscripts, math operators.
+  // If any of these is present, content is almost certainly math, not code.
+  const MATH_SIGNAL = /[=≈≠≤≥]|[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ⁻⁺]|[₀-₉ₙₐₓᵢⱼ]|[·×÷±→⇒⇔√∞∑∏∫∂∈∉⊂⊃∪∩]|[\^_][0-9a-zA-Z(]/;
+
+  const looksLikeMath = (s: string): boolean => MATH_SIGNAL.test(s.trim());
+
+  // Heuristic: does content look like a math expression rather than real code?
+  const looksLikeMathOrPlain = (s: string): boolean => {
+    const t = s.trim();
+    if (!t) return false;
+    // Real code indicators
+    if (/[;]/.test(t)) return false;
+    if (/\b(function|const|let|var|def |import |class |return|public|private|async|await|=>)\b/.test(t)) return false;
+    // Multi-line indented = real code structure
+    if (t.includes('\n') && t.split('\n').filter((l: string) => /^[ \t]{2,}\S/.test(l)).length > 1) return false;
+    return true;
+  };
+
+  // Unwrap fenced code blocks that contain only math/plain text (no real code).
+  text = text.replace(/```(?:[a-z]*)[ \t]*([\s\S]*?)```/g, (match, inner) => {
+    return looksLikeMathOrPlain(inner) ? inner.trim() : match;
+  });
+
+  // Unwrap inline code spans (`...`) that contain only math expressions.
+  // Math always wins: if MATH_SIGNAL matches, strip backticks regardless of any
+  // code-looking substring (e.g. "a₁ = a₁ + (n-1)d" contains no real code).
+  text = text.replace(/`([^`\n]+)`/g, (match, inner: string) => {
+    const t = inner.trim();
+    if (looksLikeMath(t)) return t;
+    // Below: content has no math signal — apply conservative code keep-rules.
+    if (/[;]/.test(t)) return match;
+    if (/\b(function|const|let|var|def |class |return|public|private|async|await|=>|null|undefined|true|false)\b/.test(t)) return match;
+    if (/^\/|^\.\/|\.(ts|tsx|js|jsx|py|json|md|css|html|sh)$/.test(t)) return match;
+    if (/^[a-z]+\s+--?[a-z]/i.test(t)) return match; // CLI command
+    return t;
+  });
+
+  // Strip LaTeX math delimiters ($...$, $$...$$, \(...\), \[...\]) — models sometimes
+  // ignore the Unicode-only instruction; bare content renders correctly without them.
+  text = text.replace(/\$\$([\s\S]+?)\$\$/g, '$1');
+  text = text.replace(/\$([^$\n]+?)\$/g, '$1');
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$1');
+  text = text.replace(/\\\(([^)]*?)\\\)/g, '$1');
+
+  // Replace LaTeX command sequences with Unicode equivalents.
+  text = text.replace(/\\implies\b/g, '⇒');
+  text = text.replace(/\\Rightarrow\b/g, '⇒');
+  text = text.replace(/\\rightarrow\b/g, '→');
+  text = text.replace(/\\leftarrow\b/g, '←');
+  text = text.replace(/\\Leftrightarrow\b/g, '⟺');
+  text = text.replace(/\\iff\b/g, '⟺');
+  text = text.replace(/\\cdot\b/g, '·');
+  text = text.replace(/\\times\b/g, '×');
+  text = text.replace(/\\div\b/g, '÷');
+  text = text.replace(/\\pm\b/g, '±');
+  text = text.replace(/\\approx\b/g, '≈');
+  text = text.replace(/\\neq\b/g, '≠');
+  text = text.replace(/\\leq\b/g, '≤');
+  text = text.replace(/\\geq\b/g, '≥');
+  text = text.replace(/\\infty\b/g, '∞');
+  text = text.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+  text = text.replace(/\\sqrt\[3\]\{([^}]+)\}/g, '∛($1)');
+  text = text.replace(/\\sqrt\[(\d+)\]\{([^}]+)\}/g, '$2^(1/$1)');
+  text = text.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
+  text = text.replace(/\\alpha\b/g, 'α');
+  text = text.replace(/\\beta\b/g, 'β');
+  text = text.replace(/\\gamma\b/g, 'γ');
+  text = text.replace(/\\delta\b/g, 'δ');
+  text = text.replace(/\\theta\b/g, 'θ');
+  text = text.replace(/\\lambda\b/g, 'λ');
+  text = text.replace(/\\mu\b/g, 'μ');
+  text = text.replace(/\\pi\b/g, 'π');
+  text = text.replace(/\\sigma\b/g, 'σ');
+  text = text.replace(/\\omega\b/g, 'ω');
+  text = text.replace(/\\Omega\b/g, 'Ω');
+  text = text.replace(/\\Delta\b/g, 'Δ');
+  text = text.replace(/\\Sigma\b/g, 'Σ');
+  text = text.replace(/\\in\b/g, '∈');
+  text = text.replace(/\\notin\b/g, '∉');
+  text = text.replace(/\\subset\b/g, '⊂');
+  text = text.replace(/\\cup\b/g, '∪');
+  text = text.replace(/\\cap\b/g, '∩');
+  text = text.replace(/\\forall\b/g, '∀');
+  text = text.replace(/\\exists\b/g, '∃');
+  text = text.replace(/\\partial\b/g, '∂');
+  text = text.replace(/\\sum\b/g, '∑');
+  text = text.replace(/\\prod\b/g, '∏');
+  text = text.replace(/\\int\b/g, '∫');
+  // \mathbf{x}, \text{x}, \mathrm{x}, \textbf{x}, \textit{x} etc. → keep content
+  text = text.replace(/\\(?:mathbf|mathit|mathrm|mathsf|mathtt|text|textbf|textit|textrm|boldsymbol|hat|bar|vec|tilde|dot|ddot|overline|underline)\{([^}]*)\}/g, '$1');
+  // Convert ^{...} and _{...} to Unicode super/subscripts where possible.
+  const SUP_MAP: Record<string, string> = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','n':'ⁿ','a':'ᵃ','b':'ᵇ','i':'ⁱ','j':'ʲ','+':'⁺','-':'⁻','(':'⁽',')':'⁾' };
+  const SUB_MAP: Record<string, string> = { '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','n':'ₙ','a':'ₐ','i':'ᵢ','j':'ⱼ' };
+  const toSup = (s: string) => s.split('').map(c => SUP_MAP[c] ?? c).join('');
+  const toSub = (s: string) => s.split('').map(c => SUB_MAP[c] ?? c).join('');
+  // ^{expr} and ^single-char
+  text = text.replace(/\^\{([^}]+)\}/g, (_, e) => toSup(e));
+  text = text.replace(/\^([0-9a-zA-Z])/g, (_, c) => toSup(c));
+  // _{expr} and _single-char (only when not already Unicode subscript)
+  text = text.replace(/_\{([^}]+)\}/g, (_, e) => toSub(e));
+  text = text.replace(/_([0-9a-zA-Z])/g, (_, c) => toSub(c));
+  // Strip any remaining \command{content} — keep the content, drop the command
+  text = text.replace(/\\[a-zA-Z]+\{([^}]*)\}/g, '$1');
+  // \, thin space (used in numbers like 86\,400) → nothing
+  text = text.replace(/\\,/g, '');
+  // Strip remaining bare \command sequences
+  text = text.replace(/\\[a-zA-Z]+/g, '');
+
+  // Collapse orphan arrow lines and bullets — models sometimes emit "→" alone
+  // on its own line or as a sole-content bullet, fragmenting math derivations.
+  // Merge "<line>\n→\n<line>" into "<line> → <line>".
+  text = text.replace(/([^\n])\n[ \t]*(?:[-*+][ \t]+)?[→⇒]+[ \t]*\n[ \t]*(?:[-*+][ \t]+)?([^\n])/g, '$1 → $2');
+  // Strip standalone bullet lines whose entire content is just an arrow.
+  text = text.replace(/^[ \t]*[-*+][ \t]+[→⇒][ \t]*$/gm, '');
+  // Collapse the resulting double blank lines.
+  text = text.replace(/\n{3,}/g, '\n\n');
+
   // Escape lettered list markers (a), b), A), B) etc.) at line starts so remark-gfm
   // doesn't misparse them as ordered list items and render them as code blocks.
   text = text.replace(/^([a-zA-Z])\)/gm, '$1\\)');
+
+  // Escape numeric ")"-style list markers at line start (1) Title, 2) Title) so
+  // remark-gfm renders them as plain paragraphs, not as fresh ordered lists that
+  // all restart at "1." — but DO NOT touch them inside markdown headings
+  // (## 1), ### 2) etc., which remark already handles correctly).
+  text = text.replace(/^(?!#{1,6}\s)(\d+)\)(\s)/gm, '$1\\)$2');
 
   text = text.trim();
 
@@ -241,6 +365,88 @@ export const sanitizeContent = (content: string, isAILoading: boolean, isLastMes
 
   return text;
 };
+
+export const stableAppendStreamingCursor = (content: string): string => {
+  if (!content) return "~~AICURSORZX~~";
+
+  const text = content;
+
+  // 1. Track fenced code blocks (```)
+  const codeBlockMatches = text.match(/```/g);
+  const inCodeBlock = codeBlockMatches ? codeBlockMatches.length % 2 !== 0 : false;
+
+  if (inCodeBlock) {
+    // If inside a fenced code block, append the cursor and then close the code block
+    return text + '~~AICURSORZX~~\n```';
+  }
+
+  // Helper to check if a character at index is escaped by backslashes
+  const isEscaped = (idx: number): boolean => {
+    let backslashes = 0;
+    let j = idx - 1;
+    while (j >= 0 && text[j] === '\\') {
+      backslashes++;
+      j--;
+    }
+    return backslashes % 2 !== 0;
+  };
+
+  // 2. Track inline tags: code (`), bold (** or __), italic (* or _)
+  const stack: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    if (isEscaped(i)) {
+      i++;
+      continue;
+    }
+
+    if (text[i] === '`') {
+      let count = 0;
+      while (i < text.length && text[i] === '`') {
+        count++;
+        i++;
+      }
+      if (count > 0) {
+        const tag = '`'.repeat(count);
+        if (stack[stack.length - 1] === tag) {
+          stack.pop();
+        } else {
+          stack.push(tag);
+        }
+      }
+    } else if (text.startsWith('***', i)) {
+      if (stack[stack.length - 1] === '***') stack.pop();
+      else stack.push('***');
+      i += 3;
+    } else if (text.startsWith('**', i)) {
+      if (stack[stack.length - 1] === '**') stack.pop();
+      else stack.push('**');
+      i += 2;
+    } else if (text.startsWith('*', i)) {
+      if (stack[stack.length - 1] === '*') stack.pop();
+      else stack.push('*');
+      i += 1;
+    } else if (text.startsWith('___', i)) {
+      if (stack[stack.length - 1] === '___') stack.pop();
+      else stack.push('___');
+      i += 3;
+    } else if (text.startsWith('__', i)) {
+      if (stack[stack.length - 1] === '__') stack.pop();
+      else stack.push('__');
+      i += 2;
+    } else if (text.startsWith('_', i)) {
+      if (stack[stack.length - 1] === '_') stack.pop();
+      else stack.push('_');
+      i += 1;
+    } else {
+      i++;
+    }
+  }
+
+  const closingTags = [...stack].reverse().join('');
+  return text + '~~AICURSORZX~~' + closingTags;
+};
+
 
 const ApplyNoteCard = ({ content }: { content: string }) => {
   const activeEntityId = useStore(state => state.activeEntityId);
@@ -407,6 +613,61 @@ const ApplyCanvasCard = ({ content }: { content: string }) => {
   );
 };
 
+const UserMessageBubble = ({
+  msg,
+  targetContent,
+  compact,
+  openModal,
+}: {
+  msg: AIMessage;
+  targetContent: string;
+  compact: boolean;
+  openModal: (opts: any) => void;
+}) => {
+  const { resolvedTheme } = useTheme();
+  const msgFontWeight = resolvedTheme === 'dark' ? 400 : 500;
+  return (
+    <div className="flex items-end gap-2 max-w-full">
+      <div
+        className={cn("leading-[133%] px-5 py-3 w-fit max-w-full overflow-hidden text-[var(--bone-100)]", compact ? "text-[17px]" : "text-[20px]")}
+        style={{ backgroundColor: 'var(--app-dark)', borderRadius: '12px', fontFamily: 'DM Sans', fontWeight: msgFontWeight, fontSize: compact ? '15px' : '17px' }}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="break-words" style={{ fontFamily: 'DM Sans', fontWeight: msgFontWeight, fontSize: compact ? '15px' : '17px' }}>{targetContent}</div>
+          {msg.attachments && msg.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {msg.attachments.map((att: AIAttachment, i: number) => (
+                <div
+                  key={`${msg.id}-att-${i}`}
+                  className="rounded-[var(--radius-small)] overflow-hidden bg-[var(--black-overlay)] group/att relative cursor-pointer transition-colors"
+                  onClick={() => {
+                    if (att.type === 'image') {
+                      openModal({ kind: 'mediaViewer', url: att.url, mediaType: 'image' });
+                    } else {
+                      window.open(att.url, '_blank');
+                    }
+                  }}
+                >
+                  {att.type === 'image' ? (
+                    <img src={att.url} alt={att.name} className="max-w-[200px] max-h-[150px] object-cover group-hover/att:opacity-90" />
+                  ) : att.type === 'audio' ? (
+                    <ChatAudioPlayer url={att.url} name={att.name} />
+                  ) : (
+                    <div className="px-3 py-2 text-[10px] flex items-center gap-2 group-hover/att:text-bone-100 font-medium">
+                      <Paperclip strokeWidth={2} className="w-3 h-3 text-bone-70" />
+                      <span className="max-w-[120px] truncate">{att.name}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
   const [isOpen, setIsOpen] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -450,7 +711,7 @@ const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
           rel="noopener noreferrer"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className="inline-flex items-center gap-1.5 px-2 py-1 mt-1 mr-1.5 bg-white/5 hover:bg-white/10 rounded-full text-[11px] font-bold font-sans text-[var(--bone-70)] hover:text-bone-100 no-underline transition-all duration-200 select-none border border-white/5"
+          className="inline-flex items-center gap-1.5 px-2 py-1 mt-1 mr-1.5 bg-[var(--bone-5)] hover:bg-[var(--bone-10)] rounded-full text-[11px] font-bold font-sans text-[var(--bone-70)] hover:text-[var(--bone-100)] no-underline transition-all duration-200 select-none border border-[var(--bone-10)]"
         >
           {faviconUrl && (
             <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 overflow-hidden rounded-[4px]">
@@ -464,32 +725,32 @@ const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
         side="top"
         align="start"
         sideOffset={8}
-        className="z-[500] w-fit max-w-[320px] p-2 bg-[#1a1a19] border-white/10 shadow-2xl backdrop-blur-2xl rounded-xl border border-white/10"
+        className="z-[500] w-fit max-w-[320px] p-2 bg-[var(--app-panel)] border-[var(--bone-12)] shadow-2xl backdrop-blur-2xl rounded-xl border"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2.5 px-1.5 py-1">
             {faviconUrl && (
-              <span className="w-5 h-5 flex items-center justify-center shrink-0 rounded-md bg-white/5">
+              <span className="w-5 h-5 flex items-center justify-center shrink-0 rounded-md bg-[var(--bone-5)]">
                 <img src={faviconUrl} alt="" className="w-3.5 h-3.5 object-contain" />
               </span>
             )}
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-bold text-bone-100 truncate max-w-[200px]">
+              <span className="text-[11px] font-bold text-[var(--bone-100)] truncate max-w-[200px]">
                 {label}
               </span>
-              <span className="text-[9px] font-medium text-bone-40 truncate max-w-[200px] font-sans">
+              <span className="text-[9px] font-medium text-[var(--bone-30)] truncate max-w-[200px] font-sans">
                 {href}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 border-t border-white/5 pt-1.5 mt-0.5">
+          <div className="flex items-center gap-1 border-t border-[var(--bone-10)] pt-1.5 mt-0.5">
             <Tooltip content={copying ? "Copied!" : "Copy Link"}>
               <button
                 onClick={handleCopy}
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md hover:bg-white/5 text-bone-40 hover:text-bone-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md hover:bg-[var(--bone-5)] text-[var(--bone-30)] hover:text-[var(--bone-100)] transition-colors"
               >
                 {copying ? (
                   <Check className="w-3 h-3" />
@@ -501,13 +762,13 @@ const LinkWithPopup = ({ href, children }: { href: string, children: any }) => {
                 </span>
               </button>
             </Tooltip>
-            <div className="w-px h-3 bg-white/5" />
+            <div className="w-px h-3 bg-[var(--bone-10)]" />
             <Tooltip content="Open in New Tab">
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md hover:bg-white/5 text-bone-40 hover:text-bone-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md hover:bg-[var(--bone-5)] text-[var(--bone-30)] hover:text-[var(--bone-100)] transition-colors"
               >
                 <ExternalLink className="w-3 h-3" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Open</span>
@@ -568,7 +829,12 @@ export const ChatMessage = memo(({
   const addEntity = useStore(state => state.addEntity);
   const updateEntityContent = useStore(state => state.updateEntityContent);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
+  const setVariantIndex = useStore(state => state.setVariantIndex);
   const aiSessionContext = useStore(state => state.aiSessionContext);
+
+  const variants = msg.variants ?? [];
+  const totalVariants = variants.length;
+  const currentVariantIndex = msg.variantIndex ?? 0;
 
   const activeNote = useMemo(() => activeEntityId ? entities.find(e => e.id === activeEntityId) : null, [activeEntityId, entities]);
   const isNoteActive = activeNote?.type === 'note' || activeNote?.type === 'mixed';
@@ -640,13 +906,15 @@ export const ChatMessage = memo(({
     return /^!\[.*?\]\s*\(\s*(data:image\/|https?:\/\/|AUO)[\s\S]*?(\s+"[\s\S]*?")?\s*(\s*\)|$)/.test(trimmed);
   }, [targetContent]);
   const displayContent = useMemo(() => {
-    return (isAILoading && isLast && !isPureImage && targetContent)
-      ? targetContent + '~~AICURSORZX~~'
-      : targetContent;
+    if (isAILoading && isLast && !isPureImage && targetContent) {
+      return stableAppendStreamingCursor(targetContent);
+    }
+    return targetContent;
   }, [targetContent, isAILoading, isLast, isPureImage]);
   const hasFinishedTyping = !isAILoading;
 
   const [feedbackState, setFeedbackState] = useState<'like' | 'dislike' | null>(null);
+
 
   const [elapsed, setElapsed] = useState(0)
   const [completionTime, setCompletionTime] = useState<number | null>(null)
@@ -874,7 +1142,7 @@ export const ChatMessage = memo(({
                 <span className="mt-[7px] flex items-center justify-center" onClick={handleToggle}>
                   <span className={cn(
                     "w-[16px] h-[16px] rounded-[4px] border flex items-center justify-center cursor-pointer",
-                    "bg-[var(--bone-6)] border-[var(--bone-30)] hover:border-[var(--bone-70)]"
+                    "bg-[var(--app-dark)] border-[var(--bone-30)] hover:border-[var(--bone-70)]"
                   )}>
                     {isChecked && (
                       <Check className="w-[10px] h-[10px] text-[var(--bone-100)]" strokeWidth={3} />
@@ -938,7 +1206,7 @@ export const ChatMessage = memo(({
 
         if (inline || inTable) {
           return (
-            <code className={cn("bg-[var(--bone-6)] rounded px-1.5 py-0.5 font-mono tracking-[0] font-medium", compact ? "text-[11px]" : "text-[12px]", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
+            <code className={cn("bg-[var(--app-dark)] rounded px-1.5 py-0.5 font-mono tracking-[0] font-medium", compact ? "text-[11px]" : "text-[12px]", inTable && "inline-flex px-1 py-0 leading-tight")} style={{ fontFamily: 'DM Mono' }} {...props}>
               {contentStr}{hasCursor && <span className="ai-cursor-inline">█</span>}
             </code>
           );
@@ -1107,15 +1375,15 @@ export const ChatMessage = memo(({
   return (
     <div className={cn(
       "flex flex-col group",
-      msg.role === 'user' ? "items-end mb-4" : "items-start mb-0"
+      msg.role === 'user' ? "items-end mb-8" : "items-start mb-3"
     )}>
       <div className={cn(
         "flex gap-3 w-full items-start",
-        msg.role === 'user' ? "flex-row-reverse" : "flex-row"
+        msg.role === 'user' ? "flex-row" : "flex-row"
       )}>
         <div className={cn(
           "flex flex-col min-w-0",
-          msg.role === 'user' ? "items-end max-w-[90%]" : "items-start max-w-full flex-1"
+          msg.role === 'user' ? "items-end max-w-[90%] ml-auto" : "items-start max-w-full flex-1"
         )}>
           {msg.role === 'assistant' && isLast && !displayContent ? (
             <div className="flex items-center gap-2.5 h-5 select-none -ml-1 mb-1">
@@ -1154,56 +1422,45 @@ export const ChatMessage = memo(({
             </div>
           ) : (
             <>
-              {msg.role === 'assistant' && isLast && (
-                <div className="w-5 h-5 shrink-0 flex items-center justify-center select-none mb-1 -ml-1">
-                  <AIAvatar isTyping={isAILoading && msg.role === 'assistant'} className="w-3.5 h-3.5" />
-                </div>
-              )}
               {!displayContent && msg.role === 'assistant' ? null : (
                 msg.role === 'user' ? (
-                  <div className="flex items-center gap-2 justify-end w-full">
-                    <Tooltip content="Reply">
-                      <button
-                        onClick={() => onReply(msg)}
-                        className="p-1 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-30)] hover:text-foreground transition-all duration-200 opacity-0 group-hover:opacity-100 shrink-0"
-                      >
-                        <CornerUpLeft strokeWidth={2} className="w-3.5 h-3.5" />
-                      </button>
-                    </Tooltip>
+                  <div className="w-full flex flex-col items-end">
+                    <UserMessageBubble
+                      msg={msg}
+                      targetContent={targetContent}
+                      compact={compact}
+                      openModal={openModal}
+                    />
                     <div
-                      className={cn("leading-[133%] font-medium px-4 py-2.5 w-fit max-w-full overflow-hidden", compact ? "text-[13px]" : "text-[15px]")}
-                      style={{ backgroundColor: '#121212', borderRadius: '17px 17px 4px 17px', fontFamily: 'DM Sans', fontWeight: 500, fontSize: compact ? '13px' : '15px' }}
+                      className={cn(
+                        "flex items-center gap-3 justify-end mt-3 transition-opacity duration-150 transform-gpu",
+                        isLast ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                      )}
                     >
-                      <div className="flex flex-col gap-3">
-                        <div className="whitespace-pre-wrap break-words font-medium" style={{ fontFamily: 'DM Sans', fontWeight: 500, fontSize: compact ? '13px' : '15px' }}>{targetContent}</div>
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {msg.attachments.map((att: AIAttachment, i: number) => (
-                              <div
-                                key={`${msg.id}-att-${i}`}
-                                className="rounded-[var(--radius-small)] overflow-hidden bg-[var(--black-overlay)] group relative cursor-pointer transition-colors"
-                                onClick={() => {
-                                  if (att.type === 'image') {
-                                    openModal({ kind: 'mediaViewer', url: att.url, mediaType: 'image' });
-                                  } else {
-                                    window.open(att.url, '_blank');
-                                  }
-                                }}
-                              >
-                                {att.type === 'image' ? (
-                                  <img src={att.url} alt={att.name} className="max-w-[200px] max-h-[150px] object-cover group-hover:opacity-90" />
-                                ) : att.type === 'audio' ? (
-                                  <ChatAudioPlayer url={att.url} name={att.name} />
-                                ) : (
-                                  <div className="px-3 py-2 text-[10px] flex items-center gap-2 group-hover:text-bone-100 font-medium">
-                                    <Paperclip strokeWidth={2} className="w-3 h-3 text-bone-70" />
-                                    <span className="max-w-[120px] truncate">{att.name}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {msg.timestamp && (
+                        <Tooltip content={new Date(msg.timestamp).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })}>
+                          <span className="px-1 text-[11px] text-[var(--bone-30)] select-none cursor-default">
+                            {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </Tooltip>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Tooltip content="Reply">
+                          <button
+                            onClick={() => onReply(msg)}
+                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] text-[var(--bone-30)] hover:text-foreground transition-colors"
+                          >
+                            <CornerUpLeft strokeWidth={2} className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Copy">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(targetContent)}
+                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] text-[var(--bone-30)] hover:text-foreground transition-colors"
+                          >
+                            <Copy strokeWidth={2} className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
@@ -1314,10 +1571,12 @@ export const ChatMessage = memo(({
                     )}
 
                     {(!isAILoading || msg.model) && (
-                      <div className={cn(
-                        "flex flex-col gap-3 mt-1 transition-all duration-200",
-                        !isLast && "opacity-0 group-hover:opacity-100"
-                      )}>
+                      <div
+                        className={cn(
+                          "flex flex-col gap-3 mt-4 transition-opacity duration-150 transform-gpu",
+                          isLast ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                        )}
+                      >
                         {msg.citations && msg.citations.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2 pt-3 border-t border-white/5 w-full">
                             <div className="w-full flex items-center gap-2 mb-1">
@@ -1355,43 +1614,64 @@ export const ChatMessage = memo(({
                               <Tooltip content="Copy Text">
                                 <button
                                   onClick={() => navigator.clipboard.writeText(displayContent)}
-                                  className="p-0.5 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-30)] hover:text-foreground transition-colors"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] text-[var(--bone-30)] hover:text-foreground transition-colors"
                                 >
-                                  <Copy strokeWidth={2} className="w-3 h-3" />
+                                  <Copy strokeWidth={2} className="w-4 h-4" />
                                 </button>
                               </Tooltip>
                               <Tooltip content="Good response">
                                 <button
                                   onClick={() => submitFeedback('like')}
-                                  className={cn("p-0.5 rounded-md hover:bg-[var(--bone-6)] transition-colors", feedbackState === 'like' ? "text-green-400" : "text-[var(--bone-30)] hover:text-foreground")}
+                                  className={cn("w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] transition-colors", feedbackState === 'like' ? "text-green-400" : "text-[var(--bone-30)] hover:text-foreground")}
                                 >
-                                  <ThumbsUp strokeWidth={2} className="w-3 h-3" />
+                                  <ThumbsUp strokeWidth={2} className="w-4 h-4" />
                                 </button>
                               </Tooltip>
                               <Tooltip content="Bad response">
                                 <button
                                   onClick={() => submitFeedback('dislike')}
-                                  className={cn("p-0.5 rounded-md hover:bg-[var(--bone-6)] transition-colors", feedbackState === 'dislike' ? "text-red-400" : "text-[var(--bone-30)] hover:text-foreground")}
+                                  className={cn("w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] transition-colors", feedbackState === 'dislike' ? "text-red-400" : "text-[var(--bone-30)] hover:text-foreground")}
                                 >
-                                  <ThumbsDown strokeWidth={2} className="w-3 h-3" />
+                                  <ThumbsDown strokeWidth={2} className="w-4 h-4" />
                                 </button>
                               </Tooltip>
-                              {isLast && onRegenerate && (
+                              {onRegenerate && (
                                 <Tooltip content="Regenerate">
                                   <button
                                     onClick={onRegenerate}
-                                    className="p-0.5 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-30)] hover:text-foreground transition-colors"
+                                    className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] text-[var(--bone-30)] hover:text-foreground transition-colors"
                                   >
-                                    <RotateCcw strokeWidth={2} className="w-3 h-3" />
+                                    <RotateCcw strokeWidth={2} className="w-4 h-4" />
                                   </button>
                                 </Tooltip>
+                              )}
+                              {totalVariants > 1 && msg.id && (
+                                <div className="flex items-center gap-0.5 h-6 px-1 rounded-md border border-white/5 bg-white/[0.02]">
+                                  <button
+                                    onClick={() => setVariantIndex(msg.id!, currentVariantIndex - 1)}
+                                    disabled={currentVariantIndex === 0}
+                                    className="w-4 h-4 flex items-center justify-center text-[var(--bone-30)] hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    <ChevronLeft strokeWidth={2} className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-[10px] font-medium text-[var(--bone-40)] tabular-nums px-0.5">
+                                    {currentVariantIndex + 1}/{totalVariants}
+                                  </span>
+                                  <button
+                                    onClick={() => setVariantIndex(msg.id!, currentVariantIndex + 1)}
+                                    disabled={currentVariantIndex === totalVariants - 1}
+                                    className="w-4 h-4 flex items-center justify-center text-[var(--bone-30)] hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    <ChevronRight strokeWidth={2} className="w-3 h-3" />
+                                  </button>
+                                </div>
                               )}
                               <Tooltip content="Reply">
                                 <button
                                   onClick={() => onReply(msg)}
-                                  className="p-0.5 rounded-md hover:bg-[var(--bone-6)] text-[var(--bone-30)] hover:text-foreground transition-colors"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--app-dark)] text-[var(--bone-30)] hover:text-foreground transition-colors"
                                 >
-                                  <CornerUpLeft strokeWidth={2} className="w-3.5 h-3.5" />
+                                  <CornerUpLeft strokeWidth={2} className="w-4 h-4" />
                                 </button>
                               </Tooltip>
 
@@ -1464,7 +1744,7 @@ export const ChatMessage = memo(({
 
                           {msg.model && (
                             <div className={cn(
-                              "flex items-center px-2 py-0.5 rounded-full bg-[var(--bone-6)] opacity-40 hover:opacity-100 transition-all duration-300",
+                              "flex items-center px-2 py-0.5 rounded-full bg-[var(--app-dark)] opacity-40 hover:opacity-100 transition-all duration-300",
                               !isAILoading ? "ml-1" : "ml-0"
                             )}>
                               <span className="text-[8px] font-bold uppercase tracking-[0.05em] text-[var(--bone-40)]">
@@ -1475,6 +1755,11 @@ export const ChatMessage = memo(({
                             </div>
                           )}
                         </div>
+                      </div>
+                    )}
+                    {isLast && (
+                      <div className="mt-3 flex items-center select-none">
+                        <AIAvatar isTyping={isAILoading} className="w-3.5 h-3.5" />
                       </div>
                     )}
                   </div>

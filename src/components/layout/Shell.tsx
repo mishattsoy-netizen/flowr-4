@@ -13,6 +13,7 @@ import { NewTaskModal } from '../modals/NewTaskModal';
 import { SettingsModal } from '../modals/SettingsModal';
 import { MediaViewerModal } from '../modals/MediaViewerModal';
 import { NewWorkspaceModal } from '../modals/NewWorkspaceModal';
+import { SummaryPreviewModal } from '../modals/SummaryPreviewModal';
 
 
 import { AIAssistant } from '../assistant/AIAssistant';
@@ -118,6 +119,19 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
     };
     window.addEventListener('keydown', handleNavigationShortcuts);
     return () => window.removeEventListener('keydown', handleNavigationShortcuts);
+  }, []);
+
+  // Global Copy Event Interceptor: Enforces plain text copying to prevent custom styling and background colors from leaking
+  useEffect(() => {
+    const handleGlobalCopy = (e: ClipboardEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString()) {
+        e.clipboardData?.setData('text/plain', selection.toString());
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('copy', handleGlobalCopy);
+    return () => document.removeEventListener('copy', handleGlobalCopy);
   }, []);
 
   // 2. Initial State & History Alignment
@@ -267,7 +281,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
       )}
       style={{
         gridTemplateColumns: 'var(--sidebar-w, 280px) 1fr',
-        transition: (!allowTransitions || isResizingLeft || isResizingRight) ? 'none' : 'grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+        transition: 'none'
       } as React.CSSProperties}
     >
       <SmoothScroll />
@@ -275,12 +289,12 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
       <div
         className={cn(
           "h-full min-w-0 min-h-0 shrink-0 flex flex-row relative",
-          !currentSidebarCollapsed && "border-r border-[var(--bone-15)]",
+          (!currentSidebarCollapsed || !isTabsHeaderVisible) && "border-r border-[var(--bone-15)]",
           currentSidebarCollapsed ? "flex" : "fixed inset-0 z-50 md:relative md:inset-auto md:flex"
         )}
         style={{
           width: 'var(--sidebar-w, 280px)',
-          transition: (!allowTransitions || isResizingLeft || isResizingRight) ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+          transition: 'none'
         }}
       >
         {!currentSidebarCollapsed && (
@@ -377,6 +391,7 @@ export function Shell({ children, initialEntityId }: { children: React.ReactNode
       <SettingsModal key="settings-modal" />
       <MediaViewerModal key="media-viewer" />
       <NewWorkspaceModal key="new-workspace" />
+      <SummaryPreviewModal key="summary-preview" />
       <CommandPalette key="command-palette" />
 
 

@@ -68,7 +68,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-[var(--bone-6)] flex items-center mt-auto justify-between">
         <Link
           href="/"
-          className="sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px] text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+          className="sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px] text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
         >
           <div className="w-7 shrink-0 flex items-center justify-center">
             <ArrowLeft className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" strokeWidth={2} />
@@ -104,7 +104,7 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon: any; chil
         "sidebar-item-row group relative flex items-center w-full cursor-pointer select-none transition-all duration-0 px-3 rounded-[var(--radius-8)] h-7 text-[14px]",
         isActive
           ? "!bg-dark text-[var(--bone-100)] font-medium tracking-wide"
-          : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
+          : "text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
       )}
     >
       <div className="w-7 shrink-0 flex items-center justify-center">

@@ -214,7 +214,8 @@ export type ModalType =
   | { kind: 'habitDetail'; id: string | null }
   | { kind: 'goalDetail'; id: string | null }
   | { kind: 'journalDetail'; id: string | null }
-  | { kind: 'routineDetail'; id: string | null };
+  | { kind: 'routineDetail'; id: string | null }
+  | { kind: 'summaryPreview'; summary: string };
 
 export type EditingSource = 'sidebar' | 'sidebar-section' | 'header' | 'view' | 'favorites' | 'recent' | 'canvas' | 'editor' | 'modal' | 'all-files' | 'folders' | 'spaces' | 'sidebar-toggle';
 
@@ -265,6 +266,8 @@ export interface AIMessage {
   }>;
   advisor_questions?: string
   advisor_state?: string
+  variants?: string[]
+  variantIndex?: number
 }
 
 export interface AISessionContext {
@@ -442,6 +445,8 @@ export interface AppState {
   assistantInput: string;
   showPaidModels: boolean;
   isInitialSync: boolean;
+  pendingCompaction: boolean;
+  isCompacting: boolean;
 
   // Chat page state
   activeChatId: string | null;
@@ -496,7 +501,10 @@ export interface AppState {
   setAssistantInput: (input: string) => void;
   setAISessionContext: (context: AISessionContext | null) => void;
   fetchAISessionContext: (chatId: string) => Promise<void>;
+  finishAILoading: () => Promise<void>;
   sendAIMessage: (content: string, attachments?: AIAttachment[]) => Promise<void>;
+  regenerateAIMessage: (messageId: string, userContent: string, userAttachments?: AIAttachment[]) => Promise<void>;
+  setVariantIndex: (messageId: string, index: number) => void;
   setActiveEntityId: (id: string | null) => void;
   addTab: (id?: string) => void;
   removeTab: (id: string) => void;

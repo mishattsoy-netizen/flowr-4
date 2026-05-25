@@ -488,6 +488,10 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
       if (!e.shiftKey) {
         setSelectedBlockIds(new Set());
       }
+
+      // Close popups when clicking on empty space
+      setActiveOptionsMenu(null);
+      setSlashMenu(null);
     }
   }, []);
 
@@ -564,6 +568,27 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [selectionBox?.active, handleMouseMove, handleMouseUp]);
+
+  useEffect(() => {
+    const handleDocumentMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Determine if we clicked inside a block container
+      const clickedInsideBlock = !!target.closest('[data-block-id]');
+      
+      // Determine if we clicked inside an active popup menu (like block options, slash command, or toolbar)
+      const clickedInsidePopup = !!target.closest('.popup-glass-small') || !!target.closest('.popup-glass');
+      
+      // If clicking entirely outside any block and any popup menu (e.g. empty space), reset state
+      if (!clickedInsideBlock && !clickedInsidePopup) {
+        setSelectedBlockIds(new Set());
+        setActiveOptionsMenu(null);
+        setSlashMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleDocumentMouseDown);
+    return () => document.removeEventListener('mousedown', handleDocumentMouseDown);
+  }, []);
 
   const handleDragStart = useCallback((id: string, e: React.DragEvent) => {
     // If dragging a block that isn't selected, select only it
@@ -824,8 +849,13 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
         return next;
       });
     } else {
-      setSelectedBlockIds(new Set([blockId]));
-      setActiveOptionsMenu({ blockId, position });
+      setActiveOptionsMenu(prev => {
+        if (prev?.blockId === blockId) {
+          return null;
+        }
+        setSelectedBlockIds(new Set([blockId]));
+        return { blockId, position };
+      });
     }
   }, []);
 
@@ -1083,6 +1113,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
 
   const handleBlockFocus = useCallback((id: string) => {
     setActiveBlockId(id);
+    setSelectedBlockIds(new Set());
   }, []);
 
   const getListCounter = useCallback((blockId: string, siblings: EditorBlock[]): number => {
@@ -1148,7 +1179,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
         <div 
             className={cn(
               "mx-auto py-8 editor-content-container note-editor-bg",
-              isFullWidth ? "w-full px-8" : "max-w-[850px] px-4",
+              isFullWidth ? "w-full px-20" : "max-w-[850px] px-4",
               isDragging && "dragging-active-content"
             )}
             dir="ltr"
@@ -1226,7 +1257,7 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
 
                       <button
                         onClick={handleAddTag}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-all"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] transition-all"
                       >
                         <Plus strokeWidth={2} className="w-3 h-3" />
                         <span>New</span>
@@ -1301,6 +1332,13 @@ export function NoteEditor({ entity, isMixed = false }: NoteEditorProps) {
           <div 
             className="h-32 note-editor-bg cursor-text" 
             onClick={() => {
+              // Only create a new block if there is no active selection and no open menus
+              if (selectedBlockIds.size > 0 || activeOptionsMenu || slashMenu) {
+                setSelectedBlockIds(new Set());
+                setActiveOptionsMenu(null);
+                setSlashMenu(null);
+                return;
+              }
               const newBlock = createBlock('text', { style: 'body' });
               persistBlocks([...blocks, newBlock]);
               setTimeout(() => {

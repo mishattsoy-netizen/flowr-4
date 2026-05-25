@@ -565,7 +565,7 @@ export default function ModelsTable({ initialModels }: { initialModels: ModelRow
               ) : (
                 <tr
                   key={model.id}
-                  className="hover:bg-[var(--bone-6)] transition-all duration-150 group"
+                  className="hover:bg-[var(--app-dark)] transition-all duration-150 group"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

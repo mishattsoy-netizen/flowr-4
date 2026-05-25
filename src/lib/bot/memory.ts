@@ -1,4 +1,4 @@
-﻿import { supabaseAdmin } from '../supabase'
+import { supabaseAdmin } from '../supabase'
 import { logger } from '../logger'
 
 export interface MemoryItem {
@@ -61,10 +61,18 @@ export async function getWebConversationMemory(authUserId: string, limit: number
       .eq('auth_user_id', authUserId)
       .maybeSingle();
 
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authUserId);
+    const validAuthUserId = (isUUID && authUserId !== '00000000-0000-0000-0000-000000000000') ? authUserId : null;
+
     let query = supabaseAdmin
       .from('message_logs')
-      .select('role, content, context_messages')
-      .eq('auth_user_id', authUserId);
+      .select('role, content, context_messages');
+
+    if (validAuthUserId) {
+      query = query.eq('auth_user_id', validAuthUserId);
+    } else {
+      query = query.is('auth_user_id', null);
+    }
 
     // Chat isolation: when a chatId is provided, only return messages tagged with this chat.
     // Without this, "new chat" leaks all prior user history into the context window.

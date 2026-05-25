@@ -2,7 +2,7 @@
 
 import { Entity, EntityType, useStore } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
-import { ChevronRight, ChevronDown, FileText, Frame, Folder, Layers, Plus, MoreHorizontal } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Frame, Folder, Layers, Plus, MoreHorizontal, StarOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React, { useState, useCallback, useRef } from 'react';
 import { IconPicker } from './IconPicker';
@@ -20,9 +20,11 @@ interface TreeItemProps {
   disableNesting?: boolean;
   isMultiSelected?: boolean;
   onShiftClick?: (entityId: string, e: React.MouseEvent) => void;
+  /** On the drag-overlay clone only: show an "unpin on drop" hint badge. */
+  showUnpinHint?: boolean;
 }
 
-export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride, isDragOverlay, disableNesting, isMultiSelected, onShiftClick }: TreeItemProps) {
+export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride, isDragOverlay, disableNesting, isMultiSelected, onShiftClick, showUnpinHint }: TreeItemProps) {
   const entities = useStore(state => state.entities);
   const activeEntityId = useStore(state => state.activeEntityId);
   const collapsedIds = useStore(state => state.collapsedIds);
@@ -36,9 +38,12 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
   const aiCursor = useStore(state => state.aiCursor);
   const contextMenu = useStore(state => state.contextMenu);
 
-  const sortable = useSortable({ 
-    id: idOverride || entity.id,
-    disabled: isDragOverlay 
+  // The overlay clone must register under a distinct id so it doesn't collide
+  // with the real row already in the SortableContext (duplicate ids destabilize
+  // dnd-kit's measurement and make the drag jump).
+  const sortable = useSortable({
+    id: isDragOverlay ? `overlay-${idOverride || entity.id}` : (idOverride || entity.id),
+    disabled: isDragOverlay
   });
 
   const {
@@ -52,14 +57,23 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
 
   const { over } = useDndContext();
   const myId = idOverride || entity.id;
-  const isDropTarget = !isDragging && over?.id === myId;
+  // Only the real tree row shows the insert line — never the floating overlay
+  // clone (which is also a TreeItem and would otherwise draw a stray line that
+  // follows the cursor). The line marks the drop slot under a sibling row.
+  const isDropTarget = !isDragging && !isDragOverlay && over?.id === myId;
   const isFolder = entity.type === 'folder' || entity.type === 'collection' || entity.type === 'workspace';
+  // Hovering a folder while dragging means "drop inside" — give the row a
+  // distinct nest highlight (ring + glow) instead of the between-rows insert line.
+  const isFolderDropTarget = isDropTarget && isFolder;
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragOverlay ? undefined : transition,
     zIndex: isDragging ? 1000 : (isDragOverlay ? 2000 : undefined),
     position: 'relative' as const,
+    // A live clone follows the cursor in the DragOverlay, so dim the original
+    // in place to show its source slot without a second solid copy.
+    opacity: isDragging && !isDragOverlay ? 0.4 : undefined,
   };
 
   const [tempTitle, setTempTitle] = React.useState(entity.title);
@@ -189,7 +203,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             <div 
               onClick={handleChevronClick}
               onPointerDown={(e) => e.stopPropagation()}
-              className="absolute top-[-4px] bottom-[-4px] left-[-5px] right-[-3px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-tiny)] hover:bg-[var(--bone-10)] cursor-pointer"
+               className="absolute top-[-4px] bottom-[-4px] left-[-5px] right-[-3px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-tiny)] hover:bg-[var(--app-dark)] cursor-pointer"
             >
               {isCollapsed 
                 ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" /> 
@@ -238,11 +252,12 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           isEditing ? "items-start pt-[5px]" : "items-center h-7",
           "px-3 rounded-[var(--radius-small)]",
           effectiveMultiSelected
-            ? "bg-[var(--bone-6)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
+            ? "bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
             : (isActive || contextMenu?.entityId === entity.id)
               ? "!bg-dark text-[var(--bone-100)] font-normal tracking-wide" 
-              : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)]",
+              : "text-[var(--bone-70)] hover:text-[var(--bone-100)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
+          isFolderDropTarget && "sidebar-folder-drop-target",
           "text-[14px]",
         )}
         style={{ paddingLeft: `${8 + depth * 18}px`, paddingRight: '3px' }}
@@ -290,7 +305,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           {(entity.type === 'workspace' || entity.type === 'collection' || entity.type === 'folder') && (
             <button
                onClick={handlePlusClick}
-               className="btn-sidebar-utility !rounded-[var(--radius-tiny)]"
+               className="btn-sidebar-utility"
             >
               <Plus strokeWidth={2} className="w-3.5 h-3.5" />
             </button>
@@ -298,8 +313,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
           <button
              onClick={handleOptionsClick}
              className={cn(
-               "btn-sidebar-utility !rounded-[var(--radius-tiny)]",
-               contextMenu?.entityId === entity.id && "!bg-dark !text-[var(--bone-100)] !opacity-100"
+               "btn-sidebar-utility",
+               contextMenu?.entityId === entity.id && "!bg-[var(--app-dark)] !text-[var(--bone-100)] !opacity-100"
              )}
           >
             <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
@@ -309,6 +324,15 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
 
       {isDropTarget && !isFolder && (
         <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-accent rounded-full pointer-events-none z-10" />
+      )}
+
+      {/* Overlay-clone only: dragging a pinned item outside the pinned section
+          will unpin it on drop (it never moves the real entity). Surface that. */}
+      {isDragOverlay && showUnpinHint && (
+        <div className="absolute -right-1 -top-2 z-20 flex items-center gap-1 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-md pointer-events-none">
+          <StarOff strokeWidth={2.5} className="w-3 h-3" />
+          <span>Unpin</span>
+        </div>
       )}
 
       {iconPickerAnchor && (

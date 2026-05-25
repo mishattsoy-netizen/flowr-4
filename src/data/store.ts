@@ -111,14 +111,23 @@ export const useStore = create<AppState>()(
 
       setInitialSync: (isInitialSync) => set({ isInitialSync }),
 
-      setCloudSyncEnabled: (enabled) => {
+      setCloudSyncEnabled: async (enabled) => {
         set({ cloudSyncEnabled: enabled });
         if (enabled) {
           // Sync everything to cloud immediately, hierarchically ordered (Fix 1.3)
           const { entities, tasks, workspaces } = get();
-          
+
+          // Ensure all workspaces have ownerId set before upserting to avoid RLS violations
+          const { data: { user } } = await supabase!.auth.getUser();
+          const userId = user?.id;
+          const patchedWorkspaces = workspaces.map(w =>
+            !w.ownerId && userId ? { ...w, ownerId: userId } : w
+          );
+          const needsStoreUpdate = patchedWorkspaces.some((w, i) => w.ownerId !== workspaces[i].ownerId);
+          if (needsStoreUpdate) set({ workspaces: patchedWorkspaces as Workspace[] });
+
           // Pre-sync workspaces to avoid FK violations
-          workspaces.forEach(w => upsertWorkspace(w));
+          patchedWorkspaces.forEach(w => upsertWorkspace(w));
 
           // Build parenting map for ordered traversal
           const byParent = new Map<string | null, Entity[]>();
@@ -262,6 +271,8 @@ export const useStore = create<AppState>()(
       advisorEnabled: false,
       pendingAdvisorState: null,
       showPaidModels: false,
+      pendingCompaction: false,
+      isCompacting: false,
 
       // ─── Actions ─────────────────────────────────────────
       setDashboardLayout: (layout) => set({ dashboardLayout: layout }),
@@ -440,6 +451,7 @@ export const useStore = create<AppState>()(
             pipelineSteps: m.pipeline_steps,
             image_description: m.image_description,
             image_prompt: m.image_prompt,
+            attachments: m.attachments,
           }));
           set({
             activeChatId: id,
@@ -501,7 +513,7 @@ export const useStore = create<AppState>()(
           }
           const userAndAssistant = aiMessages.filter(m => m.role === 'user' || m.role === 'assistant')
           for (const m of userAndAssistant) {
-            await insertMessage(conv.id, m.role as 'user' | 'assistant', m.content || '', m.model, undefined, m.image_description, undefined)
+            await insertMessage(conv.id, m.role as 'user' | 'assistant', m.content || '', m.model, undefined, m.image_description, undefined, m.attachments)
           }
           // Carry over accumulated session summary to the new conversation
           if (aiSessionContext?.distilled_summary) {
@@ -535,7 +547,12 @@ export const useStore = create<AppState>()(
       },
 
       compactAIChat: async () => {
-        const { activeEntityId, activeChatId, fetchAISessionContext } = get();
+        const { activeEntityId, activeChatId, fetchAISessionContext, isAILoading } = get();
+        if (isAILoading) {
+          set({ pendingCompaction: true });
+          return;
+        }
+        set({ isCompacting: true });
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
           if (isSupabaseEnabled) {
@@ -555,6 +572,17 @@ export const useStore = create<AppState>()(
           }
         } catch (err) {
           console.error('Failed to compact session memory:', err);
+        } finally {
+          set({ isCompacting: false });
+        }
+      },
+
+      finishAILoading: async () => {
+        set({ isAILoading: false, aiAbortController: null });
+        const { pendingCompaction, compactAIChat } = get();
+        if (pendingCompaction) {
+          set({ pendingCompaction: false });
+          await compactAIChat();
         }
       },
       setAIHistory: (messages) => set({ aiMessages: messages }),
@@ -643,7 +671,7 @@ export const useStore = create<AppState>()(
         // Persist user message if in a named conversation
         const activeChatId = get().activeChatId;
         if (activeChatId && !get().isTempChat) {
-          insertMessage(activeChatId, 'user', content).catch(e => console.warn('[Store] Failed to persist user message:', e));
+          insertMessage(activeChatId, 'user', content, undefined, undefined, undefined, undefined, attachments).catch(e => console.warn('[Store] Failed to persist user message:', e));
         }
 
         try {
@@ -721,9 +749,8 @@ export const useStore = create<AppState>()(
                 ? { ...m, content: err.error || 'Something went wrong.', model: err.model || 'system' }
                 : m
               ),
-              isAILoading: false,
-              aiAbortController: null,
             }));
+            await get().finishAILoading();
             return;
           }
 
@@ -864,7 +891,7 @@ export const useStore = create<AppState>()(
                 set({ pendingAdvisorState: null });
               }
             }
-            set({ isAILoading: false, aiAbortController: null });
+            await get().finishAILoading();
             // Backfill image_description onto the user message so future history
             // turns can reference what was in the image, even for non-vision chains
             if (lastImageDescription) {
@@ -915,9 +942,8 @@ export const useStore = create<AppState>()(
               if (m.id === userMessage.id && data.image_description) return { ...m, image_description: data.image_description }
               return m
             }),
-            isAILoading: false,
-            aiAbortController: null,
           }));
+          await get().finishAILoading();
 
           // Persist non-streaming assistant reply
           const cid = get().activeChatId;
@@ -947,9 +973,8 @@ export const useStore = create<AppState>()(
                     : m
                 )
               } : {}),
-              isAILoading: false,
-              aiAbortController: null,
             });
+            await get().finishAILoading();
             if (activeChatId && !isTempChat) {
               insertMessage(activeChatId, 'assistant', interruptedContent).catch(e => console.warn('[Store] Failed to persist interrupted message:', e));
             }
@@ -959,9 +984,202 @@ export const useStore = create<AppState>()(
                 ? { ...m, content: 'Connection error. Please try again.' }
                 : m
               ),
-              isAILoading: false,
-              aiAbortController: null,
             }));
+            await get().finishAILoading();
+          }
+        }
+      },
+
+      setVariantIndex: (messageId, index) => {
+        set(s => ({
+          aiMessages: s.aiMessages.map(m => {
+            if (m.id !== messageId) return m;
+            const all = m.variants ?? [];
+            const clamped = Math.max(0, Math.min(index, all.length - 1));
+            return { ...m, content: all[clamped], variantIndex: clamped };
+          }),
+        }));
+      },
+
+      regenerateAIMessage: async (messageId, userContent, userAttachments = []) => {
+        const { aiMessages } = get();
+        const targetMsg = aiMessages.find(m => m.id === messageId);
+        if (!targetMsg) return;
+
+        // Build ordered variants array: existing variants (or seed with current content), then append empty slot for new answer
+        const existingVariants = targetMsg.variants && targetMsg.variants.length > 0
+          ? targetMsg.variants
+          : [targetMsg.content ?? ''];
+        const newVariants = [...existingVariants, ''];
+        const newIndex = newVariants.length - 1;
+
+        set(s => ({
+          aiMessages: s.aiMessages.map(m =>
+            m.id === messageId
+              ? { ...m, content: '', variants: newVariants, variantIndex: newIndex, interrupted: false }
+              : m
+          ),
+          isAILoading: true,
+        }));
+
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (isSupabaseEnabled) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+
+          const imageAttachments = userAttachments.filter(a => (a.type === 'image' || a.type === 'pdf') && a.url?.startsWith('data:'));
+          const imageBuffers: string[] = imageAttachments.map(a => a.url.split(',')[1]);
+          const imageBuffer: string | undefined = imageBuffers[0];
+          const imagesArray: string[] | undefined = imageBuffers.length > 1 ? imageBuffers : undefined;
+
+          const stripHeavyMedia = (text: string, imageDescription?: string) => {
+            if (!text) return '';
+            if (!text.includes('data:image/')) return text;
+            const placeholder = imageDescription ? `[Image: ${imageDescription}]` : '[Image: (visual content generated)]';
+            return text.replace(/!\[.*?\]\s*\(\s*data:image\/.*?;base64,[\s\S]*?\)/g, placeholder);
+          };
+
+          const historyMessages = aiMessages
+            .filter(m => m.role === 'user' || m.role === 'assistant')
+            .map(m => {
+              let text = stripHeavyMedia(m.content || '', m.image_description);
+              if (m.role === 'user' && m.image_description) {
+                text = `${text}\n\n[VISION CONTEXT - DIGITAL TWIN]\n${m.image_description}`.trim();
+              }
+              return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text }] };
+            });
+
+          const controller = new AbortController();
+          set({ aiAbortController: controller });
+
+          const res = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers,
+            signal: controller.signal,
+            body: JSON.stringify({
+              prompt: userContent,
+              buffer: imageBuffer,
+              images: imagesArray,
+              activeEntityId: get().activeEntityId,
+              activeChatId: get().activeChatId,
+              aiApiKey: get().aiApiKey,
+              activeWorkspaceId: get().activeWorkspaceId,
+              classificationModelId: get().aiClassificationModelId,
+              mode: get().activeMode,
+              intentTag: get().activeIntentTag ?? null,
+              replyContext: null,
+              thinkingEnabled: get().thinkingEnabled,
+              advisorEnabled: get().advisorEnabled,
+              isTempChat: get().isTempChat,
+              clientHistory: historyMessages,
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Request failed' }));
+            set(s => ({
+              aiMessages: s.aiMessages.map(m =>
+                m.id === messageId
+                  ? { ...m, content: err.error || 'Something went wrong.' }
+                  : m
+              ),
+            }));
+            await get().finishAILoading();
+            return;
+          }
+
+          const isStream = res.headers.get('Content-Type')?.includes('text/event-stream');
+          if (isStream) {
+            const reader = res.body?.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedContent = '';
+            let sseBuffer = '';
+            let lastModel = '';
+            let lastPipelineSteps: any = undefined;
+            let lastCitations: any = undefined;
+            let lastLogId: any = undefined;
+
+            if (reader) {
+              let flushTimer: ReturnType<typeof setTimeout> | null = null;
+              let pendingContent = '';
+
+              const flushUpdate = () => {
+                flushTimer = null;
+                const contentToSet = pendingContent;
+                set(s => ({
+                  aiMessages: s.aiMessages.map(m => {
+                    if (m.id !== messageId) return m;
+                    const updatedVariants = m.variants ? [...m.variants] : [];
+                    if (m.variantIndex !== undefined && updatedVariants[m.variantIndex] !== undefined) {
+                      updatedVariants[m.variantIndex] = contentToSet;
+                    }
+                    return { ...m, content: contentToSet, variants: updatedVariants, model: lastModel || m.model, pipelineSteps: lastPipelineSteps ?? m.pipelineSteps, citations: lastCitations ?? m.citations, logId: lastLogId ?? m.logId };
+                  }),
+                }));
+              };
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                sseBuffer += decoder.decode(value, { stream: true });
+                const newlineIdx = sseBuffer.lastIndexOf('\n');
+                if (newlineIdx === -1) continue;
+                const complete = sseBuffer.slice(0, newlineIdx);
+                sseBuffer = sseBuffer.slice(newlineIdx + 1);
+                const lines = complete.split('\n');
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') break;
+                    try {
+                      const parsed = JSON.parse(data);
+                      if (parsed.content !== undefined) {
+                        accumulatedContent += parsed.content;
+                        pendingContent = accumulatedContent;
+                      }
+                      if (parsed.model) lastModel = parsed.model;
+                      if (parsed.pipeline_steps) lastPipelineSteps = parsed.pipeline_steps;
+                      if (parsed.citations) lastCitations = parsed.citations;
+                      if (parsed.log_id) lastLogId = parsed.log_id;
+                      if (flushTimer === null) flushTimer = setTimeout(flushUpdate, 30);
+                    } catch { /* ignore parse errors */ }
+                  }
+                }
+              }
+              if (flushTimer !== null) { clearTimeout(flushTimer); flushUpdate(); }
+              await get().finishAILoading();
+            }
+          } else {
+            const data = await res.json();
+            set(s => ({
+              aiMessages: s.aiMessages.map(m => {
+                if (m.id !== messageId) return m;
+                const updatedVariants = m.variants ? [...m.variants] : [];
+                if (m.variantIndex !== undefined && updatedVariants[m.variantIndex] !== undefined) {
+                  updatedVariants[m.variantIndex] = data.content;
+                }
+                return { ...m, content: data.content, variants: updatedVariants, model: data.model, logId: data.log_id ?? undefined, model_chain: data.model_chain, citations: data.citations, pipelineSteps: data.pipeline_steps };
+              }),
+            }));
+            await get().finishAILoading();
+          }
+        } catch (e: any) {
+          if (e?.name === 'AbortError') {
+            set(s => ({
+              aiMessages: s.aiMessages.map(m =>
+                m.id === messageId ? { ...m, content: 'Generation stopped by user.', interrupted: true } : m
+              ),
+            }));
+            await get().finishAILoading();
+          } else {
+            set(s => ({
+              aiMessages: s.aiMessages.map(m =>
+                m.id === messageId ? { ...m, content: 'Connection error. Please try again.' } : m
+              ),
+            }));
+            await get().finishAILoading();
           }
         }
       },
