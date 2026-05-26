@@ -672,6 +672,8 @@ export async function runChain(
   }
 
   // Single-chain path
+  // FAST_SIMPLE is a classifier-only label — no router chain exists for it, map to REGULAR
+  if (rawCategory === 'FAST_SIMPLE') rawCategory = 'REGULAR'
   let category: IntentCategory = rawCategory
   logger.info(`[Router] Starting runChain for category: ${category} | prompt: "${prompt.slice(0, 50)}${prompt.length > 50 ? '...' : ''}"`)
 
