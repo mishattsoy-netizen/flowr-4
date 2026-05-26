@@ -1,6 +1,6 @@
 "use client";
  
-import { useStore } from '@/data/store';
+import { useStore, Entity } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
 import { Clock, ChevronRight, FileText, Frame, Layers, Folder } from 'lucide-react';
 import { useMemo, useState, useEffect, useRef } from 'react';
@@ -34,10 +34,13 @@ export function RecentWidget({ data, onUpdateData, contextId }: WidgetProps & { 
   const filter: Filter = data?.filter ?? 'all';
  
   const recentEntities = useMemo(() => {
-    let list = recentEntityIds.map(id => entities.find(e => e.id === id)).filter(Boolean);
+    let list = recentEntityIds.map(id => entities.find(e => e.id === id)).filter((e): e is Entity => !!e);
     if (contextId && contextId !== 'dashboard') {
+      // Exclude workspaces and collections inside a specific workspace dashboard to avoid self-listing
+      list = list.filter(e => e.type !== 'workspace' && e.type !== 'collection');
+      
       list = list.filter(e => {
-        let curr = e;
+        let curr: Entity | undefined = e;
         const visited = new Set<string>();
         while (curr) {
           if (curr.id === contextId) return true;
@@ -45,7 +48,8 @@ export function RecentWidget({ data, onUpdateData, contextId }: WidgetProps & { 
           if (curr.parentId) {
             if (visited.has(curr.parentId)) break;
             visited.add(curr.parentId);
-            curr = entities.find(p => p.id === curr!.parentId);
+            const parentEntityId: string = curr.parentId;
+            curr = entities.find(p => p.id === parentEntityId);
           } else {
             break;
           }
@@ -53,7 +57,7 @@ export function RecentWidget({ data, onUpdateData, contextId }: WidgetProps & { 
         return false;
       });
     }
-    return list.filter(e => filter === 'all' || e!.type === filter);
+    return list.filter(e => filter === 'all' || e.type === filter);
   }, [recentEntityIds, entities, filter, contextId]);
  
   const tabContainerRef = useRef<HTMLDivElement>(null);
