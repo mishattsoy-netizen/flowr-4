@@ -57,12 +57,11 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
                   }
                 }}
                 className={cn(
-                  "group flex items-center w-full px-3 py-1.5  cursor-pointer text-left outline-none",
-                  "border-b border-[var(--bone-6)]",
-                  (node.type === 'collection' || node.type === 'workspace') ? "text-[15px]" : "text-sm",
+                  "group flex items-center w-full px-3 py-1.5 cursor-pointer text-left outline-none rounded-[var(--radius-small)] transition-none",
+                  (node.type === 'collection' || node.type === 'workspace') ? "text-[14px] font-semibold" : "text-[13px]",
                   isSelected
-                    ? "bg-[var(--bone-10)] text-[var(--bone-100)]"
-                    : "text-muted-foreground hover:bg-hover hover:text-foreground"
+                    ? "bg-[var(--bone-15)] text-[var(--bone-100)]"
+                    : "text-[var(--bone-70)] hover:bg-[var(--bone-6)] hover:text-[var(--bone-100)]"
                 )}
                 style={{ paddingLeft: `${depth * 16 + 12}px` }}
               >
@@ -108,7 +107,7 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
   };
 
   return (
-    <div className="w-full bg-background/20 border border-[var(--bone-6)] rounded-2xl max-h-64 overflow-y-auto scrollbar-none overflow-hidden">
+    <div className="w-full bg-[var(--bone-2)] border border-[var(--bone-6)] rounded-[var(--radius-medium)] max-h-60 overflow-y-auto scrollbar-none py-1 flex flex-col gap-[1px]">
       {renderTree(null, 0)}
       {allContainers.length === 0 && (
         <div className="text-xs text-muted-foreground p-3 text-center">No available workspaces</div>

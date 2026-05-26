@@ -1,8 +1,8 @@
 "use client";
 
-import { Entity, useStore } from '@/data/store';
+import { Entity, useStore, generateId } from '@/data/store';
 import { useState, useSyncExternalStore } from 'react';
-import { Plus, Pencil } from 'lucide-react';
+import { Plus, Pencil, Folder, FileText, Frame, Layers } from 'lucide-react';
 import { getEntityIcon } from '@/data/icons';
 import { IconPicker } from '@/components/layout/IconPicker';
 import { Tooltip } from '@/components/layout/Tooltip';
@@ -14,9 +14,12 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
   const editingEntity = useStore(state => state.editingEntity);
   const setEditingEntityId = useStore(state => state.setEditingEntityId);
   const renameEntity = useStore(state => state.renameEntity);
+  const addEntity = useStore(state => state.addEntity);
+  const setActiveEntityId = useStore(state => state.setActiveEntityId);
 
   const [tempTitle, setTempTitle] = useState(entity.title);
   const [iconPickerAnchor, setIconPickerAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [newItemPopupPos, setNewItemPopupPos] = useState<{ x: number; y: number } | null>(null);
 
   const isMounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
@@ -98,7 +101,12 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
   const actions = (
     <div className="flex items-center gap-3">
       <button
-        onClick={() => openModal({ kind: 'newItem', parentId: entity.id })}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          setNewItemPopupPos({ x: rect.left - 60, y: rect.bottom + 4 });
+        }}
+        onClick={(e) => e.stopPropagation()}
         className="flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold bg-[var(--accent)] text-[var(--bone-100)] hover:opacity-90 transition-opacity border-none shadow-none"
       >
         <Plus strokeWidth={2} className="w-3.5 h-3.5" />
@@ -118,6 +126,45 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
           anchorRect={iconPickerAnchor}
           onClose={() => setIconPickerAnchor(null)}
         />
+      )}
+
+      {newItemPopupPos && (
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={() => setNewItemPopupPos(null)} />
+          <div
+            className="fixed z-[300] popup-glass-small min-w-[160px] p-1.5 flex flex-col gap-[3px]"
+            style={{ left: newItemPopupPos.x, top: newItemPopupPos.y }}
+          >
+            {[
+              { type: 'folder' as const, label: 'Folder', icon: Folder },
+              { type: 'note' as const, label: 'Note', icon: FileText },
+              { type: 'canvas' as const, label: 'Canvas', icon: Frame },
+              { type: 'mixed' as const, label: 'Mixed', icon: Layers }
+            ].map(opt => (
+              <button
+                key={opt.type}
+                onClick={() => {
+                  const newId = generateId();
+                  addEntity({
+                    id: newId,
+                    title: `Untitled ${opt.label}`,
+                    type: opt.type,
+                    parentId: entity.id,
+                    lastModified: Date.now()
+                  });
+                  if (opt.type !== 'folder') {
+                    setActiveEntityId(newId);
+                  }
+                  setNewItemPopupPos(null);
+                }}
+                className="popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-none"
+              >
+                <opt.icon strokeWidth={2} className="w-4 h-4 shrink-0 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />
+                <span className="flex-1 text-left font-medium tracking-wide">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

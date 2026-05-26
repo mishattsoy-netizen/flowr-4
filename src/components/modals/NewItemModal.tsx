@@ -71,12 +71,12 @@ export function NewItemModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-overlay" onClick={closeModal}>
       <div
-        className="bg-panel/90 backdrop-blur-xl border border-[var(--bone-12)] rounded-[var(--radius-medium)] p-6 w-[420px] "
+        className="popup-glass-big p-6 w-[400px] rounded-[var(--radius-big)]"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-foreground">Create New Item</h2>
-          <button onClick={closeModal} className="p-1 rounded-[var(--radius-medium)] hover:bg-hover text-muted-foreground hover:text-foreground">
+          <button onClick={closeModal} className="p-1 rounded-[var(--radius-medium)] hover:bg-[var(--bone-6)] text-[var(--bone-40)] hover:text-foreground transition-none">
             <X strokeWidth={2} className="w-5 h-5" />
           </button>
         </div>
@@ -91,17 +91,17 @@ export function NewItemModal() {
                 disabled={disabled}
                 onClick={() => setSelectedType(t.type)}
                 className={cn(
-                  "flex flex-col items-center justify-center py-2 px-1 rounded-[var(--radius-medium)] border group",
+                  "flex flex-col items-center justify-center py-2.5 px-1 rounded-[var(--radius-medium)] border transition-none",
                   disabled ? "opacity-30 cursor-not-allowed bg-transparent border-transparent text-muted-foreground" :
                     selectedType === t.type
-                      ? "bg-accent/10 border-accent/30 text-foreground hover:bg-accent/20 hover:border-accent/60"
-                      : "border-[var(--bone-6)] bg-transparent text-muted-foreground hover:bg-accent/20 hover:border-accent/60 hover:text-foreground"
+                      ? "bg-[var(--bone-15)] border-[var(--bone-30)] text-[var(--bone-100)]"
+                      : "border-[color:var(--bone-6)] bg-transparent text-[var(--bone-40)] hover:bg-[var(--bone-6)] hover:border-[color:var(--bone-15)] hover:text-[var(--bone-100)]"
                 )}
               >
-                <div className={cn(selectedType === t.type ? "text-accent" : "text-muted-foreground group-hover:text-accent")}>
+                <div className={cn(selectedType === t.type ? "text-[var(--bone-100)]" : "text-[var(--bone-40)] group-hover:text-[var(--bone-100)]")}>
                   {t.icon}
                 </div>
-                <span className="text-[11px]">{t.label}</span>
+                <span className="text-[11px] font-medium">{t.label}</span>
               </button>
             );
           })}
@@ -115,12 +115,12 @@ export function NewItemModal() {
             placeholder="Item title (optional)"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full bg-transparent border border-[var(--bone-6)] rounded-[var(--radius-medium)] pl-3 pr-9 py-2 text-sm text-foreground placeholder-muted-foreground hover:bg-hover focus:bg-transparent focus:border-accent outline-none"
+            className="w-full bg-transparent border border-[color:var(--bone-15)] rounded-[var(--radius-medium)] px-3.5 py-2.5 text-sm text-[var(--bone-100)] placeholder:text-[color:var(--dim-foreground)] focus:border-[color:var(--bone-70)] outline-none transition-none"
           />
           {title && (
             <button
               onClick={() => setTitle('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius-small)] hover:bg-hover text-muted-foreground hover:text-foreground"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-6)] text-muted-foreground hover:text-foreground transition-none"
             >
               <X strokeWidth={2} className="w-3.5 h-3.5" />
             </button>
@@ -136,14 +136,14 @@ export function NewItemModal() {
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={closeModal}
-            className="px-4 py-2 border border-[var(--bone-6)] text-sm rounded-[var(--radius-medium)] text-muted-foreground hover:text-foreground hover:bg-hover"
+            className="px-4 py-2 text-sm font-medium rounded-[var(--radius-medium)] text-[var(--bone-40)] hover:text-[var(--bone-100)] hover:bg-[var(--bone-6)] transition-none"
           >
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={!selectedPathId}
-            className="btn-accent px-6 py-2.5"
+            className="px-5 py-2 text-sm font-semibold tracking-wide rounded-[var(--radius-medium)] bg-[var(--accent)] hover:opacity-90 text-[var(--on-accent)] flex items-center gap-1.5 transition-none disabled:opacity-20 disabled:pointer-events-none"
           >
             <Plus strokeWidth={2} className="w-4 h-4" />
             Create {selectedType}

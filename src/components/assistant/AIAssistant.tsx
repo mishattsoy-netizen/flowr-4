@@ -273,7 +273,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
 
   useEffect(() => {
     if (!actualExtended && containerRef.current) {
-      if (isAIAssistantOpen) {
+      if (isAIAssistantOpen || chatPageMode) {
         containerRef.current.style.display = 'flex';
         containerRef.current.style.opacity = '1';
         containerRef.current.style.transform = 'scale(1) translateY(0)';
@@ -283,7 +283,7 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
         containerRef.current.style.opacity = '0';
       }
     }
-  }, [isAIAssistantOpen, actualExtended, scrollToBottom]);
+  }, [isAIAssistantOpen, chatPageMode, actualExtended, scrollToBottom]);
 
   const handleSend = async (overrideContent?: string, overrideAttachments?: AIAttachment[]) => {
     const finalContent = overrideContent !== undefined ? overrideContent : assistantInput.trim();

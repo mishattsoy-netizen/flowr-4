@@ -1,6 +1,6 @@
 "use client";
 
-import { Entity, EntityType, useStore } from '@/data/store';
+import { Entity, EntityType, useStore, generateId } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
 import { ChevronRight, ChevronDown, FileText, Frame, Folder, Layers, Plus, MoreHorizontal, StarOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
   const editingEntity = useStore(state => state.editingEntity);
   const setEditingEntityId = useStore(state => state.setEditingEntityId);
   const renameEntity = useStore(state => state.renameEntity);
+  const addEntity = useStore(state => state.addEntity);
   const aiCursor = useStore(state => state.aiCursor);
   const contextMenu = useStore(state => state.contextMenu);
 
@@ -78,6 +79,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
 
   const [tempTitle, setTempTitle] = React.useState(entity.title);
   const [iconPickerAnchor, setIconPickerAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [plusPopupPos, setPlusPopupPos] = useState<{ x: number; y: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEditing = editingEntity?.id === entity.id && editingEntity?.source === 'sidebar';
@@ -152,7 +154,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
 
   const handlePlusClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    openModal({ kind: 'newItem', parentId: entity.id });
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPlusPopupPos({ x: rect.right + 4, y: rect.top });
   };
 
   const handleOptionsClick = (e: React.MouseEvent) => {
@@ -245,14 +248,14 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         {...listeners}
         data-selected={isActive || undefined}
         className={cn(
-          "sidebar-item-row group relative flex w-full cursor-pointer select-none ",
+          "sidebar-item-row group relative flex w-full cursor-pointer select-none transition-all",
           isEditing ? "items-start pt-[5px]" : "items-center h-7",
           "px-3 rounded-[var(--radius-small)]",
           effectiveMultiSelected
             ? "bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
             : (isActive || contextMenu?.entityId === entity.id)
               ? "!bg-dark text-[var(--bone-100)] font-normal tracking-wide" 
-              : "text-[var(--bone-70)] hover:text-[var(--bone-100)]",
+              : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
           isFolderDropTarget && "sidebar-folder-drop-target",
           "text-[14px]",
@@ -352,11 +355,6 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         >
           <div className="overflow-hidden">
             <div className={cn("relative flex flex-col gap-[1px]", isExpanded && "mt-[1px]")}>
-              {/* Hierarchy Line */}
-              <div 
-                className="absolute top-0 bottom-[14px] w-[1px] bg-[var(--bone-12)] group-hover/treeitem:bg-[var(--bone-30)] transition-colors duration-200 pointer-events-none" 
-                style={{ left: `${8 + depth * 18 + 6}px` }} 
-              />
               {children.map((child) => (
                 <TreeItem 
                   key={idOverride ? `${idOverride.split('-')[0]}-${child.id}` : child.id} 
@@ -366,9 +364,53 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
                   onShiftClick={onShiftClick}
                 />
               ))}
+              {/* Hierarchy Line */}
+              <div 
+                className="absolute top-0 bottom-0 w-[1px] bg-[var(--bone-15)] group-hover/treeitem:bg-[var(--bone-30)] transition-colors duration-200 pointer-events-none" 
+                style={{ left: `${8 + depth * 18 + 6}px` }} 
+              />
             </div>
           </div>
         </div>
+      )}
+      {plusPopupPos && (
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={(e) => { e.stopPropagation(); setPlusPopupPos(null); }} />
+          <div
+            className="fixed z-[300] popup-glass-small min-w-[160px] p-1.5 flex flex-col gap-[3px]"
+            style={{ left: plusPopupPos.x, top: plusPopupPos.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {[
+              { type: 'folder' as const, label: 'Folder', icon: Folder },
+              { type: 'note' as const, label: 'Note', icon: FileText },
+              { type: 'canvas' as const, label: 'Canvas', icon: Frame },
+              { type: 'mixed' as const, label: 'Mixed', icon: Layers }
+            ].map(opt => (
+              <button
+                key={opt.type}
+                onClick={() => {
+                  const newId = generateId();
+                  addEntity({
+                    id: newId,
+                    title: `Untitled ${opt.label}`,
+                    type: opt.type,
+                    parentId: entity.id,
+                    lastModified: Date.now()
+                  });
+                  if (opt.type !== 'folder') {
+                    setActiveEntityId(newId);
+                  }
+                  setPlusPopupPos(null);
+                }}
+                className="popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-none"
+              >
+                <opt.icon strokeWidth={2} className="w-4 h-4 shrink-0 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />
+                <span className="flex-1 text-left font-medium tracking-wide">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

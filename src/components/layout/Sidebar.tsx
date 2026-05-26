@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from '@/data/store';
+import { useStore, generateId } from '@/data/store';
 import { useAuth } from '@/components/AuthProvider';
 import type { EntityType, Entity, SidebarSectionId } from '@/data/store';
 import { getDescendantIds } from '@/data/store.helpers';
@@ -90,6 +90,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
   const selectedSidebarIds = useStore(state => state.selectedSidebarIds);
   const setSelectedSidebarIds = useStore(state => state.setSelectedSidebarIds);
   const clearSelectedSidebarIds = useStore(state => state.clearSelectedSidebarIds);
+  const addEntity = useStore(state => state.addEntity);
 
   const { user } = useAuth();
   const sidebarDisplayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guest';
@@ -116,6 +117,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
   const [chatConfirmDeleteId, setChatConfirmDeleteId] = useState<string | null>(null);
   const [chatMenuOpenId, setChatMenuOpenId] = useState<string | null>(null);
   const [chatMenuPos, setChatMenuPos] = useState({ x: 0, y: 0 });
+  const [newPagePopupPos, setNewPagePopupPos] = useState<{ x: number, y: number } | null>(null);
   const [chatCollapsed, setChatCollapsed] = useState<Record<string, boolean>>({});
   const chatEditInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -712,12 +714,12 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                                     <div
                                       key={conv.id}
                                       className={cn(
-                                        "sidebar-item-row group flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 border border-transparent",
+                                        "sidebar-item-row group flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 border border-transparent transition-all",
                                         isSelected
                                           ? "bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
                                           : activeChatId === conv.id
                                             ? "bg-dark text-[var(--bone-100)] font-normal tracking-wide"
-                                            : "text-[var(--bone-70)] hover:text-[var(--bone-100)]"
+                                            : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
                                       )}
                                       onClick={(e) => {
                                         if (e.shiftKey || e.metaKey || e.ctrlKey) {
@@ -778,7 +780,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                   <div className="flex flex-col gap-[1px] px-[10px] pt-1.5 pb-0 shrink-0">
                     <button
                       onClick={() => openModal({ kind: 'newTask' })}
-                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
+                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all"
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
                         <Plus strokeWidth={2} className="w-3.5 h-3.5" />
@@ -788,8 +790,8 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                     <button
                       onClick={() => setTrackerFilterWorkspace(null)}
                       className={cn(
-                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]",
-                        trackerFilterWorkspace === null && "!bg-[var(--bone-10)] !text-[var(--bone-100)]"
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all",
+                        trackerFilterWorkspace === null && "!bg-dark !text-[var(--bone-100)]"
                       )}
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
@@ -806,8 +808,8 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                           key={ws.id}
                           onClick={() => setTrackerFilterWorkspace(ws.id)}
                           className={cn(
-                            "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]",
-                            trackerFilterWorkspace === ws.id && "!bg-[var(--bone-10)] !text-[var(--bone-100)]"
+                            "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all",
+                            trackerFilterWorkspace === ws.id && "!bg-dark !text-[var(--bone-100)]"
                           )}
                         >
                           <div className={cn(
@@ -829,8 +831,12 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                   <div className="flex flex-col gap-[1px] px-[10px] pt-1.5 pb-0 shrink-0">
                     <button
-                      onClick={() => openModal({ kind: 'newItem', initialType: 'note', defaultToFirstCollection: true })}
-                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setNewPagePopupPos({ x: rect.right + 4, y: rect.top });
+                      }}
+                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all"
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
                         <Plus strokeWidth={2} className="w-3.5 h-3.5" />
@@ -839,7 +845,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                     </button>
                     <button
                       onClick={() => openModal({ kind: 'newTask' })}
-                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
+                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all"
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
                         <Plus strokeWidth={2} className="w-3.5 h-3.5" />
@@ -1197,6 +1203,41 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                 Delete All ({selectedSidebarIds.length})
               </button>
             )}
+          </div>
+        </>
+      )}
+      {newPagePopupPos && (
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={() => setNewPagePopupPos(null)} />
+          <div
+            className="fixed z-[300] popup-glass-small min-w-[160px] p-1.5 flex flex-col gap-[3px]"
+            style={{ left: newPagePopupPos.x, top: newPagePopupPos.y }}
+          >
+            {[
+              { type: 'note' as const, label: 'Note', icon: FileText },
+              { type: 'canvas' as const, label: 'Canvas', icon: Frame },
+              { type: 'mixed' as const, label: 'Mixed', icon: Layers }
+            ].map(opt => (
+              <button
+                key={opt.type}
+                onClick={() => {
+                  const newId = generateId();
+                  addEntity({
+                    id: newId,
+                    title: `Untitled ${opt.label}`,
+                    type: opt.type,
+                    parentId: null,
+                    lastModified: Date.now()
+                  });
+                  setActiveEntityId(newId);
+                  setNewPagePopupPos(null);
+                }}
+                className="popup-item group w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-none"
+              >
+                <opt.icon strokeWidth={2} className="w-4 h-4 shrink-0 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />
+                <span className="flex-1 text-left font-medium tracking-wide">{opt.label}</span>
+              </button>
+            ))}
           </div>
         </>
       )}

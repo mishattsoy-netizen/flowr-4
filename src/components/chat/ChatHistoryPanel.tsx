@@ -128,9 +128,26 @@ export function ChatHistoryPanel() {
                   <div
                     key={conv.id}
                     className={cn(
-                      "group flex items-center gap-2 pl-[10px] pr-1.5 h-7 rounded-[var(--radius-small)] cursor-pointer transition-colors",
-                      activeChatId === conv.id ? "bg-dark text-[var(--bone-100)]" : "text-[var(--bone-70)] hover:text-[var(--bone-100)]"
+                      "group flex items-center h-7 rounded-[var(--radius-small)] cursor-pointer select-none",
+                      activeChatId === conv.id
+                        ? "bg-dark text-[var(--bone-100)]"
+                        : "text-[var(--bone-70)]"
                     )}
+                    style={{ paddingLeft: '10px', paddingRight: '3px' }}
+                    onMouseEnter={e => {
+                      if (activeChatId !== conv.id) {
+                        const el = e.currentTarget as HTMLElement
+                        el.style.background = 'var(--app-dark)'
+                        el.style.color = 'var(--bone-100)'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (activeChatId !== conv.id) {
+                        const el = e.currentTarget as HTMLElement
+                        el.style.background = ''
+                        el.style.color = ''
+                      }
+                    }}
                     onClick={() => loadConversation(conv.id)}
                   >
                     {editingId === conv.id ? (
@@ -147,22 +164,27 @@ export function ChatHistoryPanel() {
                         className="flex-1 bg-transparent text-[13px] outline-none border-b border-white/30"
                       />
                     ) : (
-                      <span className="flex-1 text-[13px] truncate font-weight-medium dark:font-normal">{conv.title}</span>
+                      <span className="flex-1 text-[13px] truncate leading-snug" style={{ color: 'inherit' }}>{conv.title}</span>
                     )}
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setMenuPos({ x: rect.right + 4, y: rect.top });
-                        setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
-                      }}
-                      className={cn(
-                        "btn-sidebar-utility",
-                        menuOpenId === conv.id && "!bg-dark !text-[var(--bone-100)]"
-                      )}
-                    >
-                      <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
-                    </button>
+                    <div className={cn(
+                      "flex items-center gap-[1px] shrink-0",
+                      menuOpenId === conv.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setMenuPos({ x: rect.right + 4, y: rect.top });
+                          setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
+                        }}
+                        className={cn(
+                          "btn-sidebar-utility",
+                          menuOpenId === conv.id && "!bg-[var(--app-dark)] !text-[var(--bone-100)] !opacity-100"
+                        )}
+                      >
+                        <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 </div>
