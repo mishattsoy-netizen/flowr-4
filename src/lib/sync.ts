@@ -16,6 +16,14 @@
 import { supabase } from './supabase';
 import type { Entity, AppTask, Workspace } from '@/data/store';
 
+// ─── Auth helper ──────────────────────────────────────────────────────────────
+
+async function getCurrentUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id ?? null;
+}
+
 // ─── Row ↔ Store mappers ──────────────────────────────────────────────────────
 
 function parseTimestamp(val: any): number | undefined {
@@ -179,17 +187,21 @@ export async function loadFromSupabase(): Promise<{
 
 export async function upsertSetting(key: string, value: any) {
   if (!supabase) return;
-  const row = settingToRow(key, value);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+  const row = { ...settingToRow(key, value), owner_id: userId };
   const { error } = await supabase
     .from('settings')
-    .upsert(row, { onConflict: 'key' });
-  
+    .upsert(row, { onConflict: 'owner_id,key' });
+
   if (error) console.error('[Flowr sync] upsertSetting:', error.message);
 }
 
 export async function upsertWorkspace(workspace: Workspace) {
   if (!supabase) return;
-  const row = workspaceToRow(workspace);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+  const row = { ...workspaceToRow(workspace), owner_id: userId };
   const { error } = await supabase
     .from('workspaces')
     .upsert(row, { onConflict: 'id' });
@@ -204,7 +216,9 @@ export async function deleteWorkspaceFromDB(id: string) {
 
 export async function upsertEntity(entity: Entity) {
   if (!supabase) return;
-  const row = entityToRow(entity);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+  const row = { ...entityToRow(entity), owner_id: userId };
 
   async function performUpsert(currentRow: Record<string, any>): Promise<{ error: any }> {
     const result = await supabase!.from('entities').upsert(currentRow, { onConflict: 'id' });
@@ -247,7 +261,9 @@ export async function deleteEntityFromDB(id: string) {
 
 export async function upsertTask(task: AppTask) {
   if (!supabase) return;
-  const row = taskToRow(task);
+  const userId = await getCurrentUserId();
+  if (!userId) return;
+  const row = { ...taskToRow(task), owner_id: userId };
   
   async function performUpsert(currentRow: Record<string, any>): Promise<{ error: any }> {
     const result = await supabase!.from('tasks').upsert(currentRow, { onConflict: 'id' });

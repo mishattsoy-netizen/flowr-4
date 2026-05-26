@@ -187,8 +187,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       const mainIcon = (
         <div
           className={cn(
-            "flex items-center justify-center ",
-            isCollapsible && "group-hover:opacity-0"
+            "flex items-center justify-center",
+            isCollapsible && "group-hover:opacity-0 transition-opacity duration-100"
           )}
         >
           <FolderIcon strokeWidth={2} className={cn(cls, iconColorClass)} />
@@ -196,19 +196,19 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       );
 
       return (
-        <div className="relative flex items-center justify-center w-3.5 h-3.5 group/icon">
+        <div className="relative flex items-center justify-center w-3.5 h-3.5">
           {mainIcon}
 
           {isCollapsible && (
-            <div
+            <button
               onClick={handleChevronClick}
               onPointerDown={(e) => e.stopPropagation()}
-              className="absolute top-[-4px] bottom-[-4px] left-[-5px] right-[-3px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-tiny)] hover:bg-[var(--app-dark)] cursor-pointer"
+              className="absolute -top-[4px] -left-[4px] btn-sidebar-utility opacity-0 group-hover:opacity-100"
             >
               {isCollapsed
-                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-100)] opacity-70 group-hover:opacity-100 transition-opacity duration-200" />
-                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-100)] opacity-70 group-hover:opacity-100 transition-opacity duration-200" />}
-            </div>
+                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5" />
+                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5" />}
+            </button>
           )}
         </div>
       );
