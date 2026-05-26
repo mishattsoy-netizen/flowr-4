@@ -26,7 +26,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
 
   return (
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
-      <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground mb-0.5">
+      <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground mb-4">
         Folders
       </h2>
       <div className="flex-1 overflow-y-auto scrollbar-thin">
@@ -49,7 +49,7 @@ export function FoldersWidget({ entity: propEntity, contextId }: WidgetPropsWith
                   )}
                   role="button"
                 >
-                  <Folder strokeWidth={2} className="w-4 h-4 text-[var(--bone-70)] group-hover/item:text-[var(--bone-100)] shrink-0 " />
+                  <Folder strokeWidth={2} className="w-4 h-4 text-[var(--bone-100)] opacity-70 group-hover/item:opacity-100 shrink-0 transition-opacity duration-200" />
                   
                   {isEditing ? (
                     <input

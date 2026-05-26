@@ -41,10 +41,10 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
           setTempTitle(entity.title);
           setEditingEntityId(entity.id, 'view');
         }}
-        className="group text-4xl font-display font-medium text-foreground mb-1 flex items-center gap-3"
+        className="group text-4xl font-display font-medium leading-none text-foreground mb-1 flex items-center gap-3"
       >
         <div 
-          className="shrink-0 p-1 cursor-pointer hover:bg-hover rounded-xl transition-colors"
+          className="shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-hover rounded-xl transition-colors"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setIconPickerAnchor({
@@ -55,7 +55,7 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
             });
           }}
         >
-          {(() => { const Icon = getEntityIcon(entity.icon); return <Icon className="w-8 h-8 !text-accent" />; })()}
+          {(() => { const Icon = getEntityIcon(entity.icon); return <Icon className="w-8 h-8 text-[var(--bone-100)]" />; })()}
         </div>
 
         {isEditing ? (
@@ -99,9 +99,9 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
     <div className="flex items-center gap-3">
       <button
         onClick={() => openModal({ kind: 'newItem', parentId: entity.id })}
-        className="btn-accent"
+        className="flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold bg-[var(--accent)] text-[var(--bone-100)] hover:opacity-90 transition-opacity border-none shadow-none"
       >
-        <Plus strokeWidth={2} className="w-4 h-4" />
+        <Plus strokeWidth={2} className="w-3.5 h-3.5" />
         New Item
       </button>
     </div>

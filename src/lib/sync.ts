@@ -18,13 +18,22 @@ import type { Entity, AppTask, Workspace } from '@/data/store';
 
 // ─── Row ↔ Store mappers ──────────────────────────────────────────────────────
 
+function parseTimestamp(val: any): number | undefined {
+  if (val === undefined || val === null) return undefined;
+  if (typeof val === 'number') return val;
+  const num = Number(val);
+  if (!isNaN(num)) return num;
+  const parsed = new Date(val).getTime();
+  return isNaN(parsed) ? undefined : parsed;
+}
+
 function rowToWorkspace(row: Record<string, any>): Workspace {
   return {
     id:           row.id,
     name:         row.name,
     type:         row.type ?? 'personal',
     ownerId:      row.owner_id ?? null,
-    createdAt:    row.created_at ? new Date(row.created_at).getTime() : 0,
+    createdAt:    parseTimestamp(row.created_at) ?? 0,
     icon:         row.icon ?? undefined,
     color:        row.color ?? undefined,
     settings:     row.settings ?? undefined,
@@ -104,7 +113,7 @@ function rowToTask(row: Record<string, any>): AppTask {
     priority:    row.priority ?? undefined,
     subtasks:    row.subtasks ?? undefined,
     difficulty:  row.difficulty ?? undefined,
-    createdAt:   row.created_at ?? undefined,
+    createdAt:   parseTimestamp(row.created_at),
   };
 }
 
@@ -126,7 +135,11 @@ function taskToRow(t: AppTask): Record<string, any> {
   if (t.priority)   row.priority    = t.priority;
   if (t.subtasks)   row.subtasks    = t.subtasks;
   if (t.difficulty) row.difficulty  = t.difficulty;
-  if (t.createdAt)  row.created_at  = t.createdAt;
+  if (t.createdAt) {
+    row.created_at = typeof t.createdAt === 'number'
+      ? new Date(t.createdAt).toISOString()
+      : t.createdAt;
+  }
   
   return row;
 }

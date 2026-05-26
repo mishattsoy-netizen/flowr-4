@@ -10,9 +10,9 @@ import type { AppTask } from '@/data/store.types';
 
 const ALL_TABS = [
   { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
-  { id: 'upcoming', label: 'Upcoming', icon: Calendar, color: 'text-blue-400' },
+  { id: 'todo', label: 'To do', icon: Calendar, color: 'text-blue-400' },
   { id: 'overdue', label: 'Overdue', icon: AlertCircle, color: 'text-red-400' },
-  { id: 'progress', label: 'In Progress', icon: CheckCircle2, color: 'text-amber-400' },
+  { id: 'completed', label: 'Done', icon: CheckCircle2, color: 'text-emerald-400' },
 ] as const;
 
 type TabId = typeof ALL_TABS[number]['id'];
@@ -30,10 +30,23 @@ const formatDate = (dateStr: string) => {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d);
 };
 
-export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTaskStackProps) {
+export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId }: SmartTaskStackProps) {
   const tasks = useStore(state => state.tasks);
   const toggleTask = useStore(state => state.toggleTask);
   const addTask = useStore(state => state.addTask);
+  const entities = useStore(state => state.entities);
+  const activeWorkspaceId = useStore(state => state.activeWorkspaceId);
+
+  const filteredTasks = useMemo(() => {
+    if (!contextId || contextId === 'dashboard') {
+      return tasks.filter(t => t.workspaceId === activeWorkspaceId);
+    }
+    const entity = entities.find(e => e.id === contextId);
+    if (!entity) return [];
+    const childIds = new Set(entities.filter(e => e.parentId === entity.id).map(e => e.id));
+    childIds.add(entity.id);
+    return tasks.filter(t => t.workspaceId === entity.id || (t.entityId && childIds.has(t.entityId)));
+  }, [tasks, entities, contextId, activeWorkspaceId]);
 
   const hiddenTabs: TabId[] = (data?.hiddenTabs ?? []) as TabId[];
   const visibleTabs = ALL_TABS.filter(t => !hiddenTabs.includes(t.id));
@@ -68,30 +81,28 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
 
   const tasksByTab = useMemo(() => {
     const todayStr = getLocalDateStr();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = getLocalDateStr(tomorrow);
 
     return {
-      today: tasks
+      today: filteredTasks
         .filter(t => t.dueDate === todayStr)
         .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
-      upcoming: tasks
-        .filter(t => t.dueDate && t.dueDate >= tomorrowStr)
+      todo: filteredTasks
+        .filter(t => !t.dueDate || t.dueDate > todayStr)
         .sort((a, b) => {
           if (a.completed !== b.completed) {
             return (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
           }
+          if (!a.dueDate && b.dueDate) return 1;
+          if (a.dueDate && !b.dueDate) return -1;
           return (a.dueDate || '').localeCompare(b.dueDate || '');
         }),
-      overdue: tasks
+      overdue: filteredTasks
         .filter(t => t.dueDate && t.dueDate < todayStr)
         .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
-      progress: tasks
-        .filter(t => t.status === 'in-progress')
-        .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
+      completed: filteredTasks
+        .filter(t => t.completed),
     };
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const activeId: TabId = (internalTab && !hiddenTabs.includes(internalTab))
     ? internalTab
@@ -122,19 +133,22 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
     const t = newTitle.trim();
     if (t) {
       isSubmitting.current = true;
-      const taskData: Partial<AppTask> = { title: t };
+      const taskData: Partial<AppTask> = { 
+        title: t,
+        workspaceId: (!contextId || contextId === 'dashboard') ? activeWorkspaceId : contextId
+      };
       
       // Smart defaults based on active tab to ensure visibility
       if (activeId === 'today') {
         taskData.dueDate = getLocalDateStr();
-      } else if (activeId === 'upcoming') {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        taskData.dueDate = getLocalDateStr(tomorrow);
-      } else if (activeId === 'progress') {
-        taskData.status = 'in-progress';
+      } else if (activeId === 'todo') {
+        taskData.dueDate = undefined;
       } else if (activeId === 'overdue') {
-        taskData.dueDate = getLocalDateStr();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        taskData.dueDate = getLocalDateStr(yesterday);
+      } else if (activeId === 'completed') {
+        taskData.completed = true;
       }
       
       addTask(taskData as any);
@@ -180,7 +194,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
 
   return (
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-0.5 h-8 shrink-0 gap-2">
+      <div className="flex items-center justify-between mb-4 h-8 shrink-0 gap-2">
 
         {/* Tab switcher */}
         {visibleTabs.length > 0 ? (
@@ -254,23 +268,19 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
           <span className="text-xs text-muted-foreground italic">No tabs visible</span>
         )}
 
-        {/* Right side: count badge + add-task button */}
+        {/* Right side: add-task button */}
         <div className="flex items-center gap-1.5 shrink-0">
           {displayTasks.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--app-dark)] border border-[var(--bone-3)]">
-              <div className={cn("w-1 h-1 rounded-full animate-pulse", activeTabDef.color.replace('text-', 'bg-'))} />
-              <span className="text-[10px] text-[var(--bone-40)] font-semibold uppercase tracking-wider">
-                {displayTasks.length}
-              </span>
+            <div className="w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] bg-[var(--bone-6)] select-none text-[11px] font-semibold text-[var(--bone-70)] font-mono">
+              {displayTasks.length}
             </div>
           )}
-
           <button
             onClick={handleToggleAdding}
-            className="no-drag w-6 h-6 flex items-center justify-center rounded-full bg-[var(--app-dark)] hover:bg-[var(--bone-10)] text-muted-foreground hover:text-foreground transition-colors"
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)] transition-none"
             title="Add task"
           >
-            <Plus strokeWidth={2} className="w-3.5 h-3.5" />
+            <Plus strokeWidth={2} className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -288,7 +298,7 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
               >
                 <button
                   onClick={() => toggleTask(t.id)}
-                  className="w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--app-dark)]"
+                  className="w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors"
                 >
                   {t.completed && <Check className="w-[10px] h-[10px] text-[var(--bone-100)] stroke-[3px]" />}
                 </button>
@@ -301,14 +311,14 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing }: SmartTas
           </div>
         ) : !adding ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
-            <CheckCircle2 strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <CheckCircle2 strokeWidth={2} className="w-12 h-12 text-[var(--bone-100)] opacity-25 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">All caught up!</p>
               <p className="text-xs text-bone-70 opacity-40 mt-1 leading-snug text-balance">No tasks to display in {activeTabDef.label}. Enjoy your day!</p>
             </div>
             <button
               onClick={() => setAdding(true)}
-              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-[var(--bone-5)] text-[var(--bone-70)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)] text-xs font-medium transition-all duration-300"
             >
               + New Task
             </button>

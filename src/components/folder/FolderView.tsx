@@ -112,7 +112,7 @@ export function FolderView({ entity }: FolderViewProps) {
       <div className="max-w-5xl mx-auto w-full flex flex-col flex-1">
 
         {/* Header Section */}
-        <header className="flex items-center justify-between mb-8 pb-6 border-b border-border">
+        <header className="flex items-center justify-between mb-6">
           <div className="flex-1 min-w-0">
             <h1
               onDoubleClick={() => {
@@ -120,7 +120,7 @@ export function FolderView({ entity }: FolderViewProps) {
                 tempTitleRef.current = entity.title;
                 setEditingEntityId(entity.id, 'view');
               }}
-              className="group text-4xl font-display font-medium text-foreground mb-1 flex items-center gap-3"
+              className="group text-4xl font-display font-medium leading-none text-foreground mb-1 flex items-center gap-3"
             >
               {(entity.type === 'collection' || entity.type === 'workspace') ? (
                 <button
@@ -129,13 +129,15 @@ export function FolderView({ entity }: FolderViewProps) {
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                     setIconPickerAnchor({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
                   }}
-                  className="shrink-0 p-1 rounded-[var(--radius-medium)] hover:bg-hover "
+                  className="shrink-0 w-10 h-10 flex items-center justify-center hover:bg-hover rounded-xl transition-colors"
                   title="Change icon"
                 >
-                  {(() => { const Icon = getEntityIcon(entity.icon); return <Icon className="w-8 h-8 !text-accent" />; })()}
+                  {(() => { const Icon = getEntityIcon(entity.icon); return <Icon className="w-8 h-8 text-[var(--bone-100)]" />; })()}
                 </button>
               ) : (
-                <Folder className="w-8 h-8 text-muted-foreground shrink-0" />
+                <div className="shrink-0 w-10 h-10 flex items-center justify-center hover:bg-hover rounded-xl transition-colors">
+                  <Folder className="w-8 h-8 text-[var(--bone-100)] shrink-0" />
+                </div>
               )}
               {editingEntity?.id === entity.id && editingEntity.source === 'view' ? (
                 <input
@@ -154,7 +156,7 @@ export function FolderView({ entity }: FolderViewProps) {
                       setTempTitle(entity.title);
                     }
                   }}
-                  className="bg-transparent border-none p-0 outline-none w-full max-w-[500px] text-foreground inline-block font-display"
+                  className="bg-transparent border-none p-0 outline-none w-full max-w-[500px] text-foreground inline-block font-display leading-none"
                 />
               ) : (
                 <>
@@ -184,14 +186,14 @@ export function FolderView({ entity }: FolderViewProps) {
 
           <div className="flex items-center gap-4 ml-4">
             {/* Folder-specific search */}
-            <div className="flex items-center bg-background border border-border px-3 py-2 rounded-[var(--radius-medium)] text-sm group focus-within:border-accent ">
-              <Search className="w-[15px] h-[15px] text-muted-foreground mr-2 group-focus-within:text-foreground shrink-0" />
+            <div className="relative flex items-center bg-[var(--bone-5)] border border-[var(--bone-6)] px-2.5 h-7 rounded-[var(--radius-medium)] text-xs group focus-within:border-[var(--bone-20)] transition-all">
+              <Search className="w-3.5 h-3.5 text-[var(--bone-30)] mr-2 group-focus-within:text-[var(--bone-70)] shrink-0 transition-colors" />
               <input
                 type="text"
                 placeholder={`Search in ${entity.title}...`}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent outline-none text-foreground placeholder-muted-foreground w-full text-sm"
+                className="bg-transparent outline-none text-foreground placeholder-[var(--bone-20)] w-full text-xs"
               />
               {searchQuery && (
                 <Tooltip content="Clear Search">
@@ -206,25 +208,25 @@ export function FolderView({ entity }: FolderViewProps) {
             </div>
 
             {/* Sort Toggle */}
-            <div className="relative group">
+            <div className="relative group h-7">
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as 'recent' | 'oldest' | 'name-asc' | 'name-desc')}
-                className="appearance-none bg-sidebar border border-border rounded-[var(--radius-medium)] pl-5 pr-9 py-2 text-sm text-foreground outline-none "
+                className="appearance-none bg-[var(--bone-5)] border border-[var(--bone-6)] rounded-[var(--radius-medium)] pl-3 pr-7 h-full text-xs text-[var(--bone-70)] hover:text-[var(--bone-100)] outline-none transition-all cursor-pointer"
               >
                 <option value="recent">Recent</option>
                 <option value="oldest">Oldest</option>
                 <option value="name-asc">Name (A-Z)</option>
                 <option value="name-desc">Name (Z-A)</option>
               </select>
-              <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-foreground " />
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--bone-30)] group-hover:text-[var(--bone-70)] transition-colors" />
             </div>
 
             <button
               onClick={() => openModal({ kind: 'newItem', parentId: entity.id })}
-              className="btn-accent px-4 py-2"
+              className="flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-bold bg-[var(--accent)] text-[var(--bone-100)] hover:opacity-90 transition-opacity border-none shadow-none"
             >
-              <Plus strokeWidth={2} className="w-4 h-4" />
+              <Plus strokeWidth={2} className="w-3.5 h-3.5" />
               New Item
             </button>
           </div>
@@ -236,135 +238,76 @@ export function FolderView({ entity }: FolderViewProps) {
             <p>No items inside this folder.</p>
           </div>
         ) : (
-          <div className="space-y-10 flex-1">
-
-            {/* Folders Grid */}
-            {folders.length > 0 && (
-              <section className="bg-sidebar border border-border p-5 rounded-[var(--radius-medium)] widget-shadow">
-                <h2 className="text-sm font-bold tracking-wider text-muted-foreground uppercase mb-4">Folders</h2>
-                <div className="grid grid-cols-3 gap-3">
-                  {folders.map(folder => (
-                    <div
-                      key={folder.id}
-                      onClick={() => setActiveEntityId(folder.id)}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        setItemTempTitle(folder.title);
-                        setEditingEntityId(folder.id, 'view');
-                      }}
-                      className={cn(
-                        "group relative flex items-center gap-3 px-4 py-3 rounded-[var(--radius-medium)] border ",
-                        (editingEntity?.id === folder.id && editingEntity.source === 'view') 
-                          ? "border-accent bg-accent/5" 
-                          : "border-transparent bg-transparent text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--color-background)] hover:border-transparent"
-                      )}
-                    >
-                      <Folder className="w-5 h-5 text-[var(--bone-30)] group-hover:text-accent shrink-0 " />
-                      <div className="min-w-0 flex-1 pr-6">
-                        {editingEntity?.id === folder.id && editingEntity.source === 'view' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={itemTempTitle}
-                            onChange={e => setItemTempTitle(e.target.value)}
-                            onBlur={() => handleItemRename(folder.id, folder.title)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleItemRename(folder.id, folder.title);
-                              if (e.key === 'Escape') setEditingEntityId(null);
-                            }}
-                            onClick={e => e.stopPropagation()}
-                            className="bg-transparent border-none outline-none text-sm font-medium text-foreground w-full"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium text-[var(--bone-70)] group-hover:text-[var(--bone-100)] truncate">{folder.title}</p>
-                        )}
-                      </div>
-
-                      {!(editingEntity?.id === folder.id && editingEntity.source === 'view') && (
-                        <Tooltip content="Options">
-                          <button
-                            onClick={(e) => handleOptionsClick(e, folder.id)}
-                            className={cn(
-                              "absolute right-3 w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
-                              contextMenu?.entityId === folder.id 
-                                ? "opacity-100 !text-[var(--bone-100)] !bg-dark" 
-                                : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] group-hover:text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
-                            )}
-                          >
-                            <MoreHorizontal strokeWidth={2} className="w-4 h-4" />
-                          </button>
-                        </Tooltip>
+          <section className="bg-panel border border-[var(--bone-6)] p-5 rounded-[var(--radius-big)] widget-shadow flex-1">
+            <div className="flex flex-col gap-1">
+              {filteredChildren.map(item => {
+                const isEditing = editingEntity?.id === item.id && editingEntity.source === 'view';
+                
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (!isEditing) {
+                        setActiveEntityId(item.id);
+                      }
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setItemTempTitle(item.title);
+                      setEditingEntityId(item.id, 'view');
+                    }}
+                    className={cn(
+                      "group flex items-center justify-between px-3 py-2 rounded-[10px] cursor-pointer transition-all",
+                      isEditing
+                        ? "bg-accent/5 text-[var(--bone-100)]"
+                        : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {getIcon(item.type, "w-4 h-4 text-[var(--bone-100)] opacity-30 shrink-0 group-hover:opacity-100 transition-opacity duration-200")}
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={itemTempTitle}
+                          onChange={e => setItemTempTitle(e.target.value)}
+                          onBlur={() => handleItemRename(item.id, item.title)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleItemRename(item.id, item.title);
+                            if (e.key === 'Escape') setEditingEntityId(null);
+                          }}
+                          onClick={e => e.stopPropagation()}
+                          className="bg-transparent border-none outline-none text-sm font-medium text-foreground w-full py-0 flex-1"
+                        />
+                      ) : (
+                        <span className="text-[13.8px] font-medium text-[var(--bone-100)] truncate">{item.title}</span>
                       )}
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
 
-            {/* Files List */}
-            {files.length > 0 && (
-              <section className="bg-sidebar border border-border p-5 rounded-[var(--radius-medium)] widget-shadow">
-                <h2 className="text-sm font-bold tracking-wider text-muted-foreground uppercase mb-4">Files</h2>
-                <div className="flex flex-col border border-border/50 rounded-[var(--radius-medium)] overflow-hidden bg-background/70 backdrop-blur-[16px]">
-                  {files.map(file => (
-                    <div
-                      key={file.id}
-                      onClick={() => setActiveEntityId(file.id)}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        setItemTempTitle(file.title);
-                        setEditingEntityId(file.id, 'view');
-                      }}
-                      className={cn(
-                        "group flex items-center justify-between px-4 py-2 rounded-[var(--radius-medium)] ",
-                        (editingEntity?.id === file.id && editingEntity.source === 'view') 
-                          ? "bg-accent/5 text-[var(--bone-100)]" 
-                          : "text-[var(--bone-70)] hover:text-foreground hover:bg-[var(--color-background)] border-transparent hover:border-transparent"
+                    <div className="flex items-center gap-4 shrink-0">
+                      {!isEditing && (
+                        <span className="text-[11px] text-[var(--bone-30)] group-hover:text-[var(--bone-70)] transition-colors">
+                          {formatDateTime(item.lastModified)}
+                        </span>
                       )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {getIcon(file.type, "w-4 h-4 text-[var(--bone-30)] shrink-0 group-hover:text-[var(--bone-100)] ")}
-                        {editingEntity?.id === file.id && editingEntity.source === 'view' ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={itemTempTitle}
-                            onChange={e => setItemTempTitle(e.target.value)}
-                            onBlur={() => handleItemRename(file.id, file.title)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleItemRename(file.id, file.title);
-                              if (e.key === 'Escape') setEditingEntityId(null);
-                            }}
-                            onClick={e => e.stopPropagation()}
-                            className="bg-transparent border-none outline-none text-sm font-medium text-foreground w-full"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium text-foreground truncate">{file.title}</span>
+
+                      <button
+                        onClick={(e) => handleOptionsClick(e, item.id)}
+                        className={cn(
+                          "btn-sidebar-utility opacity-0 group-hover:opacity-100 transition-all",
+                          contextMenu?.entityId === item.id
+                            ? "opacity-100 !text-[var(--bone-100)] !bg-[var(--app-dark)]"
+                            : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
                         )}
-                      </div>
-
-                      <div className="flex items-center gap-4 shrink-0">
-                        {!(editingEntity?.id === file.id && editingEntity.source === 'view') && <span className="text-xs text-muted-foreground group-hover:text-foreground/70 ">{formatDateTime(file.lastModified)}</span>}
-
-                        <button
-                          onClick={(e) => handleOptionsClick(e, file.id)}
-                          className={cn(
-                            "w-6 h-6 flex items-center justify-center rounded-[var(--radius-small)] transition-opacity duration-100",
-                            contextMenu?.entityId === file.id
-                              ? "opacity-100 !text-[var(--bone-100)] !bg-dark"
-                              : "opacity-0 group-hover:opacity-100 text-[var(--bone-30)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]"
-                          )}
-                        >
-                          <MoreHorizontal strokeWidth={2} className="w-4 h-4" />
-                        </button>
-                      </div>
+                      >
+                        <MoreHorizontal strokeWidth={2} className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from 'react';
-import { Plus, Table, Kanban, GalleryHorizontalEnd, ListFilter, Trash2 } from 'lucide-react';
+import { Plus, Table, Kanban, GalleryHorizontalEnd, ListFilter, Trash2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { EditorBlock, DatabaseColumn, DatabaseRow, DatabaseViewType } from '@/data/store';
 import { generateId } from '@/data/store';
@@ -65,6 +65,46 @@ export function DatabaseBlock({ block, onUpdate }: DatabaseBlockProps) {
     updateDb({ dbRows: rows.filter(r => r.id !== rowId) });
   };
 
+  const deleteColumn = (colId: string) => {
+    if (columns.length <= 1) return;
+    updateDb({
+      dbColumns: columns.filter(c => c.id !== colId),
+      dbRows: rows.map(r => {
+        const newCells = { ...r.cells };
+        delete newCells[colId];
+        return { ...r, cells: newCells };
+      }),
+    });
+  };
+
+  const moveRow = (rowId: string, direction: 'up' | 'down') => {
+    const idx = rows.findIndex(r => r.id === rowId);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === rows.length - 1) return;
+    const newRows = [...rows];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    [newRows[idx], newRows[targetIdx]] = [newRows[targetIdx], newRows[idx]];
+    updateDb({ dbRows: newRows });
+  };
+
+  const moveColumn = (colId: string, direction: 'left' | 'right') => {
+    const idx = columns.findIndex(c => c.id === colId);
+    if (idx === -1) return;
+    if (direction === 'left' && idx === 0) return;
+    if (direction === 'right' && idx === columns.length - 1) return;
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+    const newColumns = [...columns];
+    [newColumns[idx], newColumns[targetIdx]] = [newColumns[targetIdx], newColumns[idx]];
+    const colIdOrder = newColumns.map(c => c.id);
+    const newRows = rows.map(r => {
+      const newCells: Record<string, string> = {};
+      colIdOrder.forEach(cid => { newCells[cid] = r.cells[cid] ?? ''; });
+      return { ...r, cells: newCells };
+    });
+    updateDb({ dbColumns: newColumns, dbRows: newRows });
+  };
+
   const updateCell = (rowId: string, colId: string, value: string) => {
     updateDb({
       dbRows: rows.map(r =>
@@ -81,14 +121,41 @@ export function DatabaseBlock({ block, onUpdate }: DatabaseBlockProps) {
   const renderTableView = () => (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead>
-          <tr>
-            {columns.map(col => (
-              <th key={col.id} className="db-header-cell text-left">{col.name}</th>
-            ))}
-            <th className="db-header-cell w-10" />
-          </tr>
-        </thead>
+          <thead>
+            <tr>
+              {columns.map(col => (
+                <th key={col.id} className="db-header-cell text-left group/th">
+                  <div className="flex items-center justify-between gap-1">
+                    <span>{col.name}</span>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover/th:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => moveColumn(col.id, 'left')}
+                        className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-foreground"
+                        title="Move left"
+                      >
+                        <ChevronLeft strokeWidth={2} className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => moveColumn(col.id, 'right')}
+                        className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-foreground"
+                        title="Move right"
+                      >
+                        <ChevronRight strokeWidth={2} className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => deleteColumn(col.id)}
+                        className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-red-400"
+                        title="Delete column"
+                      >
+                        <Trash2 strokeWidth={2} className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </th>
+              ))}
+              <th className="db-header-cell w-10" />
+            </tr>
+          </thead>
         <tbody>
           {rows.map(row => (
             <tr key={row.id} className="group/row hover:bg-hover/30 ">
@@ -132,12 +199,29 @@ export function DatabaseBlock({ block, onUpdate }: DatabaseBlockProps) {
                 </td>
               ))}
               <td className="db-cell !border-r-0">
-                <button
-                  onClick={() => deleteRow(row.id)}
-                  className="opacity-0 group-hover/row:opacity-100 p-1 rounded-md hover:bg-hover text-muted-foreground hover:text-red-400 "
-                >
-                  <Trash2 strokeWidth={2} className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => moveRow(row.id, 'up')}
+                    className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-foreground"
+                    title="Move up"
+                  >
+                    <ChevronUp strokeWidth={2} className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => moveRow(row.id, 'down')}
+                    className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-foreground"
+                    title="Move down"
+                  >
+                    <ChevronDown strokeWidth={2} className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => deleteRow(row.id)}
+                    className="p-0.5 rounded hover:bg-hover text-muted-foreground hover:text-red-400"
+                    title="Delete row"
+                  >
+                    <Trash2 strokeWidth={2} className="w-3 h-3" />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

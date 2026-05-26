@@ -15,7 +15,7 @@ export function HeaderWidget({ entity: propEntity, contextId }: WidgetPropsWithE
     <div className="bg-panel group/widget px-6 pb-6 pt-5 widget-shadow h-full">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-[var(--radius-medium)] bg-[var(--bone-5)] flex items-center justify-center shrink-0">
-          <Icon className="w-6 h-6 text-accent" />
+          <Icon className="w-6 h-6 text-[var(--bone-100)]" />
         </div>
         <div>
           <h2 className="text-2xl font-display font-semibold text-foreground">{stripHtml(entity.title || '')}</h2>

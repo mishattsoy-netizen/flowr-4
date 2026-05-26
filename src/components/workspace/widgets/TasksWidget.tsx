@@ -18,6 +18,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
   const toggleTask = useStore(s => s.toggleTask);
   const addTask = useStore(s => s.addTask);
   const entities = useStore(s => s.entities);
+  const activeWorkspaceId = useStore(s => s.activeWorkspaceId);
   const view: ViewMode = data?.view ?? 'list';
 
   const entity = useMemo(() => {
@@ -27,12 +28,14 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
   }, [propEntity, contextId, entities]);
 
   const workspaceTasks = useMemo(() => {
-    if (!entity && contextId === 'dashboard') return tasks;
+    if (!entity && contextId === 'dashboard') {
+      return tasks.filter(t => t.workspaceId === activeWorkspaceId);
+    }
     if (!entity) return [];
     const childIds = new Set(entities.filter(e => e.parentId === entity.id).map(e => e.id));
     childIds.add(entity.id);
     return tasks.filter(t => t.workspaceId === entity.id || (t.entityId && childIds.has(t.entityId)));
-  }, [tasks, entities, entity, contextId]);
+  }, [tasks, entities, entity, contextId, activeWorkspaceId]);
 
   const [newTitle, setNewTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -41,7 +44,7 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
   const handleAdd = () => {
     const title = newTitle.trim();
     if (!title) { setIsAdding(false); return; }
-    addTask({ title, workspaceId: entity?.id ?? contextId ?? null });
+    addTask({ title, workspaceId: entity?.id ?? activeWorkspaceId ?? null });
     setNewTitle('');
     inputRef.current?.focus();
   };
@@ -52,14 +55,13 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
   const today = new Date().toISOString().split('T')[0];
   const grouped = view === 'by-status' ? {
     Today: incomplete.filter(t => t.dueDate === today),
-    Upcoming: incomplete.filter(t => t.dueDate && t.dueDate > today),
-    'No date': incomplete.filter(t => !t.dueDate),
+    'To do': incomplete.filter(t => !t.dueDate || t.dueDate > today),
     Overdue: incomplete.filter(t => t.dueDate && t.dueDate < today),
   } : null;
 
   return (
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-0.5">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">Tasks</h2>
         <div className="flex items-center gap-2">
           {onUpdateData && (

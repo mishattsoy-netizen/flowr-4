@@ -4,14 +4,14 @@ import { AppTask, useStore } from '@/data/store';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { TaskCard } from './TaskCard';
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 
 const DOT_COLORS: Record<string, string> = {
-  upcoming: 'bg-[#F59E0B]',
+  todo: 'bg-[#F59E0B]',
   today: 'bg-[#3B82F6]',
-  inProgress: 'bg-[#3B82F6]',
   overdue: 'bg-[#EF4444]',
   completed: 'bg-[#EC4899]'
 };
@@ -29,6 +29,20 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
   });
 
   const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div
@@ -56,9 +70,37 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>
-          <button className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-5)] hover:text-[var(--bone-100)] transition-none">
+          <button
+            ref={buttonRef}
+            onClick={() => id === 'completed' && setIsMenuOpen(prev => !prev)}
+            className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-5)] hover:text-[var(--bone-100)] transition-none"
+          >
             <MoreHorizontal className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>
+          {isMenuOpen && id === 'completed' && typeof document !== 'undefined' && createPortal(
+            <div
+              ref={menuRef}
+              className="fixed popup-glass-small z-[9999] min-w-[150px] p-1.5 flex flex-col gap-[3px] shadow-2xl"
+              style={{
+                top: (buttonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                left: (buttonRef.current?.getBoundingClientRect().right ?? 0) - 150,
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  useStore.getState().clearCompletedTasks();
+                  setIsMenuOpen(false);
+                }}
+                className="popup-item-danger gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Clear completed</span>
+              </button>
+            </div>,
+            document.body
+          )}
         </div>
       </div>
 

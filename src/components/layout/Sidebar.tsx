@@ -80,6 +80,8 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
   const toggleFavorite = useStore(state => state.toggleFavorite);
   const storeWorkspaces = useStore(state => state.workspaces);
   const activeWorkspaceId = useStore(state => state.activeWorkspaceId);
+  const trackerFilterWorkspace = useStore(state => state.trackerFilterWorkspace);
+  const setTrackerFilterWorkspace = useStore(state => state.setTrackerFilterWorkspace);
   const reorderEntities = useStore(state => state.reorderEntities);
   const sidebarSectionSettings = useStore(state => state.sidebarSectionSettings);
   const hiddenEntityIds = useStore(state => state.hiddenEntityIds);
@@ -776,18 +778,51 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                   <div className="flex flex-col gap-[1px] px-[10px] pt-1.5 pb-0 shrink-0">
                     <button
                       onClick={() => openModal({ kind: 'newTask' })}
-                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
+                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
                         <Plus strokeWidth={2} className="w-3.5 h-3.5" />
                       </div>
                       <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide">New Task</span>
                     </button>
+                    <button
+                      onClick={() => setTrackerFilterWorkspace(null)}
+                      className={cn(
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]",
+                        trackerFilterWorkspace === null && "!bg-[var(--bone-10)] !text-[var(--bone-100)]"
+                      )}
+                    >
+                      <div className="w-[14px] shrink-0 flex items-center justify-center">
+                        <ListTodo strokeWidth={2} className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide">All tasks</span>
+                    </button>
                     <div className="h-px bg-border/20 -mx-[10px] mt-[10px] mb-0" />
                   </div>
-                  <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-6 text-center gap-2">
-                    <ListTodo className="w-8 h-8 text-[var(--bone-20)]" />
-                    <p className="text-xs text-[var(--bone-40)]">Tasks Workspace</p>
+                  <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-[10px] py-2">
+                    <div className="flex flex-col gap-[1px]">
+                      {storeWorkspaces.map(ws => (
+                        <button
+                          key={ws.id}
+                          onClick={() => setTrackerFilterWorkspace(ws.id)}
+                          className={cn(
+                            "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]",
+                            trackerFilterWorkspace === ws.id && "!bg-[var(--bone-10)] !text-[var(--bone-100)]"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-[14px] shrink-0 flex items-center justify-center text-[var(--bone-100)] opacity-30 group-hover:opacity-100 transition-opacity duration-200",
+                            trackerFilterWorkspace === ws.id && "!opacity-100"
+                          )}>
+                            {(() => {
+                              const WorkspaceIcon = getEntityIcon(ws.icon);
+                              return <WorkspaceIcon strokeWidth={2} className="w-3.5 h-3.5" />;
+                            })()}
+                          </div>
+                          <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide truncate">{ws.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (

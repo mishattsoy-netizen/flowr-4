@@ -91,7 +91,7 @@ export function GenericStackedWidget({ data, onUpdateData }: GenericStackedWidge
   return (
     <section 
       className={cn(
-        "h-full w-full relative bg-sidebar widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
+        "h-full w-full relative bg-panel widget-shadow flex flex-col p-5 pt-4 transition-all duration-200 generic-stack-container",
         isDragOver && "ring-2 ring-accent ring-inset bg-accent/5"
       )}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}

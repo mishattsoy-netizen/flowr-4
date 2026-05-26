@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  GripVertical, Plus, ChevronRight, ChevronDown, Copy, Link as LinkIcon, ExternalLink, Trash2
+  GripVertical, Plus, ChevronRight, ChevronDown, Copy, Link as LinkIcon, ExternalLink
 } from 'lucide-react';
 import { Tooltip } from '@/components/layout/Tooltip';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { ListBlock } from './ListBlock';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useStore } from '@/data/store';
 import { DatabaseBlock } from './DatabaseBlock';
+import { TableBlock } from './TableBlock';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -297,7 +298,6 @@ export function BlockRenderer({
 
   // ─── Table ────────────────────────────────────────────
   if (block.type === 'table') {
-    const tableData = block.tableData ?? [['', '', ''], ['', '', ''], ['', '', '']];
     return (
       <div
         ref={setNodeRef}
@@ -310,96 +310,7 @@ export function BlockRenderer({
           "relative w-full rounded-3xl transition-colors duration-0 group/table",
           isSelected && "bg-[var(--app-dark)]"
         )}>
-          <div className="relative flex flex-col">
-            <div className="border border-[var(--bone-6)] rounded-3xl overflow-hidden bg-panel">
-              <table className="w-full border-collapse">
-                <tbody>
-                  {tableData.map((row: string[], ri: number) => (
-                    <tr key={ri} className={cn("group/row relative transition-colors", ri > 0 && "hover:bg-[var(--bone-2)]")}>
-                    <td className="w-8 border-b border-[var(--bone-6)] bg-[var(--bone-2)] relative group/rowhandle border-r border-[var(--bone-6)]">
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => {
-                              if (tableData.length <= 1) return;
-                              const newData = tableData.filter((_: any, idx: number) => idx !== ri);
-                              onUpdate(block.id, { tableData: newData });
-                            }}
-                            className="p-1 rounded hover:bg-white/10 text-muted-foreground/40 hover:text-red-400"
-                          >
-                            <Trash2 strokeWidth={2} className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </td>
-                      {row.map((cell: string, ci: number) => (
-                        <td
-                          key={ci}
-                          contentEditable
-                          suppressContentEditableWarning
-                          className={cn(
-                            "px-4 py-2.5 text-[13px] font-sans border-b border-r border-[var(--bone-6)] last:border-r-0 outline-none transition-colors leading-snug",
-                            ri === 0 ? "font-bold text-bone-100 bg-[var(--bone-2)] text-[10.5px] uppercase tracking-wider" : "text-bone-100 focus:bg-[var(--bone-2)]",
-                            ci === 0 && ri !== 0 && "font-semibold text-bone-100", // Bold first column
-                            ri === tableData.length - 1 && "border-b-0"
-                          )}
-                          onBlur={(e) => {
-                            const newData = [...tableData.map((r: string[]) => [...r])];
-                            newData[ri][ci] = (e.target as HTMLElement).innerHTML ?? '';
-                            onUpdate(block.id, { tableData: newData });
-                          }}
-                          dangerouslySetInnerHTML={{ __html: cell }}
-                        />
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Top Header Column Delete Triggers - Renders transparently above column headers to support deletion */}
-            {tableData.length > 0 && tableData[0].length > 1 && (
-              <div className="absolute top-0 left-8 right-0 flex h-8 pointer-events-none">
-                {tableData[0].map((_: any, ci: number) => (
-                  <div key={`header-overlay-${ci}`} className="flex-1 relative group/colheader h-full">
-                    <button
-                      onClick={() => {
-                        if (tableData[0].length <= 1) return;
-                        const newData = tableData.map((row: string[]) => {
-                          const newRow = [...row];
-                          newRow.splice(ci, 1);
-                          return newRow;
-                        });
-                        onUpdate(block.id, { tableData: newData });
-                      }}
-                      className="absolute -top-2 right-2 opacity-0 group-hover/colheader:opacity-100 bg-sidebar border border-border pointer-events-auto p-0.5 rounded shadow-sm hover:text-red-400 transition-all text-muted-foreground/50 z-[10]"
-                      title="Delete Column"
-                    >
-                      <Trash2 strokeWidth={2} className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Perimeter Ghost Triggers */}
-            {/* Bottom Edge Row Adder */}
-            <button
-              onClick={() => {
-                const cols = tableData[0]?.length ?? 3;
-                onUpdate(block.id, { tableData: [...tableData, Array(cols).fill('')] });
-              }}
-              className="h-6 w-full opacity-0 group-hover/table:opacity-100 flex items-center justify-center text-[9px] font-bold text-muted-foreground/30 hover:text-foreground hover:bg-white/5 rounded-b-[var(--radius-medium)] transition-all mt-0.5 uppercase tracking-widest"
-            >
-              + Add Row
-            </button>
-
-            {/* Right Edge Column Adder */}
-            <button
-              onClick={() => onUpdate(block.id, { tableData: tableData.map((row: string[]) => [...row, '']) })}
-              className="absolute top-0 bottom-0 right-[-1.5rem] w-5 opacity-0 group-hover/table:opacity-100 flex flex-col items-center justify-center text-[9px] font-bold text-muted-foreground/30 hover:text-foreground hover:bg-white/5 rounded-r-[var(--radius-medium)] transition-all [writing-mode:vertical-rl] uppercase tracking-widest"
-            >
-              + Add Column
-            </button>
-          </div>
+          <TableBlock block={block} onUpdate={onUpdate} />
         </div>
       </div>
     );

@@ -61,7 +61,7 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
                   "border-b border-[var(--bone-6)]",
                   (node.type === 'collection' || node.type === 'workspace') ? "text-[15px]" : "text-sm",
                   isSelected
-                    ? "bg-accent/10 text-foreground hover:bg-accent/20"
+                    ? "bg-[var(--bone-10)] text-[var(--bone-100)]"
                     : "text-muted-foreground hover:bg-hover hover:text-foreground"
                 )}
                 style={{ paddingLeft: `${depth * 16 + 12}px` }}
@@ -69,7 +69,11 @@ export function PathPicker({ selectedId, onSelect, excludeEntityId }: PathPicker
                 {/* Indentation Spacer instead of Chevron */}
                 <div className="w-4 h-4 shrink-0 mr-1.5" />
 
-                <Folder strokeWidth={2} className={cn("mr-2 shrink-0", (node.type === 'collection' || node.type === 'workspace') ? "w-4 h-4 text-accent" : "w-3.5 h-3.5", isSelected && "text-accent")} />
+                <Folder strokeWidth={2} className={cn(
+                  "mr-2 shrink-0 text-[var(--bone-100)] transition-opacity duration-200",
+                  (node.type === 'collection' || node.type === 'workspace') ? "w-4 h-4 opacity-70" : "w-3.5 h-3.5",
+                  isSelected ? "opacity-100" : "opacity-30 group-hover:opacity-100"
+                )} />
                 <span className="truncate flex-1">{node.title}</span>
                 <button
                   onClick={(e) => {

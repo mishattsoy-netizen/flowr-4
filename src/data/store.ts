@@ -105,6 +105,7 @@ export const useStore = create<AppState>()(
         },
       ],
       activeWorkspaceId: 'ws-personal',
+      trackerFilterWorkspace: null,
       lastSaved: null,
       cloudSyncEnabled: false,
       isInitialSync: true,
@@ -319,6 +320,10 @@ export const useStore = create<AppState>()(
 
       setActiveWorkspaceId: (id) => {
         set({ activeWorkspaceId: id });
+      },
+
+      setTrackerFilterWorkspace: (id) => {
+        set({ trackerFilterWorkspace: id });
       },
 
       createWorkspace: (input) => {
@@ -1534,6 +1539,12 @@ export const useStore = create<AppState>()(
       deleteTask: (id) => {
         set((s) => ({ tasks: s.tasks.filter(t => t.id !== id) }));
         deleteTaskFromDB(id);
+      },
+
+      clearCompletedTasks: () => {
+        const completed = get().tasks.filter(t => t.completed);
+        set((s) => ({ tasks: s.tasks.filter(t => !t.completed) }));
+        completed.forEach(t => deleteTaskFromDB(t.id));
       },
 
       updateTask: (id, updates) => {

@@ -176,10 +176,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
     const size = "w-3.5 h-3.5";
     const cls = `${size} shrink-0 `;
     
-    const iconColorClass = cn(
-      "",
-      isActive ? "text-[var(--bone-100)]" : "text-[var(--bone-70)] group-hover:text-[var(--bone-100)]"
-    );
+    const iconColorClass = "text-inherit";
 
     if (type === 'collection' || type === 'workspace' || type === 'folder') {
       const FolderIcon = (type === 'collection' || type === 'workspace') ? getEntityIcon(entity.icon) : Folder;
@@ -206,8 +203,8 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
                className="absolute top-[-4px] bottom-[-4px] left-[-5px] right-[-3px] flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-[var(--radius-tiny)] hover:bg-[var(--app-dark)] cursor-pointer"
             >
               {isCollapsed 
-                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" /> 
-                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-70)] group-hover:text-[var(--bone-100)]" />}
+                ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-100)] opacity-70 group-hover:opacity-100 transition-opacity duration-200" /> 
+                : <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-100)] opacity-70 group-hover:opacity-100 transition-opacity duration-200" />}
             </div>
           )}
         </div>
@@ -239,7 +236,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       className={cn(
         isWorkspace && "rounded-[var(--radius-small)] ",
         isWorkspace && isExpanded && "group/workspace",
-        "relative"
+        "relative group/treeitem"
       )}
     >
       <div
@@ -262,7 +259,10 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         )}
         style={{ paddingLeft: `${8 + depth * 18}px`, paddingRight: '3px' }}
       >
-        <div className="w-[14px] shrink-0 flex items-center justify-center">
+        <div className={cn(
+          "w-[14px] shrink-0 flex items-center justify-center text-[var(--bone-100)] transition-opacity duration-200",
+          isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+        )}>
           {(!disableNesting && isCollapsible) ? getIcon(entity.type) : getIcon(entity.type)}
         </div>
 
@@ -323,7 +323,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
       </div>
 
       {isDropTarget && !isFolder && (
-        <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-accent rounded-full pointer-events-none z-10" />
+        <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-[var(--bone-30)] rounded-full pointer-events-none z-10" />
       )}
 
       {/* Overlay-clone only: dragging a pinned item outside the pinned section
@@ -352,6 +352,11 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         >
           <div className="overflow-hidden">
             <div className={cn("relative flex flex-col gap-[1px]", isExpanded && "mt-[1px]")}>
+              {/* Hierarchy Line */}
+              <div 
+                className="absolute top-0 bottom-[14px] w-[1px] bg-[var(--bone-12)] group-hover/treeitem:bg-[var(--bone-30)] transition-colors duration-200 pointer-events-none" 
+                style={{ left: `${8 + depth * 18 + 6}px` }} 
+              />
               {children.map((child) => (
                 <TreeItem 
                   key={idOverride ? `${idOverride.split('-')[0]}-${child.id}` : child.id} 

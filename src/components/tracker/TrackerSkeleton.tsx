@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/Skeleton';
 
-const COLUMNS = ['Upcoming', 'Today', 'In Progress', 'Overdue', 'Completed'];
+const COLUMNS = ['To do', 'Today', 'Overdue', 'Completed'];
 
 export function TrackerSkeleton() {
   return (

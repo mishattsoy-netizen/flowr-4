@@ -2,7 +2,7 @@
 
 import { useStore } from '@/data/store';
 import { getEntityIcon } from '@/data/icons';
-import { Search, List, GitBranch } from 'lucide-react';
+import { Search, List, GitBranch, FileText, Frame, Layers, Folder } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { stripHtml } from '@/lib/utils';
@@ -38,13 +38,18 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
   const rootItems = useMemo(() => filtered.filter(e => !e.parentId || !filtered.find(p => p.id === e.parentId)), [filtered]);
 
   const renderItem = (entity: typeof filtered[0], depth = 0): React.ReactNode => {
-    const Icon = getEntityIcon(entity.icon);
+    const Icon = entity.icon ? getEntityIcon(entity.icon) : (() => {
+      if (entity.type === 'note') return FileText;
+      if (entity.type === 'canvas') return Frame;
+      if (entity.type === 'mixed') return Layers;
+      return Folder;
+    })();
     const children = view === 'tree' ? filtered.filter(e => e.parentId === entity.id) : [];
     return (
       <div key={entity.id}>
         <button onClick={() => setActiveEntityId(entity.id)} style={{ paddingLeft: `${8 + depth * 16}px` }}
           className="w-full flex items-center gap-2 pr-2 py-1.5 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)] transition-all group/item text-left">
-          <Icon strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-40)] group-hover/item:text-accent shrink-0 transition-colors" />
+          <Icon strokeWidth={2} className="w-3.5 h-3.5 text-[var(--bone-100)] opacity-30 group-hover/item:opacity-100 shrink-0 transition-opacity duration-200" />
           <span className="text-sm text-foreground truncate flex-1">{stripHtml(entity.title || 'Untitled')}</span>
         </button>
         {children.map(c => renderItem(c, depth + 1))}
@@ -54,7 +59,7 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
 
   return (
     <section className="bg-panel group/widget px-4 pb-4 pt-4 widget-shadow h-full flex flex-col">
-      <div className="flex items-center justify-between mb-0.5">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-widget-header font-semibold text-muted-foreground">All Files</h2>
         {onUpdateData && (
           <div className="flex items-center gap-1">
@@ -91,14 +96,14 @@ export function AllFilesWidget({ data, onUpdateData, contextId }: AllFilesWidget
         )}
         {!showSkeleton && filtered.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
-            <Search strokeWidth={2} className="w-12 h-12 text-accent opacity-20 mb-1 animate-in fade-in duration-300" />
+            <Search strokeWidth={2} className="w-12 h-12 text-[var(--bone-100)] opacity-25 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">No files found</p>
               <p className="text-xs text-bone-70 opacity-40 mt-1 leading-snug text-balance">Files you add or sync will appear here.</p>
             </div>
             <button
               onClick={() => openModal({ kind: 'newItem' })}
-              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-accent/[0.06] hover:bg-accent/[0.12] text-accent/60 text-xs font-medium transition-all duration-300"
+              className="mt-2 flex items-center gap-1 px-3.5 py-2 rounded-[8px] bg-[var(--bone-5)] text-[var(--bone-70)] hover:bg-[var(--bone-10)] hover:text-[var(--bone-100)] text-xs font-medium transition-all duration-300"
             >
               + New Item
             </button>

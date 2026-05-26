@@ -386,6 +386,7 @@ export interface AppState {
 
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
+  trackerFilterWorkspace: string | null;
 
 
   activeEntityId: string | null;
@@ -476,6 +477,7 @@ export interface AppState {
   setAppStyle: (style: 'v1' | 'v2' | 'v3') => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   setActiveWorkspaceId: (id: string | null) => void;
+  setTrackerFilterWorkspace: (id: string | null) => void;
   createWorkspace: (input: Partial<Workspace>) => string;
   updateWorkspace: (id: string, patch: Partial<Workspace>) => void;
   deleteWorkspace: (id: string) => void;
@@ -544,6 +546,7 @@ export interface AppState {
   addTask: (task: Partial<AppTask> & { title: string }) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  clearCompletedTasks: () => void;
   updateTask: (id: string, updates: Partial<AppTask>) => void;
   updateWidgetLayout: (entityId: string, layout: WidgetConfig[]) => void;
   sortEntities: (criteria: 'title' | 'lastModified') => void;

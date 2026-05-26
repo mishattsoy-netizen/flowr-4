@@ -26,22 +26,24 @@ import { Plus } from 'lucide-react';
 
 type ColumnItems = Record<string, AppTask[]>;
 
-const COLUMN_KEYS = ['upcoming', 'today', 'inProgress', 'overdue', 'completed'] as const;
+const COLUMN_KEYS = ['todo', 'today', 'overdue', 'completed'] as const;
 
 function buildColumns(tasks: AppTask[], today: string): ColumnItems {
   return {
-    upcoming: tasks.filter(t => !t.completed && t.dueDate && t.dueDate > today),
-    today:    tasks.filter(t => !t.completed && t.dueDate === today),
-    inProgress: tasks.filter(t => !t.completed && !t.dueDate),
-    overdue:  tasks.filter(t => !t.completed && t.dueDate && t.dueDate < today),
+    todo:      tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate > today)),
+    today:     tasks.filter(t => !t.completed && t.dueDate === today),
+    overdue:   tasks.filter(t => !t.completed && t.dueDate && t.dueDate < today),
     completed: tasks.filter(t => t.completed),
   };
 }
 
 export function TrackerPage() {
-  const activeWorkspaceId = useStore(s => s.activeWorkspaceId);
+  const trackerFilterWorkspace = useStore(s => s.trackerFilterWorkspace);
   const allTasks = useStore(s => s.tasks);
-  const tasks = useMemo(() => allTasks.filter(t => (t.workspaceId || 'ws-personal') === activeWorkspaceId), [allTasks, activeWorkspaceId]);
+  const tasks = useMemo(() => {
+    if (trackerFilterWorkspace === null) return allTasks;
+    return allTasks.filter(t => (t.workspaceId || 'ws-personal') === trackerFilterWorkspace);
+  }, [allTasks, trackerFilterWorkspace]);
   const updateTask = useStore(s => s.updateTask);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -124,10 +126,9 @@ export function TrackerPage() {
       if (finalContainer && initialContainerRef.current && initialContainerRef.current !== finalContainer) {
         let updates: Partial<AppTask> = {};
         switch (finalContainer) {
-          case 'upcoming':   updates = { dueDate: tomorrow, completed: false }; break;
-          case 'today':      updates = { dueDate: today,    completed: false }; break;
-          case 'inProgress': updates = { dueDate: undefined, completed: false }; break;
-          case 'completed':  updates = { completed: true }; break;
+          case 'todo':      updates = { dueDate: undefined, completed: false }; break;
+          case 'today':     updates = { dueDate: today,    completed: false }; break;
+          case 'completed': updates = { completed: true }; break;
         }
         updateTask(activeItemId, updates);
       }
@@ -165,14 +166,6 @@ export function TrackerPage() {
             Manage your progress across all workspaces.
           </p>
         </div>
-        
-        <button
-          onClick={() => useStore.getState().openModal({ kind: 'newTask' })}
-          className="px-4 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium text-sm rounded-[12px] flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/10 shrink-0"
-        >
-          <Plus className="w-4 h-4" strokeWidth={2} />
-          New Task
-        </button>
       </div>
 
       <DndContext
@@ -187,9 +180,8 @@ export function TrackerPage() {
             {COLUMN_KEYS.map((id) => {
               let title = '';
               switch (id) {
-                case 'upcoming': title = 'To do'; break;
+                case 'todo': title = 'To do'; break;
                 case 'today': title = 'Today'; break;
-                case 'inProgress': title = 'In progress'; break;
                 case 'overdue': title = 'Overdue'; break;
                 case 'completed': title = 'Done'; break;
                 default: title = (id as string).charAt(0).toUpperCase() + (id as string).slice(1);

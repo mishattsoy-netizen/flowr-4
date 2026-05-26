@@ -18,16 +18,14 @@ import {
 
 const DEFAULT_LAYOUTS: Record<string, BentoLayoutItem[]> = {
   dashboard: [
-    { i: 'dashboard-clock',          type: 'clock',       row: 0, order: 0, w: 2, h: 1 },
+    { i: 'dashboard-recent',         type: 'recent',      row: 0, order: 0, w: 2, h: 4 },
     { i: 'dashboard-tasks-today',    type: 'smart-tasks', row: 0, order: 1, w: 4, h: 2 },
-    { i: 'dashboard-shortcuts',      type: 'shortcuts',   row: 1, order: 0, w: 2, h: 3 },
-    { i: 'dashboard-recent',         type: 'recent',      row: 2, order: 1, w: 2, h: 2 },
-    { i: 'dashboard-all-files',      type: 'all-files',   row: 2, order: 2, w: 2, h: 2 },
+    { i: 'dashboard-shortcuts',      type: 'shortcuts',   row: 1, order: 1, w: 4, h: 2 },
   ],
   workspace: [
-    { i: 'ws-tasks',     type: 'smart-tasks', row: 0, order: 0, w: 4, h: 2 },
-    { i: 'ws-all-files', type: 'all-files',   row: 0, order: 1, w: 2, h: 2 },
-    { i: 'ws-shortcuts', type: 'shortcuts',   row: 1, order: 0, w: 6, h: 2 },
+    { i: 'ws-recent',    type: 'recent',      row: 0, order: 0, w: 2, h: 4 },
+    { i: 'ws-tasks',     type: 'smart-tasks', row: 0, order: 1, w: 4, h: 2 },
+    { i: 'ws-shortcuts', type: 'shortcuts',   row: 1, order: 1, w: 4, h: 2 },
   ],
 };
 
