@@ -31,7 +31,7 @@ export async function runGoogle(
   prompt: string,
   systemPrompt?: string,
   imageBuffers?: Buffer | Buffer[],
-  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean; temperature?: number; max_tokens?: number; usedKeyIndex?: number },
+  context?: { chatId?: number; userId?: string; aiApiKey?: string; platform?: string; useTools?: boolean; useGrounding?: boolean; temperature?: number; max_tokens?: number; usedKeyIndex?: number },
   history: any[] = []
 ): Promise<string | { content: string; citations?: string[]; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; reasoning?: string; capturedToolCalls?: any[] } | null> {
   let keys = context?.aiApiKey ? [context.aiApiKey] : []
@@ -54,6 +54,7 @@ export async function runGoogle(
   const activeTimeout = (modelId.toLowerCase().includes('gemma-4') && imageBufferArray.length > 0) ? GOOGLE_TIMEOUT_MS_GEMMA4 : GOOGLE_TIMEOUT_MS
   const temperature = context?.temperature ?? 0.7
 
+  let lastError: Error | null = null
   for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
     const key = keys[keyIndex]
     if (!key) continue
@@ -80,6 +81,15 @@ export async function runGoogle(
           finalPrompt = `System Instructions:\n${systemPrompt}\n\nUser Request: ${finalPrompt}`
         }
 
+        // Grounding (Google Search) and function calling are mutually exclusive — grounding wins for WEB_SEARCH.
+        const useGrounding = context?.useGrounding && useSystemInstruction && !isLegacyGemma
+        const useFunctionTools = !useGrounding && context?.useTools && useSystemInstruction
+        const toolsConfig = useGrounding
+          ? { tools: [{ googleSearchRetrieval: {} } as any] }
+          : useFunctionTools
+            ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] }
+            : {}
+
         const model = genAI.getGenerativeModel({
           model: sanitizedId,
           systemInstruction: useSystemInstruction ? systemPrompt : undefined,
@@ -87,8 +97,8 @@ export async function runGoogle(
             temperature: temperature,
             maxOutputTokens: context?.max_tokens || 4096,
           },
-          ...(context?.useTools && useSystemInstruction ? { tools: [{ functionDeclarations: FLOWR_TOOLS as any }] } : {}),
-        }, { 
+          ...toolsConfig,
+        }, {
           apiVersion: forceLegacy ? 'v1' : 'v1beta',
         })
 
@@ -112,8 +122,9 @@ export async function runGoogle(
         const hasStreaming = !!(context as any)?.onChunk
         const onChunk = (context as any)?.onChunk
 
-        // Streaming path (no tool calling)
-        if (hasStreaming && !context?.useTools) {
+        // Streaming path (no function-tool calling). Grounding is allowed here.
+        if (hasStreaming && !useFunctionTools) {
+          let streamResult: any
           if (history && history.length > 0) {
             const safeHistory: any[] = []
             for (const msg of history) {
@@ -123,32 +134,36 @@ export async function runGoogle(
             if (safeHistory.length % 2 !== 0) safeHistory.pop()
 
             const chat = model.startChat({ history: safeHistory })
-            logger.info(`[runGoogle] Stream Chat to ${sanitizedId} (Key ${keyIndex + 1}, Hist ${safeHistory.length})`)
-            const streamResult = await withSignal(chat.sendMessageStream(parts), (context as any)?.signal)
-            for await (const chunk of streamResult.stream) {
-              const chunkText = chunk.text()
-              if (chunkText) {
-                responseContent += chunkText
-                onChunk(chunkText)
-              }
-              usage = extractUsage(chunk) || usage
-              reasoning = extractReasoning(chunk) || reasoning
-            }
+            logger.info(`[runGoogle] Stream Chat to ${sanitizedId} (Key ${keyIndex + 1}, Hist ${safeHistory.length}${useGrounding ? ', grounded' : ''})`)
+            streamResult = await withSignal(chat.sendMessageStream(parts), (context as any)?.signal)
           } else {
-            logger.info(`[runGoogle] Stream Content for ${sanitizedId} (Key ${keyIndex + 1})`)
-            const streamResult = await withSignal(model.generateContentStream({ contents: [{ role: 'user', parts }], safetySettings: [] }), (context as any)?.signal)
-            for await (const chunk of streamResult.stream) {
-              const chunkText = chunk.text()
-              if (chunkText) {
-                responseContent += chunkText
-                onChunk(chunkText)
-              }
-              usage = extractUsage(chunk) || usage
-              reasoning = extractReasoning(chunk) || reasoning
+            logger.info(`[runGoogle] Stream Content for ${sanitizedId} (Key ${keyIndex + 1}${useGrounding ? ', grounded' : ''})`)
+            streamResult = await withSignal(model.generateContentStream({ contents: [{ role: 'user', parts }], safetySettings: [] }), (context as any)?.signal)
+          }
+          for await (const chunk of streamResult.stream) {
+            const chunkText = chunk.text()
+            if (chunkText) {
+              responseContent += chunkText
+              onChunk(chunkText)
             }
+            usage = extractUsage(chunk) || usage
+            reasoning = extractReasoning(chunk) || reasoning
           }
 
-          return { content: responseContent, usage, reasoning, capturedToolCalls }
+          // Pull grounding citations from the aggregated final response.
+          let citations: string[] | undefined
+          try {
+            const finalResp = await streamResult.response
+            citations = extractCitations(finalResp)
+          } catch { /* citations optional */ }
+
+          logger.info(`[runGoogle] Stream complete for ${sanitizedId} (Key ${keyIndex + 1}): contentLen=${responseContent.length}${citations ? `, citations=${citations.length}` : ''}`)
+          if (!responseContent) {
+            const err = new Error(`Stream produced empty content for ${sanitizedId} (Key ${keyIndex + 1}) — likely silent quota/safety failure`)
+            logger.error(`[runGoogle] ${err.message}`)
+            throw err
+          }
+          return { content: responseContent, usage, reasoning, capturedToolCalls, citations }
         }
 
         if (history && history.length > 0) {
@@ -188,21 +203,25 @@ export async function runGoogle(
           responseContent = currentResponse.text()
           usage = extractUsage(currentResponse)
           reasoning = extractReasoning(currentResponse)
+          var finalRespForCitations: any = currentResponse
         } else {
           // No history
-          logger.info(`[runGoogle] Content for ${sanitizedId} (Key ${keyIndex + 1})`)
+          logger.info(`[runGoogle] Content for ${sanitizedId} (Key ${keyIndex + 1}${useGrounding ? ', grounded' : ''})`)
           result = await withSignal(withTimeout(model.generateContent({ contents: [{ role: 'user', parts }], safetySettings: [] }), activeTimeout), (context as any)?.signal)
           responseContent = result.response.text()
           usage = extractUsage(result.response)
           reasoning = extractReasoning(result.response)
+          finalRespForCitations = result.response
         }
 
-        return { content: responseContent, usage, reasoning, capturedToolCalls }
+        const citations = extractCitations(finalRespForCitations)
+        return { content: responseContent, usage, reasoning, capturedToolCalls, citations }
       } catch (error: any) {
         const errorMsg = error.message || 'Unknown error'
         const isQuotaOrService = errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('503') || errorMsg.includes('500')
-        
+
         logger.error(`[runGoogle] ${modelId} execution failed (Key ${keyIndex + 1}): ${errorMsg}`)
+        lastError = error instanceof Error ? error : new Error(errorMsg)
 
         if (isQuotaOrService && keyIndex < keys.length - 1) {
           logger.warn(`[runGoogle] Retrying with next key...`)
@@ -220,6 +239,11 @@ export async function runGoogle(
     }
   }
 
+  if (lastError) {
+    logger.error(`[runGoogle] All keys exhausted for ${modelId}, rethrowing last error: ${lastError.message}`)
+    throw lastError
+  }
+  logger.error(`[runGoogle] Unexpected exit for ${modelId}: no response, no error captured (keys=${keys.length})`)
   return null
 }
 
@@ -247,4 +271,15 @@ function extractReasoning(response: any) {
     }
   } catch {}
   return undefined
+}
+
+function extractCitations(response: any): string[] | undefined {
+  try {
+    const chunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks
+    if (!Array.isArray(chunks) || chunks.length === 0) return undefined
+    const uris = chunks.map((c: any) => c?.web?.uri).filter((u: any): u is string => typeof u === 'string' && u.length > 0)
+    return uris.length > 0 ? Array.from(new Set(uris)) : undefined
+  } catch {
+    return undefined
+  }
 }

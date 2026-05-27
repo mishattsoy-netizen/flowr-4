@@ -36,6 +36,7 @@ create table if not exists tasks (
   entity_id   text        references entities(id) on delete set null,
   note        text,
   color       text,
+  priority    text        check (priority in ('low', 'medium', 'high')),
   difficulty  integer,
   created_at  bigint      default 0
 );
@@ -107,17 +108,20 @@ create policy "workspaces: owner full access"
   with check (owner_id = auth.uid());
 
 -- Add workspace_id + mode_id to entities
+-- Note: workspace_id is intentionally a plain text column (no FK). The app uses
+-- it to hold the id of a sidebar workspace-entity, which lives in `entities`,
+-- not in the `workspaces` table.
 alter table entities
-  add column if not exists workspace_id text references workspaces(id) on delete cascade,
+  add column if not exists workspace_id text,
   add column if not exists mode_id      text,
   add column if not exists widget_layout jsonb;
 
 create index if not exists entities_workspace_id_idx on entities(workspace_id);
 create index if not exists entities_mode_id_idx      on entities(mode_id);
 
--- Add workspace_id + mode_id to tasks
+-- Add workspace_id + mode_id to tasks (workspace_id is plain text; see above)
 alter table tasks
-  add column if not exists workspace_id text references workspaces(id) on delete cascade,
+  add column if not exists workspace_id text,
   add column if not exists mode_id      text;
 
 create index if not exists tasks_workspace_id_idx on tasks(workspace_id);

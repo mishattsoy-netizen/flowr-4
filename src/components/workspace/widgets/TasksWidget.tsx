@@ -29,13 +29,13 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
 
   const workspaceTasks = useMemo(() => {
     if (!entity && contextId === 'dashboard') {
-      return tasks.filter(t => t.workspaceId === activeWorkspaceId);
+      return tasks;
     }
     if (!entity) return [];
     const childIds = new Set(entities.filter(e => e.parentId === entity.id).map(e => e.id));
     childIds.add(entity.id);
     return tasks.filter(t => t.workspaceId === entity.id || (t.entityId && childIds.has(t.entityId)));
-  }, [tasks, entities, entity, contextId, activeWorkspaceId]);
+  }, [tasks, entities, entity, contextId]);
 
   const [newTitle, setNewTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);

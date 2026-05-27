@@ -196,6 +196,7 @@ export interface AppTask {
   difficulty?: number;
   status?: 'todo' | 'in-progress' | 'done';
   createdAt?: number;
+  completedAt?: number;
 }
 
 export type SettingsTab = 'profile' | 'interface' | 'account' | 'notifications' | 'integrations' | 'subscription' | 'security' | 'admin' | 'logs';

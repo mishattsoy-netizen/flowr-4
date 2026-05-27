@@ -128,26 +128,12 @@ export function ChatHistoryPanel() {
                   <div
                     key={conv.id}
                     className={cn(
-                      "group flex items-center h-7 rounded-[var(--radius-small)] cursor-pointer select-none",
+                      "group flex items-center h-7 rounded-[var(--radius-small)] cursor-pointer select-none transition-colors",
                       activeChatId === conv.id
                         ? "bg-dark text-[var(--bone-100)]"
-                        : "text-[var(--bone-70)]"
+                        : "text-[var(--bone-70)] hover:text-[var(--bone-100)] [&:hover:not(:has(.sidebar-actions:hover))]:bg-[var(--app-dark)]"
                     )}
                     style={{ paddingLeft: '10px', paddingRight: '3px' }}
-                    onMouseEnter={e => {
-                      if (activeChatId !== conv.id) {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.background = 'var(--app-dark)'
-                        el.style.color = 'var(--bone-100)'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (activeChatId !== conv.id) {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.background = ''
-                        el.style.color = ''
-                      }
-                    }}
                     onClick={() => loadConversation(conv.id)}
                   >
                     {editingId === conv.id ? (
@@ -167,7 +153,7 @@ export function ChatHistoryPanel() {
                       <span className="flex-1 text-[13px] truncate leading-snug" style={{ color: 'inherit' }}>{conv.title}</span>
                     )}
                     <div className={cn(
-                      "flex items-center gap-[1px] shrink-0",
+                      "sidebar-actions flex items-center gap-[1px] shrink-0",
                       menuOpenId === conv.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     )}>
                       <button

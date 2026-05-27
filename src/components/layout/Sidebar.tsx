@@ -79,6 +79,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
   }, [resolvedTheme, setTheme]);
   const toggleFavorite = useStore(state => state.toggleFavorite);
   const storeWorkspaces = useStore(state => state.workspaces);
+  const allTasks = useStore(state => state.tasks);
   const activeWorkspaceId = useStore(state => state.activeWorkspaceId);
   const trackerFilterWorkspace = useStore(state => state.trackerFilterWorkspace);
   const setTrackerFilterWorkspace = useStore(state => state.setTrackerFilterWorkspace);
@@ -570,14 +571,14 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
           </div>
         ) : (
           <div className="px-[10px] pt-1 mb-0 flex-none">
-            <div className="relative flex items-center p-[3px] rounded-[10px] no-drag w-full" style={{ background: 'var(--slider-track)' }}>
+            <div className="relative flex items-center p-[4px] rounded-[10px] no-drag w-full" style={{ background: 'var(--slider-track)' }}>
               {/* Sliding Pill */}
               <div
-                className="absolute top-[3px] bottom-[3px] rounded-[7px] bg-[var(--slider-pill)] transition-all duration-300 ease-out"
+                className="absolute top-[4px] bottom-[4px] rounded-[7px] bg-[var(--slider-pill)] transition-all duration-300 ease-out"
                 style={{
-                  width: 'calc((100% - 6px) / 3)',
-                  left: `calc(3px + (${(activeEntityId === 'tracker' ? 1 : activeEntityId === 'chat' ? 2 : 0)
-                    } * (100% - 6px) / 3))`,
+                  width: 'calc((100% - 8px) / 3)',
+                  left: `calc(4px + (${(activeEntityId === 'tracker' ? 1 : activeEntityId === 'chat' ? 2 : 0)
+                    } * (100% - 8px) / 3))`,
                   boxShadow: 'var(--slider-pill-shadow)'
                 }}
               />
@@ -797,32 +798,45 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                         <ListTodo strokeWidth={2} className="w-3.5 h-3.5" />
                       </div>
                       <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide">All tasks</span>
+                      {allTasks.length > 0 && (
+                        <span className="shrink-0 w-[22px] h-[22px] flex items-center justify-center rounded-[4px] bg-[var(--bone-6)] text-[12px] font-ui font-medium text-[var(--bone-70)]">
+                          {allTasks.length}
+                        </span>
+                      )}
                     </button>
                     <div className="h-px bg-border/20 -mx-[10px] mt-[10px] mb-0" />
                   </div>
                   <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-[10px] py-2">
                     <div className="flex flex-col gap-[1px]">
-                      {storeWorkspaces.map(ws => (
-                        <button
-                          key={ws.id}
-                          onClick={() => setTrackerFilterWorkspace(ws.id)}
-                          className={cn(
-                            "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all",
-                            trackerFilterWorkspace === ws.id && "!bg-dark !text-[var(--bone-100)]"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-[14px] shrink-0 flex items-center justify-center text-[var(--bone-100)] opacity-30 group-hover:opacity-100 transition-opacity duration-200",
-                            trackerFilterWorkspace === ws.id && "!opacity-100"
-                          )}>
-                            {(() => {
-                              const WorkspaceIcon = getEntityIcon(ws.icon);
-                              return <WorkspaceIcon strokeWidth={2} className="w-3.5 h-3.5" />;
-                            })()}
-                          </div>
-                          <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide truncate">{ws.name}</span>
-                        </button>
-                      ))}
+                      {workspacesBase.map(ws => {
+                        const count = allTasks.filter(t => t.workspaceId === ws.id).length;
+                        return (
+                          <button
+                            key={ws.id}
+                            onClick={() => setTrackerFilterWorkspace(ws.id)}
+                            className={cn(
+                              "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all",
+                              trackerFilterWorkspace === ws.id && "!bg-dark !text-[var(--bone-100)]"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-[14px] shrink-0 flex items-center justify-center text-[var(--bone-100)] opacity-30 group-hover:opacity-100 transition-opacity duration-200",
+                              trackerFilterWorkspace === ws.id && "!opacity-100"
+                            )}>
+                              {(() => {
+                                const WorkspaceIcon = getEntityIcon(ws.icon);
+                                return <WorkspaceIcon strokeWidth={2} className="w-3.5 h-3.5" />;
+                              })()}
+                            </div>
+                            <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide truncate">{ws.title}</span>
+                            {count > 0 && (
+                              <span className="shrink-0 w-[22px] h-[22px] flex items-center justify-center rounded-[4px] bg-[var(--bone-6)] text-[12px] font-ui font-medium text-[var(--bone-70)]">
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -835,7 +849,12 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                         const rect = e.currentTarget.getBoundingClientRect();
                         setNewPagePopupPos({ x: rect.right + 4, y: rect.top });
                       }}
-                      className="sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent  text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-all"
+                      className={cn(
+                        "sidebar-item-row flex items-center w-full cursor-pointer select-none rounded-[var(--radius-small)] pl-[8px] pr-[3px] h-7 group border border-transparent transition-all",
+                        newPagePopupPos
+                          ? "bg-[var(--app-dark)] text-[var(--bone-100)] font-normal"
+                          : "text-[var(--bone-70)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)]"
+                      )}
                     >
                       <div className="w-[14px] shrink-0 flex items-center justify-center">
                         <Plus strokeWidth={2} className="w-3.5 h-3.5" />

@@ -3,7 +3,7 @@
 import { AppTask, useStore } from '@/data/store';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar } from 'lucide-react';
+import { Calendar, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -24,8 +24,16 @@ export function TaskCardUI({
   listeners, 
   setNodeRef 
 }: TaskCardUIProps) {
-  const { entities } = useStore();
-  const workspaceName = entities.find(e => e.id === task.workspaceId)?.title || 'Unsorted';
+  const { entities, toggleTask, updateTask } = useStore();
+  const workspaceName = entities.find(e => e.id === task.workspaceId)?.title || null;
+
+  const handleToggleSubtask = (subId: string) => {
+    if (!task.subtasks) return;
+    const nextSubtasks = task.subtasks.map(s => 
+      s.id === subId ? { ...s, completed: !s.completed } : s
+    );
+    updateTask(task.id, { subtasks: nextSubtasks });
+  };
 
   const today = new Date().toISOString().split('T')[0];
   const isOverdue = !task.completed && task.dueDate && task.dueDate < today;
@@ -48,32 +56,47 @@ export function TaskCardUI({
         }
       }}
       className={cn(
-        "group relative bg-[var(--bone-2)] border border-[var(--bone-6)] p-3 rounded-[12px] cursor-pointer active:cursor-grabbing shrink-0",
-        "touch-none select-none",
-        !isDragging && "hover:bg-[var(--app-dark)] transition-colors duration-150",
-        "flex flex-col gap-2"
+        "group relative p-3 rounded-[10px] border border-[var(--bone-10)] shrink-0 touch-none select-none flex flex-col gap-2",
+        isDragging
+          ? "bg-[var(--bone-3)] border-[var(--bone-3)] cursor-grabbing"
+          : "bg-[var(--bone-6)] cursor-pointer active:cursor-grabbing hover:bg-[var(--app-dark)]"
       )}
     >
+      <div className={cn("flex flex-col gap-2 w-full h-full", isDragging && "invisible")}>
       {/* Workspace Tag & Category Line */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 opacity-60">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-          <span className="text-[10px] font-ui font-medium uppercase tracking-wider text-[var(--bone-70)]">
-            {workspaceName}
-          </span>
+      {(workspaceName || task.entityId) && (
+        <div className="flex items-center justify-between gap-2">
+          {workspaceName ? (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[var(--bone-10)] text-[10px] font-ui font-medium text-[var(--bone-70)]">
+              {workspaceName}
+            </span>
+          ) : <div />}
+          {task.entityId && (
+            <span className="text-[10px] text-[var(--bone-30)] font-ui">#{task.entityId.slice(-4)}</span>
+          )}
         </div>
-        {task.entityId && (
-          <span className="text-[10px] text-[var(--bone-30)] font-ui">#{task.entityId.slice(-4)}</span>
-        )}
-      </div>
+      )}
 
-      {/* Title */}
-      <h3 className={cn(
-        "text-sm font-medium leading-snug break-words",
-        task.completed ? "text-[var(--bone-40)] line-through" : "text-[var(--bone-100)]"
-      )}>
-        {task.title}
-      </h3>
+      {/* Title & Checkbox */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleTask(task.id);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="shrink-0 w-4 h-4 rounded-[4px] border flex items-center justify-center focus:outline-none cursor-pointer border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors"
+        >
+          {task.completed && <Check className="w-[10px] h-[10px] text-[var(--bone-100)] stroke-[3px]" />}
+        </button>
+        <h3 className={cn(
+          "text-sm font-medium leading-snug break-words flex-1",
+          task.completed ? "text-[var(--bone-40)] line-through" : "text-[var(--bone-100)]"
+        )}>
+          {task.title}
+        </h3>
+      </div>
 
       {/* Description/Note Clamped */}
       {(task.description || task.note) && (
@@ -86,14 +109,19 @@ export function TaskCardUI({
       {task.subtasks && task.subtasks.length > 0 && (
         <div className="flex flex-col gap-1.5 mt-1">
           {task.subtasks.slice(0, 3).map(sub => (
-            <div key={sub.id} className="flex items-center gap-2 text-[10px] text-[var(--bone-70)]">
-              <div className={cn(
-                "w-2.5 h-2.5 rounded-full border flex items-center justify-center flex-shrink-0",
-                sub.completed ? "bg-[var(--accent)] border-[var(--accent)]" : "border-[var(--bone-30)]"
-              )}>
-                {sub.completed && <div className="w-1 h-1 rounded-full bg-white" />}
-              </div>
-              <span className={cn(sub.completed && "line-through text-[var(--bone-40)]")}>{sub.text}</span>
+            <div key={sub.id} className="flex items-center gap-2.5 text-[11px] text-[var(--bone-80)] font-medium">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleSubtask(sub.id);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center flex-shrink-0 border-[var(--bone-30)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors cursor-pointer"
+              >
+                {sub.completed && <Check className="w-2.5 h-2.5 text-[var(--bone-100)] stroke-[3px]" />}
+              </button>
+              <span className={cn("leading-none", sub.completed && "line-through text-[var(--bone-40)]")}>{sub.text}</span>
             </div>
           ))}
           {task.subtasks.length > 3 && (
@@ -129,10 +157,13 @@ export function TaskCardUI({
       </div>
 
       {/* Decorative side strip */}
-      <div 
-        className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full" 
-        style={{ backgroundColor: task.completed ? 'var(--bone-20)' : (task.color || 'var(--accent)') }}
-      />
+      {task.color && (
+        <div 
+          className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full" 
+          style={{ backgroundColor: task.completed ? 'var(--bone-20)' : task.color }}
+        />
+      )}
+      </div>
     </div>
   );
 }
@@ -150,23 +181,17 @@ export function TaskCard({ task }: { task: AppTask }) {
     data: React.useMemo(() => ({
       type: 'Task',
       task
-    }), [task])
+    }), [task]),
+    transition: {
+      duration: 200,
+      easing: 'cubic-bezier(0.2, 1, 0.2, 1)',
+    }
   });
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
   };
-
-  if (isDragging) {
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="rounded-[12px] border-2 border-dashed border-[var(--accent)]/40 bg-[var(--accent)]/5 h-[88px]"
-      />
-    );
-  }
 
   return (
     <TaskCardUI

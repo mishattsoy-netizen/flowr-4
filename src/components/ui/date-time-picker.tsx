@@ -48,7 +48,7 @@ export function DatePickerTime({
               variant="ghost"
               id="date-picker"
               className={cn(
-                "w-full justify-between font-medium text-sm h-11 px-4 rounded-[12px] border border-[var(--bone-10)] bg-[var(--bone-2)] hover:bg-[var(--bone-5)] transition-all",
+                "w-full justify-between font-medium text-xs h-8 px-3 rounded-[6px] border-none bg-[var(--bone-6)] hover:bg-[var(--bone-10)] transition-all",
                 !activeDate && "text-[var(--bone-30)]",
                 activeDate && "text-[var(--bone-90)]"
               )}
@@ -81,7 +81,7 @@ export function DatePickerTime({
                 variant="ghost"
                 id="time-picker"
                 className={cn(
-                  "w-full justify-between font-medium text-sm h-11 px-4 rounded-[12px] border border-[var(--bone-10)] bg-[var(--bone-2)] hover:bg-[var(--bone-5)] transition-all",
+                  "w-full justify-between font-medium text-xs h-8 px-3 rounded-[6px] border-none bg-[var(--bone-6)] hover:bg-[var(--bone-10)] transition-all",
                   !time && "text-[var(--bone-30)]",
                   time && "text-[var(--bone-90)]"
                 )}

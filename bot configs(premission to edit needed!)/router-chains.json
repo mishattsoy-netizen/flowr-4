@@ -45,6 +45,33 @@
   "REGULAR": {
     "chain": [
       {
+        "id": "gemini-2.0-flash",
+        "_key": "2oj57b51z",
+        "provider": "gemini",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
+        "id": "gemini-2.5-flash-lite",
+        "_key": "04syneuw2",
+        "provider": "gemini",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
+        "id": "gemini-2.5-flash",
+        "_key": "uvxq1ssfz",
+        "provider": "gemini",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
         "id": "gemini-3.1-flash-lite",
         "_key": "h4d8pdjwa",
         "provider": "gemini",
@@ -54,28 +81,9 @@
         "completion_cost": null
       },
       {
-        "id": "deepseek/deepseek-v4-flash",
-        "_key": "ebvm1ex6v",
-        "provider": "openrouter",
-        "is_enabled": true,
-        "openrouter_provider": "deepseek",
-        "is_paid": true,
-        "prompt_cost": 1.4e-7,
-        "completion_cost": 2.8e-7
-      },
-      {
-        "id": "llama-3.1-8b-instant",
+        "id": "llama-3.3-70b-versatile",
         "_key": "ljrba8of5",
         "provider": "groq",
-        "is_enabled": true,
-        "is_paid": false,
-        "prompt_cost": null,
-        "completion_cost": null
-      },
-      {
-        "id": "openai-fast",
-        "_key": "iw6457gnp",
-        "provider": "pollinations",
         "is_enabled": true,
         "is_paid": false,
         "prompt_cost": null,
@@ -179,6 +187,15 @@
   "WEB_SEARCH": {
     "chain": [
       {
+        "id": "gemini-2.5-flash",
+        "_key": "jv1bs5gam",
+        "provider": "gemini",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
+      },
+      {
         "id": "tavily-search",
         "_key": "2ngz0ogpc",
         "provider": "tavily",
@@ -186,16 +203,6 @@
         "is_paid": false,
         "prompt_cost": null,
         "completion_cost": null
-      },
-      {
-        "id": "deepseek/deepseek-v4-flash",
-        "_key": "is5n1pw9r",
-        "provider": "openrouter",
-        "is_enabled": true,
-        "openrouter_provider": "deepseek",
-        "is_paid": true,
-        "prompt_cost": 1.4e-7,
-        "completion_cost": 2.8e-7
       },
       {
         "id": "google/gemini-3.1-flash-lite",
@@ -206,6 +213,15 @@
         "is_paid": true,
         "prompt_cost": 2.5e-7,
         "completion_cost": 0.0000015
+      },
+      {
+        "id": "gemini-3-flash-preview",
+        "_key": "is5n1pw9r",
+        "provider": "gemini",
+        "is_enabled": true,
+        "is_paid": false,
+        "prompt_cost": null,
+        "completion_cost": null
       },
       {
         "id": "duckduckgo-search",

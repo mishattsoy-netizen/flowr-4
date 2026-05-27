@@ -122,6 +122,7 @@ function rowToTask(row: Record<string, any>): AppTask {
     subtasks:    row.subtasks ?? undefined,
     difficulty:  row.difficulty ?? undefined,
     createdAt:   parseTimestamp(row.created_at),
+    completedAt: parseTimestamp(row.completed_at),
   };
 }
 
@@ -132,25 +133,34 @@ function taskToRow(t: AppTask): Record<string, any> {
     completed:    t.completed,
   };
   
-  // Important: Omit null/undefined fields to avoid schema cache errors 
-  // on newly added columns and allow database defaults to kick in for others.
-  if (t.dueDate)    row.due_date    = t.dueDate;
-  if (t.entityId)   row.entity_id   = t.entityId;
-  if (t.workspaceId) row.workspace_id = t.workspaceId;
-  if (t.note)       row.note        = t.note;
-  if (t.description) row.description = t.description;
-  if (t.color)      row.color       = t.color;
-  if (t.priority)   row.priority    = t.priority;
+  // Include all defined fields so the DB row is always a full reflection of
+  // local state. Use explicit null for fields being cleared (e.g. removing a
+  // color or moving a task out of a column) so Supabase writes NULL instead of
+  // leaving the old value in place.
+  row.due_date     = t.dueDate     ?? null;
+  row.entity_id    = t.entityId    ?? null;
+  row.workspace_id = t.workspaceId ?? null;
+  row.note         = t.note        ?? null;
+  row.description  = t.description ?? null;
+  row.color        = t.color       ?? null;
+  row.difficulty   = t.difficulty  ?? null;
+  if (t.priority !== undefined) row.priority = t.priority;
   if (t.subtasks)   row.subtasks    = t.subtasks;
-  if (t.difficulty) row.difficulty  = t.difficulty;
   if (t.createdAt) {
     row.created_at = typeof t.createdAt === 'number'
       ? new Date(t.createdAt).toISOString()
       : t.createdAt;
   }
+  if (t.completedAt) {
+    row.completed_at = typeof t.completedAt === 'number'
+      ? new Date(t.completedAt).toISOString()
+      : t.completedAt;
+  }
   
   return row;
 }
+
+
 
 // ─── Initial load ─────────────────────────────────────────────────────────────
 
@@ -222,27 +232,19 @@ export async function upsertEntity(entity: Entity) {
 
   async function performUpsert(currentRow: Record<string, any>): Promise<{ error: any }> {
     const result = await supabase!.from('entities').upsert(currentRow, { onConflict: 'id' });
-    
-    // If a column is missing OR a foreign key is violated, remove the offending field and retry
+
+    // Only retry on missing-column errors (helps during incremental schema rollouts).
+    // FK violations are no longer swallowed — they indicate real data bugs and must surface.
     const isColumnError = result.error && result.error.message.includes('column') && result.error.message.includes('not find');
-    const isFKError = result.error && result.error.message.includes('violates foreign key constraint');
-    
-    if (result.error && (isColumnError || isFKError)) {
+
+    if (result.error && isColumnError) {
       const match = result.error.message.match(/'([^']+)'/);
       const missingColumn = match ? match[1] : null;
-      
-      // For FK errors, we need to extract the column name (e.g. from "tasks_workspace_id_fkey")
-      let fieldToRemove = missingColumn;
-      if (isFKError) {
-        if (result.error.message.includes('workspace_id')) fieldToRemove = 'workspace_id';
-        else if (result.error.message.includes('parent_id')) fieldToRemove = 'parent_id';
-        else if (result.error.message.includes('entity_id')) fieldToRemove = 'entity_id';
-      }
-      
-      if (fieldToRemove && currentRow[fieldToRemove] !== undefined) {
-        console.warn(`[Flowr sync] Field '${fieldToRemove}' caused error in 'entities' table. Retrying without it.`);
+
+      if (missingColumn && currentRow[missingColumn] !== undefined) {
+        console.warn(`[Flowr sync] Column '${missingColumn}' missing in 'entities' table. Retrying without it.`);
         const nextRow = { ...currentRow };
-        delete nextRow[fieldToRemove];
+        delete nextRow[missingColumn];
         return performUpsert(nextRow);
       }
     }
@@ -267,26 +269,19 @@ export async function upsertTask(task: AppTask) {
   
   async function performUpsert(currentRow: Record<string, any>): Promise<{ error: any }> {
     const result = await supabase!.from('tasks').upsert(currentRow, { onConflict: 'id' });
-    
-    // If a column is missing OR a foreign key is violated, remove the offending field and retry
-    const isColumnError = result.error && result.error.message.includes('column') && result.error.message.includes('not find');
-    const isFKError = result.error && result.error.message.includes('violates foreign key constraint');
 
-    if (result.error && (isColumnError || isFKError)) {
+    // Only retry on missing-column errors (helps during incremental schema rollouts).
+    // FK violations are no longer swallowed — they indicate real data bugs and must surface.
+    const isColumnError = result.error && result.error.message.includes('column') && result.error.message.includes('not find');
+
+    if (result.error && isColumnError) {
       const match = result.error.message.match(/'([^']+)'/);
       const missingColumn = match ? match[1] : null;
 
-      // For FK errors, we need to extract the column name (e.g. from "tasks_workspace_id_fkey")
-      let fieldToRemove = missingColumn;
-      if (isFKError) {
-        if (result.error.message.includes('workspace_id')) fieldToRemove = 'workspace_id';
-        else if (result.error.message.includes('entity_id')) fieldToRemove = 'entity_id';
-      }
-
-      if (fieldToRemove && currentRow[fieldToRemove] !== undefined) {
-        console.warn(`[Flowr sync] Field '${fieldToRemove}' caused error in 'tasks' table. Retrying without it.`);
+      if (missingColumn && currentRow[missingColumn] !== undefined) {
+        console.warn(`[Flowr sync] Column '${missingColumn}' missing in 'tasks' table. Retrying without it.`);
         const nextRow = { ...currentRow };
-        delete nextRow[fieldToRemove];
+        delete nextRow[missingColumn];
         return performUpsert(nextRow);
       }
     }
@@ -398,7 +393,12 @@ export function subscribeRealtime(store: StoreSetters) {
       ({ new: row }: any) => {
         const updated = rowToTask(row as Record<string, any>);
         store.setTasks(
-          store.getTasks().map(t => (t.id === updated.id ? updated : t))
+          store.getTasks().map(t => {
+            if (t.id !== updated.id) return t;
+            // Merge: DB row wins for all mapped fields, but we preserve any
+            // local-only fields (e.g. optimistic fields not yet in DB schema)
+            return { ...t, ...updated };
+          })
         );
       }
     )

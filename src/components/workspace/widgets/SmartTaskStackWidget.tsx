@@ -39,14 +39,14 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId 
 
   const filteredTasks = useMemo(() => {
     if (!contextId || contextId === 'dashboard') {
-      return tasks.filter(t => t.workspaceId === activeWorkspaceId);
+      return tasks;
     }
     const entity = entities.find(e => e.id === contextId);
     if (!entity) return [];
     const childIds = new Set(entities.filter(e => e.parentId === entity.id).map(e => e.id));
     childIds.add(entity.id);
     return tasks.filter(t => t.workspaceId === entity.id || (t.entityId && childIds.has(t.entityId)));
-  }, [tasks, entities, contextId, activeWorkspaceId]);
+  }, [tasks, entities, contextId]);
 
   const hiddenTabs: TabId[] = (data?.hiddenTabs ?? []) as TabId[];
   const visibleTabs = ALL_TABS.filter(t => !hiddenTabs.includes(t.id));

@@ -13,7 +13,7 @@ const DOT_COLORS: Record<string, string> = {
   todo: 'bg-[#F59E0B]',
   today: 'bg-[#3B82F6]',
   overdue: 'bg-[#EF4444]',
-  completed: 'bg-[#EC4899]'
+  completed: 'bg-[#10B981]'
 };
 
 interface KanbanColumnProps {
@@ -46,7 +46,7 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
 
   return (
     <div
-      className="flex flex-col w-[300px] shrink-0 h-full rounded-[var(--radius-big)] p-4 border bg-[var(--color-panel)] border-[var(--bone-15)]"
+      className="flex flex-col w-[300px] shrink-0 h-full rounded-[var(--radius-big)] p-4 bg-[var(--color-panel)] border border-[var(--bone-3)]"
     >
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
             {title}
           </span>
           {/* Count Badge */}
-          <span className="flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-mono font-semibold bg-[var(--bone-6)] text-[var(--bone-70)] shrink-0 select-none">
+          <span className="flex items-center justify-center w-[22px] h-[22px] rounded-[4px] text-[12px] font-ui font-medium bg-[var(--bone-6)] text-[var(--bone-70)] shrink-0 select-none">
             {tasks.length}
           </span>
         </div>
@@ -66,14 +66,14 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
         <div className="flex items-center gap-1.5 text-[var(--bone-40)]">
           <button 
             onClick={() => useStore.getState().openModal({ kind: 'newTask' })}
-            className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-5)] hover:text-[var(--bone-100)] transition-none"
+            className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-none"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>
           <button
             ref={buttonRef}
             onClick={() => id === 'completed' && setIsMenuOpen(prev => !prev)}
-            className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--bone-5)] hover:text-[var(--bone-100)] transition-none"
+            className="p-1 rounded-[var(--radius-small)] hover:bg-[var(--app-dark)] hover:text-[var(--bone-100)] transition-none"
           >
             <MoreHorizontal className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>
@@ -104,24 +104,24 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
         </div>
       </div>
 
-      <div 
+      <div
         ref={setNodeRef}
-        className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1.5 min-h-0 scrollbar-thin scrollbar-thumb-[var(--bone-10)] scrollbar-track-transparent"
+        className="flex-1 flex flex-col overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-[var(--bone-10)] scrollbar-track-transparent"
       >
-        <SortableContext 
-          id={id}
-          items={taskIds}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col gap-3 min-h-0">
-            {tasks.map(task => (
-              <TaskCard key={task.id} task={task} />
-            ))}
-          </div>
-        </SortableContext>
-        
-        {tasks.length === 0 && (
-          <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[var(--bone-10)] rounded-[var(--radius-medium)] min-h-[100px]">
+        {tasks.length > 0 ? (
+          <SortableContext
+            id={id}
+            items={taskIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col gap-3 min-h-0">
+              {tasks.map(task => (
+                <TaskCard key={task.id} task={task} />
+              ))}
+            </div>
+          </SortableContext>
+        ) : (
+          <div className="flex-1 flex items-center justify-center bg-[var(--bone-3)] rounded-[var(--radius-medium)] min-h-[100px]">
             <span className="text-xs font-ui text-[var(--bone-15)]">No tasks here</span>
           </div>
         )}

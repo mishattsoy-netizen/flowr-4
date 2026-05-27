@@ -203,7 +203,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             <button
               onClick={handleChevronClick}
               onPointerDown={(e) => e.stopPropagation()}
-              className="absolute -top-[4px] -left-[4px] btn-sidebar-utility opacity-0 group-hover:opacity-100"
+              className="sidebar-actions absolute -top-[4px] -left-[4px] btn-sidebar-utility opacity-0 group-hover:opacity-100"
             >
               {isCollapsed
                 ? <ChevronRight strokeWidth={2} className="w-3.5 h-3.5" />
@@ -255,7 +255,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
             ? "bg-[var(--app-dark)] text-[var(--bone-70)] hover:text-[var(--bone-100)]"
             : (isActive || contextMenu?.entityId === entity.id)
               ? "!bg-dark text-[var(--bone-100)] font-normal tracking-wide"
-              : "text-[var(--bone-70)] hover:text-[var(--bone-100)] hover:bg-[var(--app-dark)]",
+              : "text-[var(--bone-70)] hover:text-[var(--bone-100)] [&:hover:not(:has(.sidebar-actions:hover))]:bg-[var(--app-dark)]",
           isWorkspace && !isActive && "group-hover/workspace:text-[var(--bone-100)]",
           isFolderDropTarget && "sidebar-folder-drop-target",
           "text-[14px]",
@@ -302,7 +302,7 @@ export const TreeItem = React.memo(function TreeItem({ entity, depth, idOverride
         )}
 
         <div className={cn(
-          "flex items-center gap-[1px] shrink-0",
+          "sidebar-actions flex items-center gap-[1px] shrink-0",
           contextMenu?.entityId === entity.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
           {(entity.type === 'workspace' || entity.type === 'collection' || entity.type === 'folder') && (

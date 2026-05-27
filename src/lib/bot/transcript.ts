@@ -40,10 +40,14 @@ import { getCapturedLogs } from '../logger'
 
 export function buildTranscript(d: TranscriptData): string {
   const rawLogs = (d.capturedLogs && d.capturedLogs.length > 0) ? d.capturedLogs : getCapturedLogs()
-  const logs = rawLogs.filter((l: LogEntryLight) => {
-    if (l.message.includes('PAYLOAD') || l.message.includes('[DEBUG]') || l.message.length > 500) return false
-    return true
-  })
+  const logs = rawLogs
+    .filter((l: LogEntryLight) => {
+      if (l.message.includes('PAYLOAD') || l.message.includes('[DEBUG]')) return false
+      return true
+    })
+    .map((l: LogEntryLight) => l.message.length > 2000
+      ? { ...l, message: l.message.slice(0, 2000) + ` … [truncated ${l.message.length - 2000} chars]` }
+      : l)
   const lines: string[] = []
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19)
   const dateFile = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)

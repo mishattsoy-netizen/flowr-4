@@ -1532,7 +1532,19 @@ export const useStore = create<AppState>()(
       },
 
       toggleTask: (id) => {
-        set((s) => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t) }));
+        set((s) => ({
+          tasks: s.tasks.map(t => {
+            if (t.id === id) {
+              const nextCompleted = !t.completed;
+              return {
+                ...t,
+                completed: nextCompleted,
+                completedAt: nextCompleted ? Date.now() : undefined
+              };
+            }
+            return t;
+          })
+        }));
         const updated = get().tasks.find(t => t.id === id);
         if (updated) upsertTask(updated);
       },
@@ -1549,7 +1561,18 @@ export const useStore = create<AppState>()(
       },
 
       updateTask: (id, updates) => {
-        set((s) => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
+        set((s) => ({
+          tasks: s.tasks.map(t => {
+            if (t.id === id) {
+              const nextCompleted = updates.completed !== undefined ? updates.completed : t.completed;
+              const completedAt = nextCompleted 
+                ? (t.completed ? t.completedAt : Date.now()) 
+                : undefined;
+              return { ...t, ...updates, completedAt };
+            }
+            return t;
+          })
+        }));
         const updated = get().tasks.find(t => t.id === id);
         if (updated) upsertTask(updated);
       },

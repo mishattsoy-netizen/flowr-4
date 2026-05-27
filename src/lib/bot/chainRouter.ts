@@ -133,23 +133,52 @@ function generateOptimizedQuery(originalPrompt: string): string[] {
   
   return queries
 }
-// Simple circuit breaker to skip models that failed recently
-const FAILURE_CACHE_MS = 60000 // 1 minute
-const modelFailureCache: Record<string, number> = {}
+// Circuit breaker — cooldown duration depends on failure severity, with exponential backoff on repeats.
+// hard:  auth / quota / 4xx — model is genuinely unavailable, back off long.
+// soft:  5xx / timeout / empty / network — transient, retry sooner.
+const COOLDOWN_HARD_MS = [60_000, 300_000, 900_000] // 1m → 5m → 15m
+const COOLDOWN_SOFT_MS = [5_000, 15_000, 60_000]    // 5s → 15s → 1m
+const STREAK_RESET_MS = 10 * 60_000 // failure streak resets after 10m of quiet
 
-export function markModelFailed(modelId: string) {
-  modelFailureCache[modelId] = Date.now()
-  logger.warn(`Model ${modelId} marked as failed. Skipping for ${FAILURE_CACHE_MS / 1000}s.`)
+type FailureKind = 'hard' | 'soft'
+interface FailureEntry { failedAt: number; expiresAt: number; streak: number; kind: FailureKind }
+const modelFailureCache: Record<string, FailureEntry> = {}
+
+function classifyError(errMsg: string): FailureKind {
+  const m = errMsg.toLowerCase()
+  if (m.includes('401') || m.includes('403') || m.includes('429') || m.includes('quota') ||
+      m.includes('unauthorized') || m.includes('forbidden') || m.includes('invalid api key') ||
+      m.includes('permission')) return 'hard'
+  if (/\b4\d\d\b/.test(m) && !m.includes('408')) return 'hard' // 4xx except request-timeout
+  return 'soft'
+}
+
+export function markModelFailed(modelId: string, errMsg = '') {
+  const kind = classifyError(errMsg)
+  const prev = modelFailureCache[modelId]
+  const now = Date.now()
+  const continuing = prev && (now - prev.failedAt) < STREAK_RESET_MS
+  const streak = continuing ? Math.min(prev.streak + 1, 3) : 1
+  const table = kind === 'hard' ? COOLDOWN_HARD_MS : COOLDOWN_SOFT_MS
+  const cooldownMs = table[Math.min(streak - 1, table.length - 1)]
+  modelFailureCache[modelId] = { failedAt: now, expiresAt: now + cooldownMs, streak, kind }
+  logger.warn(`Model ${modelId} cooldown (${kind}, streak=${streak}, ${cooldownMs / 1000}s). Reason: ${errMsg || 'unspecified'}`)
 }
 
 export function isModelFailed(modelId: string): boolean {
-  const failedAt = modelFailureCache[modelId]
-  if (!failedAt) return false
-  if (Date.now() - failedAt > FAILURE_CACHE_MS) {
+  const entry = modelFailureCache[modelId]
+  if (!entry) return false
+  if (Date.now() >= entry.expiresAt) {
     delete modelFailureCache[modelId]
     return false
   }
   return true
+}
+
+export function getModelCooldownRemaining(modelId: string): number {
+  const entry = modelFailureCache[modelId]
+  if (!entry) return 0
+  return Math.max(0, entry.expiresAt - Date.now())
 }
 
 export interface RoutingTrace {
@@ -896,8 +925,9 @@ export async function runChain(
       system_prompt += `\n\n[SEARCH FAILED]\nAll search attempts returned no results. Acknowledge your knowledge cutoff, provide what you know from training (labeled as pre-cutoff knowledge), and suggest the user retry searching in a few minutes.\n\n`
     }
     if (isModelFailed(modelConfig.id)) {
-      logger.info(`Skipping failed model: ${modelConfig.id}`)
-      routingTrace.push({ model: modelConfig.id, category, key: 'SKIPPED', success: false })
+      const remainingS = Math.ceil(getModelCooldownRemaining(modelConfig.id) / 1000)
+      logger.info(`Skipping ${modelConfig.id} — in cooldown (${remainingS}s remaining)`)
+      routingTrace.push({ model: modelConfig.id, category, key: `COOLDOWN ${remainingS}s`, success: false, status: 'cooldown' })
       continue
     }
 
@@ -921,7 +951,8 @@ export async function runChain(
     }
     if (isKeylessProvider && providerKeys.length === 0) providerKeys = ['none']
 
-    const startIndex = triedKeysCount[key] || 0
+    const exhaustionKey = `${key}:${modelConfig.id}`
+    const startIndex = triedKeysCount[exhaustionKey] || 0
 
     try {
       keyLoop: for (let k = startIndex; k < providerKeys.length; k++) {
@@ -940,6 +971,7 @@ export async function runChain(
             ...(context || {}),
             sessionId,
             useTools: category === 'TOOLS',
+            useGrounding: category === 'WEB_SEARCH' && modelConfig.provider === 'gemini',
             aiApiKey: activeKey || undefined,
             usedKeyIndex: k + 1,
             temperature: typeof temperature === 'number' ? temperature : undefined,
@@ -1365,13 +1397,13 @@ export async function runChain(
               transcript_md,
             }
           } else {
-            const lastTried = triedKeysCount[key] ?? 0
+            const lastTried = triedKeysCount[exhaustionKey] ?? 0
             const displayKey = routeContext.usedKeyIndex ? `${key} ${routeContext.usedKeyIndex}` : `${key} ${lastTried + 1}`
             const wasSkipped = startIndex >= providerKeys.length
             if (wasSkipped) {
               logger.info(`Skipping ${modelConfig.id} — all ${key} keys already exhausted`)
             } else {
-              triedKeysCount[key] = lastTried + 1
+              triedKeysCount[exhaustionKey] = lastTried + 1
               routingTrace.push({ model: modelConfig.id, category, key: displayKey, success: false, status: 'empty' })
               tracer.recordFailed({ ...traceMeta, error: 'empty response' }, Date.now() - t0)
             }
@@ -1382,12 +1414,12 @@ export async function runChain(
         } catch (error: any) {
           const errMsg = error.message || ''
           const isKeyExhausted = errMsg.includes('KEY_EXHAUSTED:')
-          const lastTried = triedKeysCount[key] ?? 0
+          const lastTried = triedKeysCount[exhaustionKey] ?? 0
           if (isKeyExhausted) {
             logger.warn(`[KeyRotation] Key ${lastTried + 1} exhausted for ${modelConfig.id} — trying next key`)
-            triedKeysCount[key] = lastTried + 1
+            triedKeysCount[exhaustionKey] = lastTried + 1
           } else {
-            markModelFailed(modelConfig.id)
+            markModelFailed(modelConfig.id, errMsg)
           }
           routingTrace.push({ model: modelConfig.id, category, key: `${key} ${lastTried + 1}`, success: false })
           logger.warn(`Failure with key ${lastTried + 1} for [${modelConfig.id}]: ${error.message}`)

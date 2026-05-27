@@ -11,7 +11,6 @@ import {
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
-  defaultDropAnimationSideEffects,
   DropAnimation,
   pointerWithin,
   rectIntersection,
@@ -33,7 +32,13 @@ function buildColumns(tasks: AppTask[], today: string): ColumnItems {
     todo:      tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate > today)),
     today:     tasks.filter(t => !t.completed && t.dueDate === today),
     overdue:   tasks.filter(t => !t.completed && t.dueDate && t.dueDate < today),
-    completed: tasks.filter(t => t.completed),
+    completed: tasks
+      .filter(t => t.completed)
+      .sort((a, b) => {
+        const timeA = a.completedAt ?? a.createdAt ?? 0;
+        const timeB = b.completedAt ?? b.createdAt ?? 0;
+        return timeB - timeA;
+      }),
   };
 }
 
@@ -99,8 +104,24 @@ export function TrackerPage() {
       const activeContainer = findContainer(activeItemId, cols);
       const overContainer = findContainer(overId, cols);
 
-      if (!activeContainer || !overContainer || activeContainer === overContainer) return prev;
+      if (!activeContainer || !overContainer) return prev;
 
+      // Case 1: Rearranging inside the same container
+      if (activeContainer === overContainer) {
+        const items = [...cols[activeContainer]];
+        const activeIndex = items.findIndex(item => item.id === activeItemId);
+        const overIndex = items.findIndex(item => item.id === overId);
+        
+        if (activeIndex === overIndex) return prev;
+        
+        const nextItems = [...items];
+        const [removed] = nextItems.splice(activeIndex, 1);
+        nextItems.splice(overIndex, 0, removed);
+        
+        return { ...cols, [activeContainer]: nextItems };
+      }
+
+      // Case 2: Moving to a different container
       const activeItems = [...cols[activeContainer]];
       const overItems = [...cols[overContainer]];
       const activeIndex = activeItems.findIndex(item => item.id === activeItemId);
@@ -119,22 +140,79 @@ export function TrackerPage() {
     const { active, over } = event;
     const activeItemId = active.id as string;
 
+    // Use the latest dragColumns snapshot, or fallback to storeColumns if no movements occurred
+    const finalCols = dragColumns ?? storeColumns;
+
     if (over) {
       const overId = over.id as string;
-      const finalContainer = findContainer(overId, columns);
+      const finalContainer = findContainer(overId, finalCols);
 
-      if (finalContainer && initialContainerRef.current && initialContainerRef.current !== finalContainer) {
+      if (finalContainer) {
+        // Calculate property updates if column changed
         let updates: Partial<AppTask> = {};
-        switch (finalContainer) {
-          case 'todo':      updates = { dueDate: undefined, completed: false }; break;
-          case 'today':     updates = { dueDate: today,    completed: false }; break;
-          case 'completed': updates = { completed: true }; break;
+        const columnChanged = initialContainerRef.current && initialContainerRef.current !== finalContainer;
+        
+        if (columnChanged) {
+          const yesterday = (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return d.toISOString().split('T')[0];
+          })();
+          switch (finalContainer) {
+            case 'todo':      updates = { dueDate: undefined, completed: false }; break;
+            case 'today':     updates = { dueDate: today,     completed: false }; break;
+            case 'overdue':   updates = { dueDate: yesterday, completed: false }; break;
+            case 'completed': updates = { completed: true }; break;
+          }
         }
-        updateTask(activeItemId, updates);
+
+        // 1. Get the updated task object
+        const originalTask = allTasks.find(t => t.id === activeItemId);
+        if (originalTask) {
+          const nextCompleted = updates.completed !== undefined ? updates.completed : originalTask.completed;
+          const completedAt = nextCompleted 
+            ? (originalTask.completed ? originalTask.completedAt : Date.now()) 
+            : undefined;
+          
+          const updatedTask: AppTask = {
+            ...originalTask,
+            ...updates,
+            completedAt
+          };
+
+          // 2. Reconstruct the columns with the updated task
+          const updatedCols = { ...finalCols };
+          updatedCols[finalContainer] = updatedCols[finalContainer].map(t => 
+            t.id === activeItemId ? updatedTask : t
+          );
+
+          // 3. Flatten the updated filtered tasks
+          const orderedFilteredTasks: AppTask[] = [
+            ...updatedCols.todo,
+            ...updatedCols.today,
+            ...updatedCols.overdue,
+            ...updatedCols.completed
+          ];
+
+          // 4. Reconstruct allTasks by keeping other workspaces' tasks in place
+          const otherTasks = allTasks.filter(t => 
+            trackerFilterWorkspace !== null && (t.workspaceId || 'ws-personal') !== trackerFilterWorkspace
+          );
+          
+          const nextAllTasks = [...orderedFilteredTasks, ...otherTasks];
+
+          // 5. Update the Zustand store in a single transaction!
+          useStore.setState({ tasks: nextAllTasks });
+
+          // 6. Sync with database if properties changed
+          if (columnChanged) {
+            useStore.getState().updateTask(activeItemId, updates); // Sync DB upsert
+          }
+        }
       }
     }
 
-    // Clear drag state — storeColumns will take over
+    // Clear drag state — storeColumns will take over with new committed tasks
     setDragColumns(null);
     setActiveId(null);
     activeIdRef.current = null;
@@ -152,21 +230,20 @@ export function TrackerPage() {
   const activeTask = useMemo(() => tasks.find(t => t.id === activeId), [activeId, tasks]);
 
   const dropAnimation: DropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '1' } } }),
+    duration: 250,
+    easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)',
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-background)] h-full overflow-hidden relative">
-      <div className="flex items-center justify-between p-8 pb-4 shrink-0">
-        <div className="mb-2">
-          <h1 className="text-4xl font-display font-medium text-foreground mb-1 flex items-center gap-3">
-            Tracker
-          </h1>
-          <p className="text-bone-70 text-sm font-medium">
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--color-background)] h-full overflow-hidden relative px-8 py-5">
+      <header className="flex items-end justify-between mb-3 px-[6px] shrink-0">
+        <div>
+          <h1 className="text-2xl font-display font-medium text-foreground mb-1">Tasks</h1>
+          <p className="text-muted-foreground text-sm font-medium">
             Manage your progress across all workspaces.
           </p>
         </div>
-      </div>
+      </header>
 
       <DndContext
         sensors={sensors}
@@ -175,8 +252,8 @@ export function TrackerPage() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 scrollbar-thin">
-          <div className="flex gap-6 h-full min-w-max py-2">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin min-h-0">
+          <div className="flex gap-3 h-full min-w-max">
             {COLUMN_KEYS.map((id) => {
               let title = '';
               switch (id) {
@@ -200,7 +277,10 @@ export function TrackerPage() {
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeTask ? (
-            <div style={{ width: 320, cursor: 'grabbing' }}>
+            <div 
+              style={{ width: 268 }}
+              className="cursor-grabbing select-none shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] rounded-[10px]"
+            >
               <TaskCardUI task={activeTask} />
             </div>
           ) : null}

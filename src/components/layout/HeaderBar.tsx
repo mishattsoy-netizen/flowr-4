@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Calendar,
+  ListTodo,
   Type,
   Menu,
   Minus,
@@ -139,7 +140,7 @@ export const HeaderBar = memo(function HeaderBar() {
   const getPathForEntity = (id: string | null): { id: string; title: string; icon?: string }[] => {
     if (!id || id === 'dashboard') return [];
     if (id === 'chat') return [{ id: 'chat', title: 'Chat', icon: 'MessageSquare' }];
-    if (id === 'tracker') return [{ id: 'tracker', title: 'Calendar', icon: 'Calendar' }];
+    if (id === 'tracker') return [{ id: 'tracker', title: 'Tasks', icon: 'ListTodo' }];
     
     const entity = entities.find(e => e.id === id);
     if (!entity) return [];
@@ -223,8 +224,8 @@ export const HeaderBar = memo(function HeaderBar() {
             title = isTempChat ? 'Temporary Chat' : (activeConv?.title || 'Chat');
             Icon = MessageSquare;
           } else if (tabId === 'tracker') {
-            title = 'Calendar';
-            Icon = Calendar;
+            title = 'Tasks';
+            Icon = ListTodo;
           } else if (entity) {
             if (entity.icon) {
               Icon = getEntityIcon(entity.icon);
@@ -324,7 +325,7 @@ export const HeaderBar = memo(function HeaderBar() {
                     const last = hoveredTab.path[hoveredTab.path.length - 1];
                     let LastIcon: any = FileText;
                     
-                    if (last.id === 'tracker') LastIcon = Calendar;
+                    if (last.id === 'tracker') LastIcon = ListTodo;
                     else if (last.id === 'chat') LastIcon = MessageSquare;
                     else if (last.icon) LastIcon = getEntityIcon(last.icon);
                     else {

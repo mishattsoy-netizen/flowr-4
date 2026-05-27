@@ -1,8 +1,12 @@
 import { logger } from '../../logger'
 
+const STREAM_STALL_TIMEOUT_MS = 30_000
+const CONNECTION_TIMEOUT_MS = 20_000
+
 export function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  stallTimeoutMs: number = STREAM_STALL_TIMEOUT_MS
 ): Promise<{ content: string; citations?: any[]; reasoning?: string }> {
   const decoder = new TextDecoder()
   let sseBuffer = ''
@@ -11,13 +15,32 @@ export function parseSSEStream(
   let citations: any[] | undefined
 
   return new Promise((resolve, reject) => {
+    let stallTimer: NodeJS.Timeout | null = null
+
+    const resetStallTimer = () => {
+      if (stallTimer) clearTimeout(stallTimer)
+      stallTimer = setTimeout(() => {
+        reader.cancel().catch(() => {})
+        reject(new Error(`Stream stalled: no data for ${stallTimeoutMs}ms`))
+      }, stallTimeoutMs)
+    }
+
+    const clearStallTimer = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer)
+        stallTimer = null
+      }
+    }
+
     function pump(): void {
       reader.read().then(({ done, value }) => {
         if (done) {
+          clearStallTimer()
           resolve({ content: fullContent, citations, reasoning: fullReasoning || undefined })
           return
         }
 
+        resetStallTimer()
         sseBuffer += decoder.decode(value, { stream: true })
         const parts = sseBuffer.split('\n')
         sseBuffer = parts.pop() || ''
@@ -47,9 +70,13 @@ export function parseSSEStream(
         }
 
         pump()
-      }).catch(reject)
+      }).catch((err) => {
+        clearStallTimer()
+        reject(err)
+      })
     }
 
+    resetStallTimer()
     pump()
   })
 }
@@ -73,12 +100,29 @@ export async function streamOpenAICompatible(
     ...extraHeaders,
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody),
-    signal,
-  })
+  const connectController = new AbortController()
+  const connectTimer = setTimeout(() => connectController.abort(), CONNECTION_TIMEOUT_MS)
+  const onCallerAbort = () => connectController.abort()
+  if (signal) signal.addEventListener('abort', onCallerAbort)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
+      signal: connectController.signal,
+    })
+  } catch (err: any) {
+    if (signal) signal.removeEventListener('abort', onCallerAbort)
+    clearTimeout(connectTimer)
+    if (connectController.signal.aborted && !signal?.aborted) {
+      throw new Error(`API connection timeout after ${CONNECTION_TIMEOUT_MS}ms: ${url}`)
+    }
+    throw err
+  }
+  clearTimeout(connectTimer)
+  if (signal) signal.removeEventListener('abort', onCallerAbort)
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '')
