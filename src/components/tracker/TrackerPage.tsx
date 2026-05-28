@@ -25,13 +25,14 @@ import { Plus } from 'lucide-react';
 
 type ColumnItems = Record<string, AppTask[]>;
 
-const COLUMN_KEYS = ['todo', 'today', 'overdue', 'completed'] as const;
+const COLUMN_KEYS = ['todo', 'inProgress', 'today', 'overdue', 'completed'] as const;
 
 function buildColumns(tasks: AppTask[], today: string): ColumnItems {
   return {
-    todo:      tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate > today)),
-    today:     tasks.filter(t => !t.completed && t.dueDate === today),
-    overdue:   tasks.filter(t => !t.completed && t.dueDate && t.dueDate < today),
+    todo:      tasks.filter(t => !t.completed && t.status !== 'in-progress' && (!t.dueDate || t.dueDate > today)),
+    inProgress: tasks.filter(t => !t.completed && t.status === 'in-progress'),
+    today:     tasks.filter(t => !t.completed && t.status !== 'in-progress' && t.dueDate === today),
+    overdue:   tasks.filter(t => !t.completed && t.status !== 'in-progress' && t.dueDate && t.dueDate < today),
     completed: tasks
       .filter(t => t.completed)
       .sort((a, b) => {
@@ -159,9 +160,10 @@ export function TrackerPage() {
             return d.toISOString().split('T')[0];
           })();
           switch (finalContainer) {
-            case 'todo':      updates = { dueDate: undefined, completed: false }; break;
-            case 'today':     updates = { dueDate: today,     completed: false }; break;
-            case 'overdue':   updates = { dueDate: yesterday, completed: false }; break;
+            case 'todo':      updates = { status: 'todo', dueDate: undefined, completed: false }; break;
+            case 'inProgress': updates = { status: 'in-progress', completed: false }; break;
+            case 'today':     updates = { status: 'todo', dueDate: today,     completed: false }; break;
+            case 'overdue':   updates = { status: 'todo', dueDate: yesterday, completed: false }; break;
             case 'completed': updates = { completed: true }; break;
           }
         }
@@ -189,6 +191,7 @@ export function TrackerPage() {
           // 3. Flatten the updated filtered tasks
           const orderedFilteredTasks: AppTask[] = [
             ...updatedCols.todo,
+            ...updatedCols.inProgress,
             ...updatedCols.today,
             ...updatedCols.overdue,
             ...updatedCols.completed
@@ -258,6 +261,7 @@ export function TrackerPage() {
               let title = '';
               switch (id) {
                 case 'todo': title = 'To do'; break;
+                case 'inProgress': title = 'In progress'; break;
                 case 'today': title = 'Today'; break;
                 case 'overdue': title = 'Overdue'; break;
                 case 'completed': title = 'Done'; break;

@@ -10,10 +10,11 @@ import { cn } from '@/lib/utils';
 import { Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 
 const DOT_COLORS: Record<string, string> = {
-  todo: 'bg-[#F59E0B]',
-  today: 'bg-[#3B82F6]',
-  overdue: 'bg-[#EF4444]',
-  completed: 'bg-[#10B981]'
+  todo: '#3B82F6',       // Blue
+  inProgress: '#F59E0B', // Amber
+  today: '#8B5CF6',
+  overdue: '#EF4444',
+  completed: '#10B981'   // Emerald
 };
 
 interface KanbanColumnProps {
@@ -51,7 +52,10 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
       <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-2">
           {/* Dot */}
-          <span className={cn("w-2 h-2 rounded-full shrink-0", DOT_COLORS[id] || 'bg-[var(--bone-20)]')} />
+          <span 
+            className="w-2 h-2 rounded-full shrink-0" 
+            style={{ backgroundColor: DOT_COLORS[id] || 'var(--bone-20)' }} 
+          />
           {/* Title */}
           <span className="text-[13px] font-sans font-semibold text-[var(--bone-90)] tracking-wide leading-none select-none">
             {title}

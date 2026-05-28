@@ -52,7 +52,7 @@ export function BentoWidget({ item, contextId, editMode, isLoading, onRemove, on
       ref={ref}
       data-border-flash={borderFlash ? 'true' : undefined}
       className={cn(
-        'h-full relative group/bento-widget transition-all duration-300 rounded-[var(--radius-big)] shadow-[inset_0_0_0_1px_var(--bone-6)]',
+        'h-full relative group/bento-widget transition-all duration-300 rounded-[var(--radius-big)] shadow-[inset_0_0_0_1px_var(--bone-15)]',
         editMode ? 'overflow-visible' : 'overflow-hidden',
         editMode && 'cursor-grab active:cursor-grabbing select-none',
         isSwapTarget && 'ring-2 ring-[var(--bone-100)] scale-[1.02] shadow-lg',

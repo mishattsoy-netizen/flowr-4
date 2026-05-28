@@ -2,7 +2,7 @@
 
 import { Entity, useStore, generateId } from '@/data/store';
 import { useState, useSyncExternalStore } from 'react';
-import { Plus, Pencil, Folder, FileText, Frame, Layers } from 'lucide-react';
+import { Plus, Pencil, Folder, FileText, Frame, Layers, Cloud, CloudOff } from 'lucide-react';
 import { getEntityIcon } from '@/data/icons';
 import { IconPicker } from '@/components/layout/IconPicker';
 import { Tooltip } from '@/components/layout/Tooltip';
@@ -16,6 +16,8 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
   const renameEntity = useStore(state => state.renameEntity);
   const addEntity = useStore(state => state.addEntity);
   const setActiveEntityId = useStore(state => state.setActiveEntityId);
+  const setWorkspaceCloudSync = useStore(state => state.setWorkspaceCloudSync);
+  const cloudSyncOn = !!entity.cloudSyncEnabled;
 
   const [tempTitle, setTempTitle] = useState(entity.title);
   const [iconPickerAnchor, setIconPickerAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -37,14 +39,14 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
 
   if (!isMounted) return null;
 
-  const title = (
+  const title = (editMode: boolean, isHeaderHovered: boolean) => (
     <div className="flex-1 min-w-0">
       <h1
         onDoubleClick={() => {
           setTempTitle(entity.title);
           setEditingEntityId(entity.id, 'view');
         }}
-        className="group text-3xl font-display font-medium leading-none text-foreground flex items-center gap-3 py-[6px]"
+        className="text-3xl font-display font-medium leading-[1.2] text-foreground flex items-center gap-3 py-[6px]"
       >
         <div
           className="shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-hover rounded-[var(--radius-small)] transition-colors"
@@ -75,31 +77,41 @@ export function WorkspacePage({ entity }: { entity: Entity }) {
                 setTempTitle(entity.title);
               }
             }}
-            className="bg-transparent border-none p-0 outline-none w-full max-w-[500px] text-foreground inline-block font-display"
+            className="bg-transparent border-none p-0 outline-none w-full max-w-[500px] text-foreground inline-block font-display text-3xl font-medium leading-[1.2]"
           />
         ) : (
-          <>
-            <span className="truncate">{entity.title}</span>
-            <Tooltip content="Rename">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTempTitle(entity.title);
-                  setEditingEntityId(entity.id, 'view');
-                }}
-                className="ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-medium)] text-muted-foreground opacity-0 "
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            </Tooltip>
-          </>
+          <span className="overflow-hidden whitespace-nowrap py-1" style={{ textOverflow: 'clip' }}>{entity.title}</span>
         )}
+        <Tooltip content="Rename">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setTempTitle(entity.title);
+              setEditingEntityId(entity.id, 'view');
+            }}
+            className={`ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-medium)] text-muted-foreground transition-opacity duration-200 ease-in-out ${isEditing ? 'opacity-0 pointer-events-none' : isHeaderHovered ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </Tooltip>
       </h1>
     </div>
   );
 
   const actions = (
     <div className="flex items-center gap-3">
+      <Tooltip content={cloudSyncOn ? 'Cloud sync ON — toggle off to keep this workspace local-only' : 'Cloud sync OFF — toggle on to sync this workspace and all its content'}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setWorkspaceCloudSync(entity.id, !cloudSyncOn);
+          }}
+          className={`flex items-center gap-2 px-3 h-7 rounded-[var(--radius-medium)] text-xs font-medium transition-colors border ${cloudSyncOn ? 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/30 hover:bg-[var(--accent)]/25' : 'bg-transparent text-bone-70 border-white/10 hover:bg-hover'}`}
+        >
+          {cloudSyncOn ? <Cloud strokeWidth={2} className="w-3.5 h-3.5" /> : <CloudOff strokeWidth={2} className="w-3.5 h-3.5" />}
+          {cloudSyncOn ? 'Synced' : 'Local only'}
+        </button>
+      </Tooltip>
       <button
         onMouseDown={(e) => {
           e.stopPropagation();

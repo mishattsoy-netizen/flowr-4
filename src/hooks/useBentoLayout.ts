@@ -29,13 +29,18 @@ const DEFAULT_LAYOUTS: Record<string, BentoLayoutItem[]> = {
   ],
 };
 
+const getCloneDefaults = (contextId: string) => {
+  const raw = DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? [];
+  return JSON.parse(JSON.stringify(raw));
+};
+
 const MAX_UNDO_DEPTH = 20;
 const DWELL_DELAY_MS = 250;
 const MAX_WIDGETS = 12;
 
 export function useBentoLayout(contextId: string) {
   const [layout, setLayout] = useState<BentoLayoutItem[]>(() => {
-    const initial = DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? [];
+    const initial = getCloneDefaults(contextId);
     const balanced = rebalanceAll(initial);
     return validateLayout(balanced).valid ? balanced : initial;
   });
@@ -77,7 +82,7 @@ export function useBentoLayout(contextId: string) {
           setLayout(recovered);
         } else {
           console.error("[useBentoLayout] Saved layout is invalid and unrecoverable, using default.");
-          const defaults = rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
+          const defaults = rebalanceAll(getCloneDefaults(contextId));
           setLayout(defaults);
         }
       }
@@ -260,7 +265,7 @@ export function useBentoLayout(contextId: string) {
   }, [contextId]);
 
   const resetLayout = useCallback(() => {
-    const defaults = rebalanceAll(DEFAULT_LAYOUTS[contextId] ?? DEFAULT_LAYOUTS['workspace'] ?? []);
+    const defaults = rebalanceAll(getCloneDefaults(contextId));
     commitLayout(defaults);
   }, [commitLayout, contextId]);
 

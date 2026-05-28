@@ -121,6 +121,7 @@ function rowToTask(row: Record<string, any>): AppTask {
     priority:    row.priority ?? undefined,
     subtasks:    row.subtasks ?? undefined,
     difficulty:  row.difficulty ?? undefined,
+    status:      row.status ?? undefined,
     createdAt:   parseTimestamp(row.created_at),
     completedAt: parseTimestamp(row.completed_at),
   };
@@ -144,6 +145,7 @@ function taskToRow(t: AppTask): Record<string, any> {
   row.description  = t.description ?? null;
   row.color        = t.color       ?? null;
   row.difficulty   = t.difficulty  ?? null;
+  row.status       = t.status      ?? null;
   if (t.priority !== undefined) row.priority = t.priority;
   if (t.subtasks)   row.subtasks    = t.subtasks;
   if (t.createdAt) {
@@ -322,8 +324,10 @@ export function subscribeRealtime(store: StoreSetters) {
       ({ new: row }: any) => {
         const entity = rowToEntity(row as Record<string, any>);
         const current = store.getEntities();
-        if (!current.find(e => e.id === entity.id)) {
-          store.setEntities([...current, entity]);
+        const existing = current.find(e => e.id === entity.id);
+        if (!existing) {
+          // New entity from another device — assume sync on (it came from cloud).
+          store.setEntities([...current, { ...entity, cloudSyncEnabled: true }]);
         }
       }
     )
@@ -331,9 +335,15 @@ export function subscribeRealtime(store: StoreSetters) {
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'entities' },
       ({ new: row }: any) => {
-        const updated = rowToEntity(row as Record<string, any>);
+        const incoming = rowToEntity(row as Record<string, any>);
         store.setEntities(
-          store.getEntities().map(e => (e.id === updated.id ? updated : e))
+          store.getEntities().map(e => {
+            if (e.id !== incoming.id) return e;
+            // Skip if our local copy is newer (we just made the change).
+            if ((e.lastModified ?? 0) > (incoming.lastModified ?? 0)) return e;
+            // Preserve client-only flag — not stored in DB.
+            return { ...incoming, cloudSyncEnabled: e.cloudSyncEnabled };
+          })
         );
       }
     )
@@ -361,9 +371,13 @@ export function subscribeRealtime(store: StoreSetters) {
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'workspaces' },
       ({ new: row }: any) => {
-        const updated = rowToWorkspace(row as Record<string, any>);
+        const incoming = rowToWorkspace(row as Record<string, any>);
         store.setWorkspaces(
-          store.getWorkspaces().map(w => (w.id === updated.id ? updated : w))
+          store.getWorkspaces().map(w => {
+            if (w.id !== incoming.id) return w;
+            // Preserve client-only flag — not stored in DB.
+            return { ...incoming, cloudSyncEnabled: w.cloudSyncEnabled };
+          })
         );
       }
     )

@@ -798,9 +798,9 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                         <ListTodo strokeWidth={2} className="w-3.5 h-3.5" />
                       </div>
                       <span className="ml-[6px] flex-1 text-left text-[14px] tracking-wide">All tasks</span>
-                      {allTasks.length > 0 && (
+                      {allTasks.filter(t => !t.completed).length > 0 && (
                         <span className="shrink-0 w-[22px] h-[22px] flex items-center justify-center rounded-[4px] bg-[var(--bone-6)] text-[12px] font-ui font-medium text-[var(--bone-70)]">
-                          {allTasks.length}
+                          {allTasks.filter(t => !t.completed).length}
                         </span>
                       )}
                     </button>
@@ -809,7 +809,7 @@ export const Sidebar = React.memo(function Sidebar({ forceFull, initialEntityId 
                   <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-[10px] py-2">
                     <div className="flex flex-col gap-[1px]">
                       {workspacesBase.map(ws => {
-                        const count = allTasks.filter(t => t.workspaceId === ws.id).length;
+                        const count = allTasks.filter(t => t.workspaceId === ws.id && !t.completed).length;
                         return (
                           <button
                             key={ws.id}

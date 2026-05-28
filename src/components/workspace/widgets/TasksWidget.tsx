@@ -39,25 +39,38 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
 
   const [newTitle, setNewTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState<'todo' | 'in-progress' | 'completed'>('todo');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     const title = newTitle.trim();
     if (!title) { setIsAdding(false); return; }
-    addTask({ title, workspaceId: entity?.id ?? activeWorkspaceId ?? null });
+    addTask({ 
+      title, 
+      workspaceId: entity?.id ?? activeWorkspaceId ?? null,
+      status: activeTab === 'in-progress' ? 'in-progress' : 'todo'
+    });
     setNewTitle('');
     inputRef.current?.focus();
   };
 
-  const incomplete = workspaceTasks.filter(t => !t.completed);
-  const completed = workspaceTasks.filter(t => t.completed);
+  const todoTasks = workspaceTasks.filter(t => !t.completed && t.status !== 'in-progress');
+  const inProgressTasks = workspaceTasks.filter(t => !t.completed && t.status === 'in-progress');
+  const completedTasks = workspaceTasks.filter(t => t.completed);
 
   const today = new Date().toISOString().split('T')[0];
   const grouped = view === 'by-status' ? {
-    Today: incomplete.filter(t => t.dueDate === today),
-    'To do': incomplete.filter(t => !t.dueDate || t.dueDate > today),
-    Overdue: incomplete.filter(t => t.dueDate && t.dueDate < today),
+    Today: workspaceTasks.filter(t => !t.completed && t.dueDate === today && t.status !== 'in-progress'),
+    'To do': workspaceTasks.filter(t => !t.completed && (!t.dueDate || t.dueDate > today) && t.status !== 'in-progress'),
+    'In progress': workspaceTasks.filter(t => !t.completed && t.status === 'in-progress'),
+    Overdue: workspaceTasks.filter(t => !t.completed && t.dueDate && t.dueDate < today && t.status !== 'in-progress'),
   } : null;
+
+  const currentTabTasks = activeTab === 'todo' 
+    ? todoTasks 
+    : activeTab === 'in-progress' 
+    ? inProgressTasks 
+    : completedTasks;
 
   return (
     <section className="bg-panel group/widget px-5 pb-5 pt-4 widget-shadow h-full flex flex-col">
@@ -81,6 +94,39 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
         </div>
       </div>
 
+      {view === 'list' && (
+        <div className="flex border-b border-[var(--bone-6)] mb-3 text-xs shrink-0 select-none">
+          {(['todo', 'in-progress', 'completed'] as const).map(tab => {
+            const isActive = activeTab === tab;
+            const count = tab === 'todo' ? todoTasks.length : tab === 'in-progress' ? inProgressTasks.length : completedTasks.length;
+            const label = tab === 'todo' ? 'To Do' : tab === 'in-progress' ? 'In Progress' : 'Completed';
+            
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "relative pb-2 px-3 font-semibold transition-colors flex items-center gap-1.5 border-none bg-transparent cursor-pointer text-xs focus:outline-none",
+                  isActive ? "text-[var(--bone-100)] font-bold" : "text-[var(--bone-30)] hover:text-[var(--bone-60)]"
+                )}
+              >
+                <span>{label}</span>
+                <span className={cn(
+                  "px-1.5 py-0.5 text-[9px] rounded-full font-bold transition-all",
+                  isActive ? "bg-[var(--accent)] text-white" : "bg-[var(--bone-6)] text-[var(--bone-40)]"
+                )}>
+                  {count}
+                </span>
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--accent)] rounded-t-[1px]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {isAdding && (
         <div className="mb-2 flex items-center gap-2">
           <input ref={inputRef} value={newTitle} onChange={e => setNewTitle(e.target.value)}
@@ -94,21 +140,24 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {view === 'list' ? (
           <div className="space-y-1">
-            {incomplete.map(t => (
+            {currentTabTasks.map(t => (
               <div key={t.id} className="group flex items-center gap-3 px-3 py-2 rounded-[var(--radius-medium)] hover:bg-[var(--app-dark)] transition-all">
-                <button onClick={() => toggleTask(t.id)} className="shrink-0 text-[var(--bone-20)] hover:text-accent transition-colors">
-                  <Circle className="w-4 h-4" />
+                <button onClick={() => toggleTask(t.id)} className={cn("shrink-0 transition-colors", t.completed ? "text-accent" : "text-[var(--bone-20)] hover:text-accent")}>
+                  {t.completed ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
                 </button>
-                <span className="flex-1 text-sm text-foreground font-medium">{stripHtml(t.title || '')}</span>
+                <span className={cn("flex-1 text-sm font-medium", t.completed ? "text-muted-foreground line-through opacity-60" : "text-foreground")}>
+                  {stripHtml(t.title || '')}
+                </span>
                 {t.dueDate && <span className="text-[10px] font-bold text-bone-70 uppercase tracking-wider shrink-0">{formatDate(t.dueDate)}</span>}
               </div>
             ))}
-            {completed.slice(0, 3).map(t => (
-              <div key={t.id} className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-medium)] opacity-40">
-                <button onClick={() => toggleTask(t.id)} className="shrink-0 text-accent"><CheckCircle2 className="w-4 h-4" /></button>
-                <span className="flex-1 text-sm text-muted-foreground line-through">{stripHtml(t.title || '')}</span>
+            {currentTabTasks.length === 0 && !isAdding && (
+              <div className="h-full flex flex-col items-center justify-center py-8 opacity-60">
+                <p className="text-sm text-muted-foreground">
+                  {activeTab === 'todo' ? 'All caught up!' : activeTab === 'in-progress' ? 'No tasks in progress.' : 'No completed tasks yet.'}
+                </p>
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -123,10 +172,12 @@ export function TasksWidget({ entity: propEntity, contextId, data, onUpdateData 
                 ))}
               </div>
             ))}
+            {Object.values(grouped!).every(items => items.length === 0) && !isAdding && (
+              <div className="h-full flex items-center justify-center py-8">
+                <p className="text-sm text-muted-foreground">No tasks.</p>
+              </div>
+            )}
           </div>
-        )}
-        {workspaceTasks.length === 0 && !isAdding && (
-          <div className="h-full flex items-center justify-center"><p className="text-sm text-muted-foreground">No tasks.</p></div>
         )}
       </div>
     </section>

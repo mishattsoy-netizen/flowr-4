@@ -63,17 +63,10 @@ export function TaskCardUI({
       )}
     >
       <div className={cn("flex flex-col gap-2 w-full h-full", isDragging && "invisible")}>
-      {/* Workspace Tag & Category Line */}
-      {(workspaceName || task.entityId) && (
-        <div className="flex items-center justify-between gap-2">
-          {workspaceName ? (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[var(--bone-10)] text-[10px] font-ui font-medium text-[var(--bone-70)]">
-              {workspaceName}
-            </span>
-          ) : <div />}
-          {task.entityId && (
-            <span className="text-[10px] text-[var(--bone-30)] font-ui">#{task.entityId.slice(-4)}</span>
-          )}
+      {/* ID Line */}
+      {task.entityId && (
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-[10px] text-[var(--bone-30)] font-ui">#{task.entityId.slice(-4)}</span>
         </div>
       )}
 
@@ -130,7 +123,7 @@ export function TaskCardUI({
         </div>
       )}
 
-      {/* Meta (Due Date & Priority) */}
+      {/* Meta (Due Date, Priority & Workspace) */}
       <div className="flex items-center justify-between mt-auto pt-1">
         {task.dueDate ? (
           <div className="flex items-center gap-1.5">
@@ -144,16 +137,23 @@ export function TaskCardUI({
           </div>
         ) : <div />}
 
-        {task.priority && (
-          <div className={cn(
-            "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider",
-            task.priority === 'high' ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-            task.priority === 'medium' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-            "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-          )}>
-            {task.priority}
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 ml-auto">
+          {task.priority && (
+            <div className={cn(
+              "px-2 py-0.5 rounded-[6px] text-[10px] font-medium capitalize shrink-0",
+              task.priority === 'high' ? "bg-red-500/15 text-red-400" :
+              task.priority === 'medium' ? "bg-amber-500/15 text-amber-400" :
+              "bg-blue-500/15 text-blue-400"
+            )}>
+              {task.priority}
+            </div>
+          )}
+          {workspaceName && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium bg-[var(--bone-10)] text-[var(--bone-80)] shrink-0 capitalize">
+              {workspaceName}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Decorative side strip */}

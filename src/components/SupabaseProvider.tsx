@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useStore } from '@/data/store';
+import { useStore, Entity } from '@/data/store';
 import { loadFromSupabase, subscribeRealtime, upsertWorkspace } from '@/lib/sync';
 import { isSupabaseEnabled, supabase } from '@/lib/supabase';
 
@@ -83,14 +83,21 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
         }
       }
 
-      // 3. Populate Store (Merging logic to prevent data loss Fix)
+      // 3. Populate Store. Merge cloud + local; for overlapping IDs, keep whichever
+      // has the newer lastModified — prevents cloud-stale data from overwriting
+      // unsynced local edits (e.g. rename/icon on entities with cloudSyncEnabled=false).
       if (data.entities.length > 0) {
         const localEntities = getEntities();
-        const merged = [...data.entities];
-        localEntities.forEach(le => {
-          if (!merged.find(me => me.id === le.id)) merged.push(le);
-        });
-        setEntities(merged);
+        const byId = new Map<string, Entity>();
+        for (const ce of data.entities) byId.set(ce.id, ce);
+        for (const le of localEntities) {
+          const ce = byId.get(le.id);
+          if (!ce) { byId.set(le.id, le); continue; }
+          const localTs = le.lastModified ?? 0;
+          const cloudTs = ce.lastModified ?? 0;
+          if (localTs > cloudTs) byId.set(le.id, le);
+        }
+        setEntities(Array.from(byId.values()));
       }
 
       if (data.tasks.length > 0) {

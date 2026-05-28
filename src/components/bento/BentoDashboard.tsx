@@ -19,7 +19,7 @@ const GAP = 12; // Matches gap-3 (0.75rem)
 
 interface BentoDashboardProps {
   contextId: string;
-  title?: React.ReactNode;
+  title?: React.ReactNode | ((editMode: boolean, isHeaderHovered: boolean) => React.ReactNode);
   actions?: React.ReactNode;
 }
 
@@ -60,6 +60,7 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
 
   const [reallyLoading, setReallyLoading] = useState(true);
   const [hoveredWidgetId, setHoveredWidgetId] = useState<string | null>(null);
+  const [isHeaderHovered, setIsHeaderHovered] = useState(false);
   const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setHovered = useCallback((id: string | null) => {
@@ -432,8 +433,14 @@ export function BentoDashboard({ contextId, title, actions }: BentoDashboardProp
     <div className="flex-1 flex flex-row overflow-hidden h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className={cn("px-8 py-5 h-full flex flex-col min-h-0", isFullWidth ? "w-full" : "w-full max-w-[1200px] mx-auto")}>
-          <header className="flex items-end justify-between mb-3 px-[6px]">
-            <div className="flex-1">{title}</div>
+          <header 
+            onMouseEnter={() => setIsHeaderHovered(true)}
+            onMouseLeave={() => setIsHeaderHovered(false)}
+            className="group/header flex items-end justify-between mb-3 px-[6px]"
+          >
+            <div className="flex-1">
+              {typeof title === 'function' ? title(editMode, isHeaderHovered) : title}
+            </div>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 mr-1">

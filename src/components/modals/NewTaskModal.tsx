@@ -2,7 +2,7 @@
 
 import { useStore, generateId, AppTask } from '@/data/store';
 import { SubTask } from '@/data/store.types';
-import { X, Plus, Calendar, Palette, Trash2, CheckSquare, Circle, AlertCircle, Folder, Check } from 'lucide-react';
+import { X, Plus, Calendar, Palette, Trash2, CheckSquare, Circle, AlertCircle, Folder, Check, CircleDot, Tag, FileText, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { DatePickerTime } from '@/components/ui/date-time-picker';
@@ -39,6 +39,7 @@ export function NewTaskModal() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [completed, setCompleted] = useState(false);
+  const [status, setStatus] = useState<'todo' | 'in-progress' | 'done'>('todo');
 
   // Ref for unmount autosave logic (Fix 3.1)
   const saveRef = useRef({
@@ -52,6 +53,7 @@ export function NewTaskModal() {
     workspaceId,
     subtasks,
     completed,
+    status,
     isEditing,
   });
 
@@ -68,9 +70,10 @@ export function NewTaskModal() {
       workspaceId,
       subtasks,
       completed,
+      status,
       isEditing,
     };
-  }, [title, description, dueDate, dueTime, priority, color, workspaceId, subtasks, completed, taskId, isEditing]);
+  }, [title, description, dueDate, dueTime, priority, color, workspaceId, subtasks, completed, status, taskId, isEditing]);
 
   // Load initial data on mount or change
   useEffect(() => {
@@ -87,6 +90,7 @@ export function NewTaskModal() {
       setWorkspaceId(activeTask.workspaceId || null);
       setSubtasks(activeTask.subtasks || []);
       setCompleted(activeTask.completed || false);
+      setStatus(activeTask.status || 'todo');
     } else {
       // Reset for new task
       setTitle('');
@@ -98,6 +102,7 @@ export function NewTaskModal() {
       setWorkspaceId(null);
       setSubtasks([]);
       setCompleted(false);
+      setStatus('todo');
     }
   }, [modal, activeTask]);
 
@@ -120,6 +125,7 @@ export function NewTaskModal() {
           workspaceId: data.workspaceId || undefined,
           subtasks: data.subtasks,
           completed: data.completed,
+          status: data.completed ? 'done' : data.status,
         });
       }
       // Note: New tasks are explicit, we only autosave edits to prevent garbage ghosts
@@ -133,7 +139,6 @@ export function NewTaskModal() {
 
   // Subtasks Logic
   const [newSubtaskText, setNewSubtaskText] = useState('');
-  const [hoveredSubtaskId, setHoveredSubtaskId] = useState<string | null>(null);
 
   if (!modal || modal.kind !== 'newTask') return null;
 
@@ -163,12 +168,14 @@ export function NewTaskModal() {
         workspaceId: workspaceId || undefined,
         subtasks: finalSubtasks,
         completed: completed,
+        status: completed ? 'done' : status,
       });
     } else {
       addTask({
         id: generateId(),
         title: t,
         completed: completed,
+        status: completed ? 'done' : status,
         description: description.trim(),
         note: description.trim(),
         dueDate: dueDate || undefined,
@@ -258,7 +265,7 @@ export function NewTaskModal() {
               value={title}
               onChange={e => setTitle(e.target.value)}
               className={cn(
-                "w-full bg-transparent text-2xl font-bold tracking-tight text-[var(--bone-100)] placeholder-[var(--bone-20)] border-none outline-none",
+                "w-full bg-transparent text-2xl font-bold tracking-tight text-[var(--bone-100)] placeholder-[var(--bone-30)] border-none outline-none",
                 completed && "line-through text-[var(--bone-40)]"
               )}
               autoFocus
@@ -268,25 +275,101 @@ export function NewTaskModal() {
           {/* Metadata Properties Grid */}
           <div className="border-b border-[var(--bone-6)] pb-4 grid grid-cols-[120px_1fr] gap-y-4 text-xs items-center shrink-0">
             {/* Property 1: Status */}
-            <div className="text-[var(--bone-40)] font-semibold text-xs">Status</div>
-            <div className="flex items-center gap-2">
-              <button 
-                type="button"
-                onClick={() => setCompleted(!completed)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-[6px] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border-none",
-                    completed 
-                      ? "bg-emerald-500/10 text-emerald-400" 
-                      : "bg-[var(--bone-6)] text-[var(--bone-60)] hover:bg-[var(--bone-10)]"
-                  )}
-              >
-                <div className={cn("w-1.5 h-1.5 rounded-full", completed ? "bg-emerald-500 animate-pulse" : "bg-[var(--bone-40)]")} />
-                {completed ? "Completed" : "In Progress"}
-              </button>
+            <div className="text-[var(--bone-40)] font-semibold text-xs flex items-center gap-2">
+              <CircleDot className="w-3.5 h-3.5 opacity-60" />
+              Status
+            </div>
+            <div className="w-[180px]">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      "w-full flex items-center justify-between border-none rounded-[6px] px-3 py-1.5 text-xs font-semibold cursor-pointer transition-none",
+                      completed
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : status === 'in-progress'
+                        ? "bg-amber-500/15 text-amber-400"
+                        : "bg-blue-500/15 text-blue-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full shrink-0",
+                        completed ? "bg-emerald-400" : status === 'in-progress' ? "bg-amber-400" : "bg-blue-400"
+                      )} />
+                      <span>
+                        {completed ? 'Completed' : status === 'in-progress' ? 'In Progress' : 'To Do'}
+                      </span>
+                    </div>
+                    <ChevronDown className={cn(
+                      "w-3.5 h-3.5 opacity-60 shrink-0 transition-none",
+                      completed ? "text-emerald-400" : status === 'in-progress' ? "text-amber-400" : "text-blue-400"
+                    )} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[180px] p-1 bg-panel border border-[var(--bone-6)] shadow-2xl rounded-[12px] backdrop-blur-3xl z-[202]" align="start">
+                  <button
+                    onClick={() => {
+                      setCompleted(false);
+                      setStatus('todo');
+                    }}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-xs rounded-[8px] flex items-center justify-between cursor-pointer transition-none",
+                      (!completed && status === 'todo')
+                        ? "bg-blue-500/15 text-blue-400 font-semibold"
+                        : "text-blue-400/70 hover:bg-blue-500/10 hover:text-blue-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                      <span>To Do</span>
+                    </div>
+                    {!completed && status === 'todo' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCompleted(false);
+                      setStatus('in-progress');
+                    }}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-xs rounded-[8px] flex items-center justify-between mt-0.5 cursor-pointer transition-none",
+                      (!completed && status === 'in-progress')
+                        ? "bg-amber-500/15 text-amber-400 font-semibold"
+                        : "text-amber-400/70 hover:bg-amber-500/10 hover:text-amber-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                      <span>In Progress</span>
+                    </div>
+                    {!completed && status === 'in-progress' && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCompleted(true);
+                    }}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-xs rounded-[8px] flex items-center justify-between mt-0.5 cursor-pointer transition-none",
+                      completed
+                        ? "bg-emerald-500/15 text-emerald-400 font-semibold"
+                        : "text-emerald-400/70 hover:bg-emerald-500/10 hover:text-emerald-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span>Completed</span>
+                    </div>
+                    {completed && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Property 2: Priority */}
-            <div className="text-[var(--bone-40)] font-semibold text-xs">Priority</div>
+            <div className="text-[var(--bone-40)] font-semibold text-xs flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 opacity-60" />
+              Priority
+            </div>
             <div className="flex gap-1.5">
               {(['low', 'medium', 'high'] as const).map(p => (
                 <button
@@ -296,9 +379,9 @@ export function NewTaskModal() {
                   className={cn(
                     "px-3 py-1.5 rounded-[6px] text-xs font-medium transition-all cursor-pointer capitalize border-none",
                     priority === p 
-                      ? p === 'high' ? "bg-red-500/10 text-red-400" :
-                        p === 'medium' ? "bg-amber-500/10 text-amber-400" :
-                        "bg-blue-500/10 text-blue-400"
+                      ? p === 'high' ? "bg-red-500/15 text-red-400" :
+                        p === 'medium' ? "bg-amber-500/15 text-amber-400" :
+                        "bg-blue-500/15 text-blue-400"
                       : "bg-[var(--bone-6)] text-[var(--bone-40)] hover:bg-[var(--bone-10)]"
                   )}
                 >
@@ -308,7 +391,10 @@ export function NewTaskModal() {
             </div>
 
             {/* Property 3: Due Date */}
-            <div className="text-[var(--bone-40)] font-semibold text-xs">Due Date</div>
+            <div className="text-[var(--bone-40)] font-semibold text-xs flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 opacity-60" />
+              Due Date
+            </div>
             <div className="w-[180px]">
               <DatePickerTime 
                 date={dueDate ? new Date(dueDate) : undefined} 
@@ -321,7 +407,10 @@ export function NewTaskModal() {
             </div>
 
             {/* Property 4: Workspace */}
-            <div className="text-[var(--bone-40)] font-semibold text-xs">Workspace</div>
+            <div className="text-[var(--bone-40)] font-semibold text-xs flex items-center gap-2">
+              <Folder className="w-3.5 h-3.5 opacity-60" />
+              Workspace
+            </div>
             <div className="w-[180px]">
               <Popover>
                 <PopoverTrigger asChild>
@@ -359,7 +448,10 @@ export function NewTaskModal() {
             </div>
 
             {/* Property 5: Color Tag */}
-            <div className="text-[var(--bone-40)] font-semibold text-xs">Color Tag</div>
+            <div className="text-[var(--bone-40)] font-semibold text-xs flex items-center gap-2">
+              <Tag className="w-3.5 h-3.5 opacity-60" />
+              Color Tag
+            </div>
             <div className="flex items-center gap-2.5 h-6">
               {/* Default (No Color) Option */}
               <button
@@ -398,7 +490,8 @@ export function NewTaskModal() {
 
           {/* Description Section */}
           <div className="space-y-2">
-            <div className="text-xs font-semibold text-[var(--bone-40)]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--bone-40)]">
+              <FileText className="w-3.5 h-3.5 opacity-60" />
               Description
             </div>
             <div className="bg-[var(--bone-6)] rounded-[10px] p-3.5 min-h-[120px] transition-colors">
@@ -406,7 +499,7 @@ export function NewTaskModal() {
                 placeholder="Write description or notes..."
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="w-full bg-transparent text-[var(--bone-80)] placeholder-[var(--bone-20)] border-none outline-none resize-none text-sm leading-relaxed min-h-[100px] scrollbar-thin"
+                className="w-full bg-transparent text-[var(--bone-80)] placeholder-[var(--bone-30)] border-none outline-none resize-none text-sm leading-relaxed min-h-[100px] scrollbar-thin"
               />
             </div>
           </div>
@@ -424,9 +517,7 @@ export function NewTaskModal() {
                 {subtasks.map(sub => (
                   <div
                     key={sub.id}
-                    className="flex items-center gap-3"
-                    onMouseEnter={() => setHoveredSubtaskId(sub.id)}
-                    onMouseLeave={() => setHoveredSubtaskId(null)}
+                    className="flex items-center gap-3 group"
                   >
                     <button 
                       onClick={() => toggleSubtask(sub.id)}
@@ -442,10 +533,7 @@ export function NewTaskModal() {
                     </span>
                     <button 
                       onClick={() => removeSubtask(sub.id)}
-                      className={cn(
-                        "p-1 text-[var(--bone-30)] hover:text-red-400 transition-all cursor-pointer",
-                        hoveredSubtaskId === sub.id ? "opacity-100" : "opacity-0"
-                      )}
+                      className="p-1 text-[var(--bone-30)] hover:text-red-400 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 invisible group-hover:visible"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

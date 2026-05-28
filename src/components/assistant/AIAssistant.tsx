@@ -767,10 +767,10 @@ const AIAssistantComponent = ({ isFloating = false, chatPageMode = false }: { is
           {/* Unified Message Bar Container */}
           <div
             className={cn(
-              "border flex flex-col relative ",
+              "border flex flex-col relative transition-colors duration-300",
               chatPageMode
-                ? "backdrop-blur-xl border-[var(--bone-12)] rounded-[20px] p-4 shadow-2xl"
-                : "bg-[var(--bone-6)] border-[var(--bone-12)] rounded-[16px] p-3"
+                ? "backdrop-blur-xl border-[var(--bone-3)] hover:border-[var(--bone-12)] focus-within:border-[var(--bone-12)] rounded-[20px] p-4 shadow-2xl"
+                : "bg-[var(--bone-6)] border-[var(--bone-3)] hover:border-[var(--bone-12)] focus-within:border-[var(--bone-12)] rounded-[16px] p-3"
             )}
             style={chatPageMode ? { backgroundColor: 'color-mix(in srgb, var(--color-panel) 70%, transparent)' } : undefined}
           >

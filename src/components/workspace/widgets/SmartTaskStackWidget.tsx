@@ -3,7 +3,7 @@
 import { useStore } from '@/data/store';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X, Check } from 'lucide-react';
+import { Calendar, AlertCircle, Clock, CheckCircle2, Plus, X, Check, Play } from 'lucide-react';
 import { stripHtml } from '@/lib/utils';
 import type { WidgetProps } from './types';
 import type { AppTask } from '@/data/store.types';
@@ -11,6 +11,7 @@ import type { AppTask } from '@/data/store.types';
 const ALL_TABS = [
   { id: 'today', label: 'Today', icon: Clock, color: 'text-accent' },
   { id: 'todo', label: 'To do', icon: Calendar, color: 'text-blue-400' },
+  { id: 'inProgress', label: 'In Progress', icon: Play, color: 'text-amber-400' },
   { id: 'overdue', label: 'Overdue', icon: AlertCircle, color: 'text-red-400' },
   { id: 'completed', label: 'Done', icon: CheckCircle2, color: 'text-emerald-400' },
 ] as const;
@@ -84,10 +85,10 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId 
 
     return {
       today: filteredTasks
-        .filter(t => t.dueDate === todayStr)
+        .filter(t => t.dueDate === todayStr && t.status !== 'in-progress')
         .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
       todo: filteredTasks
-        .filter(t => !t.dueDate || t.dueDate > todayStr)
+        .filter(t => (!t.dueDate || t.dueDate > todayStr) && t.status !== 'in-progress')
         .sort((a, b) => {
           if (a.completed !== b.completed) {
             return (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
@@ -96,8 +97,11 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId 
           if (a.dueDate && !b.dueDate) return -1;
           return (a.dueDate || '').localeCompare(b.dueDate || '');
         }),
+      inProgress: filteredTasks
+        .filter(t => t.status === 'in-progress')
+        .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
       overdue: filteredTasks
-        .filter(t => t.dueDate && t.dueDate < todayStr)
+        .filter(t => t.dueDate && t.dueDate < todayStr && t.status !== 'in-progress')
         .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)),
       completed: filteredTasks
         .filter(t => t.completed),
@@ -143,6 +147,8 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId 
         taskData.dueDate = getLocalDateStr();
       } else if (activeId === 'todo') {
         taskData.dueDate = undefined;
+      } else if (activeId === 'inProgress') {
+        taskData.status = 'in-progress';
       } else if (activeId === 'overdue') {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -311,7 +317,6 @@ export function SmartTaskStackWidget({ data, onUpdateData, isEditing, contextId 
           </div>
         ) : !adding ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
-            <CheckCircle2 strokeWidth={2} className="w-12 h-12 text-[var(--bone-100)] opacity-25 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">All caught up!</p>
               <p className="text-xs text-bone-70 opacity-40 mt-1 leading-snug text-balance">No tasks to display in {activeTabDef.label}. Enjoy your day!</p>

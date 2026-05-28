@@ -208,6 +208,48 @@ export const useStore = create<AppState>()(
           })();
         }
       },
+      setWorkspaceCloudSync: (rootEntityId: string, enabled: boolean): void => {
+        const { entities, workspaces } = get();
+        const root = entities.find(e => e.id === rootEntityId);
+        if (!root) return;
+        const wsId = root.workspaceId || 'ws-personal';
+
+        // Collect root + all descendants (BFS over parentId graph).
+        const subtreeIds = new Set<string>([rootEntityId]);
+        let frontier = [rootEntityId];
+        while (frontier.length > 0) {
+          const next: string[] = [];
+          for (const id of frontier) {
+            for (const child of entities) {
+              if (child.parentId === id && !subtreeIds.has(child.id)) {
+                subtreeIds.add(child.id);
+                next.push(child.id);
+              }
+            }
+          }
+          frontier = next;
+        }
+
+        set({
+          entities: entities.map(e => subtreeIds.has(e.id) ? { ...e, cloudSyncEnabled: enabled, lastModified: Date.now() } : e),
+          workspaces: workspaces.map(w => w.id === wsId ? { ...w, cloudSyncEnabled: enabled } : w),
+        });
+
+        (async () => {
+          if (enabled) {
+            const updatedWs = get().workspaces.find(w => w.id === wsId);
+            if (updatedWs) await upsertWorkspace(updatedWs);
+            for (const e of get().entities) {
+              if (subtreeIds.has(e.id)) await upsertEntity(e);
+            }
+          } else {
+            for (const id of subtreeIds) {
+              await deleteEntityFromDB(id);
+            }
+          }
+          set({ lastSaved: Date.now() });
+        })();
+      },
       setLastSaved: (time) => set({ lastSaved: time }),
 
       setEntities: (entities) => set({ entities }),
@@ -339,12 +381,17 @@ export const useStore = create<AppState>()(
           settings: input.settings,
         };
         set(s => ({ workspaces: [...s.workspaces, workspace] }));
+        upsertWorkspace(workspace);
         return id;
       },
 
-      updateWorkspace: (id, patch) => set(s => ({
-        workspaces: s.workspaces.map(w => w.id === id ? { ...w, ...patch } : w),
-      })),
+      updateWorkspace: (id, patch) => {
+        set(s => ({
+          workspaces: s.workspaces.map(w => w.id === id ? { ...w, ...patch } : w),
+        }));
+        const updated = get().workspaces.find(w => w.id === id);
+        if (updated) upsertWorkspace(updated);
+      },
 
       deleteWorkspace: (id) => set(s => ({
         workspaces: s.workspaces.filter(w => w.id !== id),
@@ -1381,9 +1428,9 @@ export const useStore = create<AppState>()(
           editingEntity: null
         }));
         const updated = get().entities.find(e => e.id === id);
-        if (updated && updated.cloudSyncEnabled) upsertEntity(updated);
+        if (updated) upsertEntity(updated);
         const updatedWs = get().workspaces.find(w => w.id === id);
-        if (updatedWs && updatedWs.cloudSyncEnabled) upsertWorkspace(updatedWs);
+        if (updatedWs) upsertWorkspace(updatedWs);
       },
 
       duplicateEntity: (id: string) => {
@@ -1409,10 +1456,9 @@ export const useStore = create<AppState>()(
           workspaces: state.workspaces.map(w => w.id === id ? { ...w, icon } : w)
         }));
         const updated = get().entities.find(e => e.id === id);
-        if (updated && updated.cloudSyncEnabled) upsertEntity(updated);
-        // Also sync workspace if needed
+        if (updated) upsertEntity(updated);
         const updatedWs = get().workspaces.find(w => w.id === id);
-        if (updatedWs && updatedWs.cloudSyncEnabled) upsertWorkspace(updatedWs);
+        if (updatedWs) upsertWorkspace(updatedWs);
       },
 
       setEditingEntityId: (id, source) => set({ editingEntity: id && source ? { id, source } : null }),

@@ -153,7 +153,6 @@ export function RecentWidget({ data, onUpdateData, contextId }: WidgetProps & { 
           );
         }) : (
           <div className="h-full flex flex-col items-center justify-center gap-3 p-4 bg-white/[0.01] rounded-[12px] min-h-[140px] transition-all duration-300">
-            <Clock strokeWidth={2} className="w-12 h-12 text-[var(--bone-100)] opacity-25 mb-1 animate-in fade-in duration-300" />
             <div className="text-center max-w-[320px]">
               <p className="text-base font-semibold text-bone-100 opacity-40">No recent activities</p>
               <p className="text-xs text-bone-70 opacity-25 mt-1 leading-snug text-balance">Pages you create or edit will show up here for quick access.</p>
