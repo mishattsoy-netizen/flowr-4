@@ -1,11 +1,13 @@
 "use client";
 
 import { AppTask, useStore } from '@/data/store';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { Calendar, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { attachClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 
 interface TaskCardUIProps {
   task: AppTask;
@@ -56,13 +58,13 @@ export function TaskCardUI({
         }
       }}
       className={cn(
-        "group relative p-3 rounded-[10px] border border-[var(--bone-10)] shrink-0 touch-none select-none flex flex-col gap-2",
+        "group relative p-3 rounded-[10px] border border-[var(--bone-10)] shrink-0 touch-none select-none flex flex-col gap-2 transition-colors duration-200 ease-in-out",
         isDragging
-          ? "bg-[var(--bone-3)] border-[var(--bone-3)] cursor-grabbing"
+          ? "bg-[var(--app-dark)] cursor-grabbing"
           : "bg-[var(--bone-6)] cursor-pointer active:cursor-grabbing hover:bg-[var(--app-dark)]"
       )}
     >
-      <div className={cn("flex flex-col gap-2 w-full h-full", isDragging && "invisible")}>
+      <div className="flex flex-col gap-2 w-full h-full">
       {/* ID Line */}
       {task.entityId && (
         <div className="flex items-center justify-end gap-2">
@@ -79,7 +81,7 @@ export function TaskCardUI({
           }}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="shrink-0 w-4 h-4 rounded-[4px] border flex items-center justify-center focus:outline-none cursor-pointer border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors"
+          className="shrink-0 w-4 h-4 rounded-[4px] border flex items-center justify-center focus:outline-none cursor-pointer border-[var(--bone-30)] hover:border-[var(--bone-70)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors duration-200 ease-in-out"
         >
           {task.completed && <Check className="w-[10px] h-[10px] text-[var(--bone-100)] stroke-[3px]" />}
         </button>
@@ -110,7 +112,7 @@ export function TaskCardUI({
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center flex-shrink-0 border-[var(--bone-30)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors cursor-pointer"
+                className="w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center flex-shrink-0 border-[var(--bone-30)] bg-[var(--bone-6)] hover:bg-[var(--app-dark)] transition-colors duration-200 ease-in-out cursor-pointer"
               >
                 {sub.completed && <Check className="w-2.5 h-2.5 text-[var(--bone-100)] stroke-[3px]" />}
               </button>
@@ -168,39 +170,79 @@ export function TaskCardUI({
   );
 }
 
-export function TaskCard({ task }: { task: AppTask }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
-    id: task.id,
-    data: React.useMemo(() => ({
-      type: 'Task',
-      task
-    }), [task]),
-    transition: {
-      duration: 200,
-      easing: 'cubic-bezier(0.2, 1, 0.2, 1)',
-    }
-  });
+export type CardEdge = 'top' | 'bottom';
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-  };
+export function TaskCard({
+  task,
+  columnId,
+  closestEdge,
+}: {
+  task: AppTask;
+  columnId: string;
+  closestEdge: CardEdge | null;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<{ container: HTMLElement } | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    return draggable({
+      element: el,
+      getInitialData: () => ({ type: 'task', taskId: task.id, columnId }),
+      onGenerateDragPreview: ({ nativeSetDragImage }) => {
+        setCustomNativeDragPreview({
+          nativeSetDragImage,
+          getOffset: () => ({ x: 16, y: 16 }),
+          render: ({ container }) => {
+            setPreview({ container });
+            return () => setPreview(null);
+          },
+        });
+      },
+      onDragStart: () => setIsDragging(true),
+      onDrop: () => setIsDragging(false),
+    });
+  }, [task.id, columnId]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    return dropTargetForElements({
+      element: el,
+      canDrop: ({ source }) => source.data.type === 'task',
+      getData: ({ input, element }) =>
+        attachClosestEdge(
+          { type: 'card', taskId: task.id, columnId },
+          { input, element, allowedEdges: ['top', 'bottom'] }
+        ),
+    });
+  }, [task.id, columnId]);
 
   return (
-    <TaskCardUI
-      task={task}
-      isDragging={isDragging}
-      style={style}
-      attributes={attributes}
-      listeners={listeners}
-      setNodeRef={setNodeRef}
-    />
+    <div ref={ref} className="relative">
+      {/* Live insertion indicator: a card-sized bone-3 box is rendered by the
+          column at the right slot, so here we only need the drop-edge line as a
+          subtle aid. The placeholder box itself lives in KanbanColumn. */}
+      {closestEdge && (
+        <div
+          className={cn(
+            'absolute left-0 right-0 h-[2px] bg-[var(--bone-20)] rounded-full z-10',
+            closestEdge === 'top' ? '-top-1.5' : '-bottom-1.5'
+          )}
+        />
+      )}
+      <div className={cn(isDragging && 'opacity-0')}>
+        <TaskCardUI task={task} />
+      </div>
+      {preview &&
+        createPortal(
+          <div className="w-[268px] rounded-[10px] shadow-[0_16px_40px_-8px_rgba(0,0,0,0.55)]">
+            <TaskCardUI task={task} isDragging />
+          </div>,
+          preview.container
+        )}
+    </div>
   );
 }
